@@ -368,6 +368,8 @@ async function startFromMenu(){
   playBeep(700,0.08,0.08);
 }
 startBtn.addEventListener('click', startFromMenu);
+// On some mobile browsers the click event may be delayed; trigger on touch as well
+startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
 document.addEventListener('keydown', (e)=>{ if (menuEl && !menuEl.classList.contains('hidden') && (e.key==='Enter' || e.key===' ')) startFromMenu(); });
 
 // Input
