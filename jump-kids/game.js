@@ -210,7 +210,7 @@ function buildLevelFromArrays(base, ext){
 let LEVEL = buildLevelFromArrays(BASE, EXT);
 let H = LEVEL.length, W = LEVEL[0].length;
 function tileAt(tx, ty){ if (ty<0||ty>=H||tx<0||tx>=W) return '_'; return LEVEL[ty][tx] || '_'; }
-function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']'; }
+function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']' || c==='B'; }
 // Find the top surface (y in world px) of the first solid tile at or below startTy in the given column
 function groundTopAt(tx, startTy){
   for (let ty=startTy; ty<H; ty++){
@@ -231,8 +231,8 @@ class Entity{
   get left(){ return this.x; } get right(){ return this.x+this.w; } get top(){ return this.y; } get bottom(){ return this.y+this.h; }
 }
 class Player extends Entity{
-  constructor(x,y){ super(x,y,20,28); this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0; this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; }
-  respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; }
+  constructor(x,y){ super(x,y,20,28); this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0; this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false; }
+  respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; this.big=false; this.w=20; this.h=28; }
 }
 class Goomba extends Entity{
   constructor(x,y){ super(x,y,24,22); this.speed=65; this.vx=-this.speed; }
@@ -241,19 +241,43 @@ class Goomba extends Entity{
 class Hellmonk extends Entity{
   constructor(x,y){ super(x,y,24,24); this.speed=55; this.chargeSpeed=210; this.state='idle'; this.reactCD=0; this.facing=-1; this.jump=-520; }
 }
+class Zakko extends Entity{
+  constructor(x,y){ super(x,y,20,80); this.knocked=false; }
+}
+
+function growPlayer(p){
+  if (p.big) return;
+  p.big = true;
+  const oldH = p.h, oldW = p.w;
+  p.h = 40; p.w = 26;
+  p.y -= (p.h - oldH);
+}
+function shrinkPlayer(p){
+  if (!p.big) return;
+  const oldH = p.h, oldW = p.w;
+  p.big = false;
+  p.h = 28; p.w = 20;
+  p.y += (oldH - p.h);
+}
 
 // Instantiate world from current LEVEL
 function findInMap(symbol){ for (let y=0;y<H;y++){ const x=LEVEL[y].indexOf(symbol); if (x!==-1) return {x,y}; } return {x:2,y:2}; }
 function buildWorld(){
   const spawn = findInMap('P');
   const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
+  let boxAlt = 0;
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
       if (c==='E') world.enemies.push(new Goomba(x*TILE,(y-1)*TILE));
       if (c==='H') world.enemies.push(new Hellmonk(x*TILE,(y-1)*TILE));
+      if (c==='Z'){ const top = groundTopAt(x,y) - 80; world.enemies.push(new Zakko(x*TILE, top)); }
       if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
-      if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0});
+      if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
+      if (c==='B'){
+        const content = (boxAlt++%2===0) ? {type:'coins',amount:2+Math.floor(Math.random()*3)} : {type:'shamrock'};
+        world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'mystery',bounce:0,used:false,content});
+      }
       if (c==='G'){
         const poleH = TILE*5.5;
         let topY = surfaceTopAt(x, y);
@@ -499,6 +523,20 @@ function drawQBlock(x,y){
   ctx.font = 'bold 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('?', x+TILE/2, y+TILE/2+1);
 }
+function drawMysteryBox(x,y,used){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = '#4b2e00';
+  ctx.fillRect(4,12,24,16);
+  ctx.beginPath();
+  ctx.moveTo(4,12); ctx.lineTo(28,12); ctx.lineTo(24,8); ctx.lineTo(8,8); ctx.closePath();
+  ctx.fill();
+  if (!used){
+    ctx.fillStyle = '#f2c14e';
+    ctx.fillRect(8,4,16,8);
+  }
+  ctx.restore();
+}
 function drawCoin(x,y,r){
   ctx.save();
   ctx.fillStyle = COL.coin; ctx.strokeStyle = '#b38b1a'; ctx.lineWidth=1;
@@ -603,6 +641,7 @@ requestAnimationFrame(loop);
 function update(dt){
   if (menuEl && !menuEl.classList.contains('hidden')){ return; }
   const p = world.player;
+  for (const b of world.blocks){ if (b.bounce>0) b.bounce = Math.max(0, b.bounce - dt*4); }
   if (world.state === 'pause') return;
   if (world.state !== 'win' && world.state !== 'gameover') world.time += dt;
   // Win state: freeze gameplay, animate victory
@@ -648,10 +687,27 @@ function update(dt){
 
   // Integrate with collision
   moveWithCollisions(p, p.vx*dt, 0);
+  const prevVy = p.vy;
+  const prevBottom = p.bottom;
   moveWithCollisions(p, 0, p.vy*dt);
 
   // Final ground snap to stop jitter and ensure he rests on platforms
   if (!p.grounded) trySnapToGround(p);
+
+  // Mystery boxes
+  if (prevVy < 0){
+    for (const b of world.blocks){
+      if (b.used) continue;
+      if (p.x < b.x + b.w && p.x + p.w > b.x && prevBottom <= b.y + b.h && p.y >= b.y + b.h - 2){
+        b.used = true; b.bounce = 1;
+        if (b.content && b.content.type==='coins'){
+          p.coins += b.content.amount; HUD.coins.textContent = p.coins; playCoin();
+        } else if (b.content && b.content.type==='shamrock'){
+          growPlayer(p);
+        }
+      }
+    }
+  }
 
   // Collect coins
   for (const c of world.coins){
@@ -714,9 +770,25 @@ function update(dt){
           e.vx = -dir * Math.max(e.speed, 120);
           e.state = 'idle';
         } else if (p.invuln<=0){
-          p.lives--; HUD.lives.textContent = p.lives;
-          if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
-          p.respawn();
+          if (p.big){ shrinkPlayer(p); p.invuln = 1; }
+          else {
+            p.lives--; HUD.lives.textContent = p.lives;
+            if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
+            p.respawn();
+          }
+        }
+      }
+    } else if (e instanceof Zakko){
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      if (!e.remove && aabb(p,e)){
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){
+          p.vy = -0.55*JUMP_VEL;
+          if (!e.knocked){ e.knocked=true; e.h=40; e.y += 40; }
+          else e.remove=true;
+        } else if (p.invuln<=0){
+          if (p.big){ shrinkPlayer(p); p.invuln=1; }
+          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
         }
       }
     } else {
@@ -730,9 +802,12 @@ function update(dt){
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
         else if (p.invuln<=0){
-          p.lives--; HUD.lives.textContent = p.lives;
-          if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
-          p.respawn();
+          if (p.big){ shrinkPlayer(p); p.invuln = 1; }
+          else {
+            p.lives--; HUD.lives.textContent = p.lives;
+            if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
+            p.respawn();
+          }
         }
       }
     }
@@ -781,12 +856,17 @@ function draw(){
       const sx = x*TILE - camX, sy = (y-1)*TILE;
       if (c==='#') drawGround(sx,sy);
       else if (c==='=') drawBrick(sx,sy);
-      else if (c==='['||c===']') drawQBlock(sx,sy);
     }
+  }
+  for (const b of world.blocks){
+    const bx = b.x - camX;
+    const by = b.y - b.bounce*10;
+    if (b.type==='mystery') drawMysteryBox(bx,by,b.used);
+    else drawQBlock(bx,by);
   }
   const t = performance.now()/1000;
   for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2, c.r); }
-  for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else drawGoomba(e.x - camX, e.y); }
+  for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else drawGoomba(e.x - camX, e.y); }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
   if (world.checkpoint) drawCheckpoint(world.checkpoint.x - camX, world.checkpoint.y, world.checkpoint.activated, world.checkpoint.poleH);
@@ -891,6 +971,21 @@ function drawHellmonk(x,y,e){
   ctx.fill();
   // visor line
   ctx.strokeStyle = '#bfa000'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(2,9.5); ctx.lineTo(22,9.5); ctx.stroke();
+  ctx.restore();
+}
+
+function drawZakko(x,y,e){
+  ctx.save();
+  ctx.translate(x,y);
+  if (!e.knocked){
+    ctx.fillStyle = '#d4a373';
+    ctx.fillRect(4,0,12,e.h);
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(0,e.h-10,20,10);
+  } else {
+    ctx.fillStyle = '#d4a373';
+    ctx.fillRect(0,e.h-20,20,20);
+  }
   ctx.restore();
 }
 
