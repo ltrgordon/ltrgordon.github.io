@@ -118,7 +118,8 @@ function drawPortrait(id){
   c.restore();
 }
 function updateCharSelection(id, previewOnly=false){
-  if (!id) return; if (!previewOnly) selectedChar = id;
+  if (!id) return; 
+  if (!previewOnly) selectedChar = id;
   // Update aria-selected on cards
   if (charGrid){
     const cards = charGrid.querySelectorAll('.char-card');
@@ -126,16 +127,30 @@ function updateCharSelection(id, previewOnly=false){
   }
   drawPortrait(id);
   // Always show portrait when a character is selected/hovered
-  if (charPreviewWrap) charPreviewWrap.classList.add('visible');
+  if (charPreviewWrap) {
+    charPreviewWrap.classList.add('visible');
+    // Also ensure the canvas is visible by setting opacity directly as fallback
+    if (charPreview) charPreview.style.opacity = '1';
+  }
 }
 if (charGrid){
+  const isMobile = () => window.innerWidth <= 1023;
   const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
+  
   charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
   charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
   charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
-  // Hide when leaving grid or no focused option remains
-  charGrid.addEventListener('mouseout', (e)=>{ if (!charGrid.contains(e.relatedTarget)) togglePreview(false); });
-  charGrid.addEventListener('focusout', ()=>{ const anyFocused = !!charGrid.querySelector('.char-card:focus'); if (!anyFocused) togglePreview(false); });
+  
+  // Hide portrait logic: only hide on mobile when leaving grid/focus
+  charGrid.addEventListener('mouseout', (e)=>{ 
+    if (isMobile() && !charGrid.contains(e.relatedTarget)) togglePreview(false); 
+  });
+  charGrid.addEventListener('focusout', ()=>{ 
+    if (isMobile()) {
+      const anyFocused = !!charGrid.querySelector('.char-card:focus'); 
+      if (!anyFocused) togglePreview(false); 
+    }
+  });
 }
 
 // Simple level encoding (extended to ~2x length)
@@ -352,12 +367,19 @@ addEventListener('keyup', e=>{ const k=e.key.toLowerCase();
 });
 function bindButton(id, name){
   const el=document.getElementById(id);
+  if (!el) {
+    console.warn(`Button element with id "${id}" not found`);
+    return;
+  }
   const start=(ev)=>{ ev.preventDefault(); unlockAudio(); setKey(name,true); if (name==='jump') bufferJump(); };
   const end=()=> setKey(name,false);
   ['touchstart','mousedown'].forEach(ev=> el.addEventListener(ev,start,{passive:false}));
   ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=> el.addEventListener(ev,end));
 }
-bindButton('left','left'); bindButton('right','right'); bindButton('jump','jump'); bindButton('dash','dash');
+// Ensure DOM is ready before binding buttons
+document.addEventListener('DOMContentLoaded', ()=>{
+  bindButton('left','left'); bindButton('right','right'); bindButton('jump','jump'); bindButton('dash','dash');
+});
 
 // Physics & collision
 function rectOverlap(x1,y1,w1,h1,x2,y2,w2,h2){ return !(x1+w1<=x2||x1>=x2+w2||y1+h1<=y2||y1>=y2+h2); }
@@ -706,7 +728,7 @@ function update(dt){
       if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
       if (!e.remove && aabb(p,e)){
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
+        if (fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
         else if (p.invuln<=0){
           p.lives--; HUD.lives.textContent = p.lives;
           if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
@@ -738,7 +760,9 @@ function update(dt){
   // Fell out of world
   if (p.y > (H+2)*TILE){
     p.lives--; HUD.lives.textContent = p.lives;
-    if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12);
+    if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
+    p.respawn();
+  }
 
   // Camera follow
   const targetCam = Math.max(0, p.x - CAM_MARGIN_X);
@@ -889,13 +913,16 @@ function resetGame(){
   HUD.msg.textContent = 'Ready!';
   if (world && world.player) world.player.charId = selectedChar;
 }
-(async function init(){
+
+// Ensure everything is initialized when DOM is ready
+document.addEventListener('DOMContentLoaded', async ()=>{
   await discoverLevels();
-  updateCharSelection(selectedChar || 'lucy', true);
+  // Ensure we select a character and show portrait immediately
+  updateCharSelection(selectedChar || 'lucy', false);
   try{
     const resp = await fetch('level1.json');
     if (resp.ok){ const data = await resp.json(); const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]); if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; } }
   }catch{}
   // Show menu by default
-  menuEl.classList.remove('hidden');
-})();
+  if (menuEl) menuEl.classList.remove('hidden');
+});

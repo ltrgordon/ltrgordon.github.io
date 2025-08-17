@@ -100,10 +100,10 @@
   /* removed .char-bio */
   .char-preview-wrap{ border-radius:16px; border:2px solid rgba(0,0,0,0.12); background:linear-gradient(180deg,#fff,#eef3f8); display:flex; align-items:center; justify-content:center; }
   #charPreview{ width:100%; height:auto; display:block; opacity:0; transition: opacity .15s ease; }
-  /* Show portrait only when hovering or focusing a card */
+  /* Show portrait when visible class is present or on hover/focus */
+  .char-preview-wrap.visible #charPreview,
   #charGrid:hover ~ .char-preview-wrap #charPreview,
-  #charGrid:focus-within ~ .char-preview-wrap #charPreview,
-  .char-preview-wrap.visible #charPreview{ opacity:1; }
+  #charGrid:focus-within ~ .char-preview-wrap #charPreview{ opacity:1; }
 
   .menu-start{ width:100%; margin-top:16px; padding:12px 16px; font-weight:700; font-size:16px; border-radius:12px; border:1px solid rgba(0,0,0,0.15);
     background:linear-gradient(#fff,#eef3f8); box-shadow:0 3px 0 rgba(0,0,0,0.15); }
