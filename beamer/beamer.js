@@ -2,21 +2,44 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-// Fix canvas blurriness on high DPI displays
-const dpr = window.devicePixelRatio || 1;
-const displayWidth = 960;
-const displayHeight = 640;
+// Dynamic canvas sizing for mobile
+function resizeCanvas() {
+  const isMobile = window.innerWidth <= 1023;
+  const dpr = window.devicePixelRatio || 1;
+  
+  if (isMobile) {
+    // On mobile, use full viewport
+    const displayWidth = window.innerWidth;
+    const displayHeight = window.innerHeight;
+    
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+    
+    ctx.scale(dpr, dpr);
+  } else {
+    // On desktop, use fixed size
+    const displayWidth = 960;
+    const displayHeight = 640;
+    
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+    
+    ctx.scale(dpr, dpr);
+  }
+}
 
-// Set the actual size in memory (scaled to account for extra pixel density).
-canvas.width = displayWidth * dpr;
-canvas.height = displayHeight * dpr;
-
-// Scale the canvas back down using CSS.
-canvas.style.width = displayWidth + 'px';
-canvas.style.height = displayHeight + 'px';
-
-// Scale the drawing context so everything draws at the correct size.
-ctx.scale(dpr, dpr);
+// Initial resize and listen for orientation changes
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+  setTimeout(resizeCanvas, 100);
+});
 
 const overlay = document.getElementById('overlay');
 const menuPanel = document.getElementById('menu');

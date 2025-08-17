@@ -125,11 +125,13 @@ function updateCharSelection(id, previewOnly=false){
     cards.forEach(btn=> btn.setAttribute('aria-selected', String(btn.dataset.char===selectedChar)));
   }
   drawPortrait(id);
+  // Always show portrait when a character is selected/hovered
+  if (charPreviewWrap) charPreviewWrap.classList.add('visible');
 }
 if (charGrid){
   const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
-  charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); togglePreview(true); } });
-  charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); togglePreview(true); } });
+  charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
+  charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
   charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
   // Hide when leaving grid or no focused option remains
   charGrid.addEventListener('mouseout', (e)=>{ if (!charGrid.contains(e.relatedTarget)) togglePreview(false); });
@@ -704,7 +706,7 @@ function update(dt){
       if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
       if (!e.remove && aabb(p,e)){
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if (fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
+        if fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
         else if (p.invuln<=0){
           p.lives--; HUD.lives.textContent = p.lives;
           if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
@@ -736,9 +738,7 @@ function update(dt){
   // Fell out of world
   if (p.y > (H+2)*TILE){
     p.lives--; HUD.lives.textContent = p.lives;
-    if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
-    p.respawn();
-  }
+    if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12);
 
   // Camera follow
   const targetCam = Math.max(0, p.x - CAM_MARGIN_X);
