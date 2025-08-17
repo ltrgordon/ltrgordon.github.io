@@ -115,6 +115,7 @@
 
   /* Mobile responsive adjustments */
   @media (max-width: 768px) {
+    #wrap{ transform: scale(0.65); transform-origin: top center; }
     .menu-title{ font-size:36px; }
     .char-select{ grid-template-columns: 1fr; gap:12px; }
     .char-preview-wrap{ height: 200px; }
