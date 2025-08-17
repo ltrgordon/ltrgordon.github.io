@@ -2,22 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=no, orientation=landscape">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, orientation=landscape">
 <title>Beamer</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<canvas id="game" width="960" height="640"></canvas>
+<div id="game-container">
+  <canvas id="game" width="960" height="640"></canvas>
 
-<!-- Mobile Controls -->
-<div id="mobile-controls">
-  <div class="mobile-paddle" id="mobile-left">
-    <button class="paddle-btn" id="left-up" aria-label="Left paddle up">▲</button>
-    <button class="paddle-btn" id="left-down" aria-label="Left paddle down">▼</button>
-  </div>
-  <div class="mobile-paddle" id="mobile-right">
-    <button class="paddle-btn" id="right-up" aria-label="Right paddle up">▲</button>
-    <button class="paddle-btn" id="right-down" aria-label="Right paddle down">▼</button>
+  <!-- Mobile Controls -->
+  <div id="mobile-controls">
+    <div class="mobile-paddle" id="mobile-left">
+      <button class="paddle-btn" id="left-up" aria-label="Left paddle up">▲</button>
+      <button class="paddle-btn" id="left-down" aria-label="Left paddle down">▼</button>
+    </div>
+    <div class="mobile-paddle" id="mobile-right">
+      <button class="paddle-btn" id="right-up" aria-label="Right paddle up">▲</button>
+      <button class="paddle-btn" id="right-down" aria-label="Right paddle down">▼</button>
+    </div>
   </div>
 </div>
 
