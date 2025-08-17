@@ -42,34 +42,36 @@
   <div class="menu-card">
     <h1 class="menu-title arcade">Jump Kids</h1>
 
-    <div class="menu-section">
-      <div class="menu-section-title">Select Level</div>
-      <div id="levelGrid" class="level-grid" aria-label="Level select"></div>
-      <div class="sr-only">
-        <label for="levelSelect">Level</label>
-        <select id="levelSelect" aria-label="Select level"></select>
-      </div>
-    </div>
-
-    <div class="menu-section">
-      <div class="menu-section-title">Select Fighter</div>
-      <div class="char-select">
-        <div id="charGrid" class="char-grid" role="listbox" aria-label="Character select">
-          <button class="char-card" data-char="lucy" role="option" aria-selected="true">
-            <div class="char-name">Lucy • 8</div>
-          </button>
-          <button class="char-card" data-char="joey" role="option" aria-selected="false">
-            <div class="char-name">Joey • 6</div>
-          </button>
-          <button class="char-card" data-char="abe" role="option" aria-selected="false">
-            <div class="char-name">Abe • 3</div>
-          </button>
-          <button class="char-card" data-char="leo" role="option" aria-selected="false">
-            <div class="char-name">Leo • 1</div>
-          </button>
+    <div class="menu-scroll">
+      <div class="menu-section">
+        <div class="menu-section-title">Select Level</div>
+        <div id="levelGrid" class="level-grid" aria-label="Level select"></div>
+        <div class="sr-only">
+          <label for="levelSelect">Level</label>
+          <select id="levelSelect" aria-label="Select level"></select>
         </div>
-        <div class="char-preview-wrap">
-          <canvas id="charPreview" width="420" height="300" aria-label="Character portrait"></canvas>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Select Fighter</div>
+        <div class="char-select">
+          <div id="charGrid" class="char-grid" role="listbox" aria-label="Character select">
+            <button class="char-card" data-char="lucy" role="option" aria-selected="true">
+              <div class="char-name">Lucy • 8</div>
+            </button>
+            <button class="char-card" data-char="joey" role="option" aria-selected="false">
+              <div class="char-name">Joey • 6</div>
+            </button>
+            <button class="char-card" data-char="abe" role="option" aria-selected="false">
+              <div class="char-name">Abe • 3</div>
+            </button>
+            <button class="char-card" data-char="leo" role="option" aria-selected="false">
+              <div class="char-name">Leo • 1</div>
+            </button>
+          </div>
+          <div class="char-preview-wrap">
+            <canvas id="charPreview" width="420" height="300" aria-label="Character portrait"></canvas>
+          </div>
         </div>
       </div>
     </div>
