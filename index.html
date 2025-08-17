@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Games — Launcher</title>
   <style>
     :root{
@@ -15,7 +15,7 @@
       color:var(--ink); background: radial-gradient(1200px 700px at 20% -10%, #ffffff 0%, #e0f2fe 35%, #bae6fd 60%, #93c5fd 100%), linear-gradient(180deg,var(--bg2),var(--bg1));
       background-attachment: fixed;
     }
-    .wrap{ width:min(1100px, 96vw); margin:auto; }
+    .wrap{ width:min(1100px, 96vw); margin:auto; padding: 20px; }
     header{ text-align:center; margin-bottom:24px; }
     .title{ font-size:44px; font-weight:900; letter-spacing:.6px; margin:0; text-shadow:0 3px 0 #00000020; }
     .subtitle{ margin:6px 0 0; opacity:.8; font-weight:600 }
@@ -38,7 +38,27 @@
     .cta .arr{ font-size:18px; }
 
     footer{ margin-top:18px; text-align:center; color:#0000008a; font-size:12px }
-    @media (max-width: 860px){ .grid{ grid-template-columns: 1fr; } .art{ display:none } .card{ min-height: 140px} }
+    
+    .mobile-notice{ display:none; text-align:center; padding:20px; background: rgba(255,255,255,0.9); border-radius:16px; border:1px solid #00000014; }
+    .mobile-notice h3{ margin:0 0 12px; color:var(--accent); }
+    .mobile-notice p{ margin:0; font-size:14px; opacity:0.8; }
+    
+    @media (max-width: 860px){ 
+      .grid{ grid-template-columns: 1fr; } 
+      .art{ display:none } 
+      .card{ min-height: 140px} 
+      .title{ font-size:36px; }
+      .name{ font-size:24px; }
+      .mobile-notice{ display:block; margin-bottom:20px; }
+    }
+    
+    @media (max-width: 860px) and (orientation: portrait) {
+      .mobile-notice h3:after{ content: " 📱"; }
+    }
+    
+    @media (max-width: 860px) and (orientation: landscape) {
+      .mobile-notice h3:after{ content: " ✅"; }
+    }
   </style>
 </head>
 <body>
@@ -47,6 +67,12 @@
       <h1 class="title">Pick a Game</h1>
       <p class="subtitle">Choose a classic-inspired mini-game</p>
     </header>
+    
+    <div class="mobile-notice">
+      <h3>Mobile Tip</h3>
+      <p>For the best mobile experience, please rotate your device to landscape mode before playing.</p>
+    </div>
+    
     <main class="grid">
       <a class="card" href="./jump-kids/index.html" aria-label="Play Jump Kids">
         <div class="art">

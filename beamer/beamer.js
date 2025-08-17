@@ -716,10 +716,83 @@ document.addEventListener('keyup', e=>{
   e.preventDefault();
 });
 
-// Also handle clicks on canvas to ensure focus
-canvas.addEventListener('click', () => {
-  canvas.focus();
-});
+// Mobile touch controls
+function setupMobileControls() {
+  const leftUp = document.getElementById('left-up');
+  const leftDown = document.getElementById('left-down');
+  const rightUp = document.getElementById('right-up');
+  const rightDown = document.getElementById('right-down');
+
+  if (!leftUp || !leftDown || !rightUp || !rightDown) return;
+
+  // Left paddle controls
+  leftUp.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    keys['w'] = true;
+  });
+  leftUp.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    keys['w'] = false;
+  });
+
+  leftDown.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    keys['s'] = true;
+  });
+  leftDown.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    keys['s'] = false;
+  });
+
+  // Right paddle controls
+  rightUp.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    keys['arrowup'] = true;
+  });
+  rightUp.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    keys['arrowup'] = false;
+  });
+
+  rightDown.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    keys['arrowdown'] = true;
+  });
+  rightDown.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    keys['arrowdown'] = false;
+  });
+
+  // Also handle mouse events for testing
+  [leftUp, leftDown, rightUp, rightDown].forEach(btn => {
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const key = btn.id.includes('left') ? 
+        (btn.id.includes('up') ? 'w' : 's') :
+        (btn.id.includes('up') ? 'arrowup' : 'arrowdown');
+      keys[key] = true;
+    });
+    
+    btn.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      const key = btn.id.includes('left') ? 
+        (btn.id.includes('up') ? 'w' : 's') :
+        (btn.id.includes('up') ? 'arrowup' : 'arrowdown');
+      keys[key] = false;
+    });
+    
+    btn.addEventListener('mouseleave', (e) => {
+      e.preventDefault();
+      const key = btn.id.includes('left') ? 
+        (btn.id.includes('up') ? 'w' : 's') :
+        (btn.id.includes('up') ? 'arrowup' : 'arrowdown');
+      keys[key] = false;
+    });
+  });
+}
+
+// Initialize mobile controls
+setupMobileControls();
 
 // Make canvas focusable
 canvas.tabIndex = 1000;
