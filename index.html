@@ -1,40 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Beamer</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Games — Launcher</title>
+  <style>
+    :root{
+      --bg1:#0ea5e9; --bg2:#22d3ee; --panel:#ffffffee; --ink:#0b1b2b; --sub:#334155; --accent:#f59e0b; --accent2:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      display:grid; place-items:center; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink); background: radial-gradient(1200px 700px at 20% -10%, #ffffff 0%, #e0f2fe 35%, #bae6fd 60%, #93c5fd 100%), linear-gradient(180deg,var(--bg2),var(--bg1));
+      background-attachment: fixed;
+    }
+    .wrap{ width:min(1100px, 96vw); margin:auto; }
+    header{ text-align:center; margin-bottom:24px; }
+    .title{ font-size:44px; font-weight:900; letter-spacing:.6px; margin:0; text-shadow:0 3px 0 #00000020; }
+    .subtitle{ margin:6px 0 0; opacity:.8; font-weight:600 }
+
+    .grid{ display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap:18px; }
+
+    .card{ position:relative; border-radius:20px; background:var(--panel); border:1px solid #00000014; overflow:hidden;
+      box-shadow: 0 20px 40px #00000026, inset 0 1px 0 #ffffff; cursor:pointer; min-height: 220px; display:flex; align-items:stretch; }
+    .card:focus{ outline:none; box-shadow:0 0 0 4px #00000014, 0 20px 40px #00000026; }
+    .card:hover .cta, .card:focus .cta{ transform: translateX(4px); }
+
+    .art{ flex: 0 0 42%; display:grid; place-items:center; background: linear-gradient(180deg,#ffffff,#f8fafc); border-right:1px solid #00000010; }
+    .art canvas{ width:100%; height:auto; aspect-ratio: 4/3; display:block; }
+
+    .details{ padding:18px 18px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+    .name{ font-size:30px; font-weight:900; letter-spacing:.3px; }
+    .desc{ color:var(--sub); opacity:.9 }
+    .cta{ margin-top:6px; display:inline-flex; align-items:center; gap:8px; font-weight:800; color:#fff; background:linear-gradient(90deg,var(--accent),#f97316);
+      padding:10px 14px; border-radius:999px; box-shadow: 0 6px 0 #00000020; transform: translateX(0); transition: transform .12s ease; }
+    .cta .arr{ font-size:18px; }
+
+    footer{ margin-top:18px; text-align:center; color:#0000008a; font-size:12px }
+    @media (max-width: 860px){ .grid{ grid-template-columns: 1fr; } .art{ display:none } .card{ min-height: 140px} }
+  </style>
 </head>
 <body>
-<canvas id="game" width="960" height="640" style="width: 960px; height: 640px;"></canvas>
-
-<div id="overlay">
-  <div id="menu" class="panel">
-    <h1>Beamer</h1>
-    <p><strong>[Enter] Start &nbsp; [F1] Help &nbsp; [Esc] Quit</strong></p>
-    <button id="start-btn" style="padding: 8px 16px; font-size: 16px; margin: 8px; background: #06b6d4; color: white; border: none; border-radius: 4px; cursor: pointer;">Start Game</button>
-    <p>Toggle AI: [N] Left &nbsp; [M] Right &middot; Difficulty [1]-[4]</p>
-    <p>Win Score [+/-] &nbsp; Ball Speed [B/V] (100-900)</p>
-    <p>Lens Curvature [C]/[X] &nbsp; Lens Material [L]</p>
-    <p>Beam Diameter [D/F] &nbsp; Wavelength [T/G] &nbsp; Power-ups [U]</p>
-    <p>Handicap: [J] Left &nbsp; [K] Right &nbsp; Reset Round [R]</p>
-    <div id="settings-display" style="margin-top: 16px; font-size: 11px; color: #9ca3af;">
-      <!-- Settings will be displayed here -->
-    </div>
+  <div class="wrap">
+    <header>
+      <h1 class="title">Pick a Game</h1>
+      <p class="subtitle">Choose a classic-inspired mini-game</p>
+    </header>
+    <main class="grid">
+      <a class="card" href="./jump-kids/index.html" aria-label="Play Jump Kids">
+        <div class="art">
+          <canvas id="art-jk" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Jump Kids</div>
+          <div class="desc">Dash, jump, and clear the level!</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="./beamer/index.html" aria-label="Play Beamer">
+        <div class="art">
+          <canvas id="art-bm" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Beamer</div>
+          <div class="desc">Fast arcade action with lasers.</div>
+          <span class="cta" style="background:linear-gradient(90deg,var(--accent2),#f43f5e)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+    </main>
+    <footer>Use keyboard or touch — have fun!</footer>
   </div>
-  <div id="help" class="panel hidden">
-    <h2>Controls</h2>
-    <p>Left Paddle: W/S &nbsp; Right Paddle: ↑/↓</p>
-    <p>P: Pause &nbsp; F1: Help &nbsp; Esc: Menu &nbsp; R: Reset Round</p>
-    <p>AI Toggle: M (Right), N (Left) &nbsp; Difficulty: 1/2/3/4</p>
-    <p>Win Score: +/- &nbsp; Ball Speed: B/V (100-900) &nbsp; Lens: C/X, L</p>
-    <p>Power-up Frequency: U (OFF/Low/Moderate/High)</p>
-    <p>Handicap: J (Left), K (Right) &nbsp; Beam: D/F (Diameter), T/G (Wavelength)</p>
-  </div>
-  <div id="paused" class="panel hidden"><h1>Paused</h1><p>[P] Resume &nbsp; [Esc] Menu</p></div>
-  <div id="gameover" class="panel hidden"><h1 id="winner"></h1><p>[Enter] Play Again &nbsp; [Esc] Menu</p></div>
-</div>
-
-<script src="beamer.js"></script>
+  <script>
+    // Tiny art doodles for the cards
+    function drawJK(){
+      const c = document.getElementById('art-jk'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#e0f2fe'); g.addColorStop(1,'#93c5fd'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // ground
+      x.fillStyle='#7c4a1f'; x.fillRect(0,H-70,W,70); x.fillStyle='#49a020'; x.fillRect(0,H-70,W,6);
+      // platforms
+      x.fillStyle='#b85a35'; x.fillRect(40,H-120,120,18); x.fillRect(W-200,H-160,140,18);
+      // coin
+      x.fillStyle='#f2c14e'; x.beginPath(); x.ellipse(140,H-140,10,9,0,0,Math.PI*2); x.fill();
+      // player
+      x.fillStyle='#ff5fa2'; x.fillRect(80,H-148,18,28); x.fillStyle='#ffddbf'; x.fillRect(82,H-158,14,10);
+      // flag
+      x.fillStyle='#169B62'; x.fillRect(W-120,H-210,20,50); x.fillStyle='#fff'; x.fillRect(W-100,H-210,20,50); x.fillStyle='#FF883E'; x.fillRect(W-80,H-210,20,50);
+    }
+    function drawBM(){
+      const c = document.getElementById('art-bm'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#111827'); g.addColorStop(1,'#0b1220'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // ship
+      x.fillStyle='#38bdf8'; x.beginPath(); x.moveTo(W/2-30,H-120); x.lineTo(W/2+30,H-120); x.lineTo(W/2,H-160); x.closePath(); x.fill();
+      // beam
+      x.strokeStyle='#f472b6'; x.lineWidth=6; x.beginPath(); x.moveTo(W/2,H-160); x.lineTo(W/2,H-260); x.stroke();
+      // stars
+      x.fillStyle='#fff'; for(let i=0;i<30;i++){ x.fillRect((i*53)%W, (i*97)%H, 2, 2); }
+    }
+    drawJK(); drawBM();
+  </script>
 </body>
 </html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Beamer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game" width="960" height="640" style="width: 960px; height: 640px;"></canvas>
+
+<div id="overlay">
+  <div id="menu" class="panel">
+    <h1>Beamer</h1>
+    <p><strong>[Enter] Start &nbsp; [F1] Help &nbsp; [Esc] Quit</strong></p>
+    <button id="start-btn" style="padding: 8px 16px; font-size: 16px; margin: 8px; background: #06b6d4; color: white; border: none; border-radius: 4px; cursor: pointer;">Start Game</button>
+    <p>Toggle AI: [N] Left &nbsp; [M] Right &middot; Difficulty [1]-[4]</p>
+    <p>Win Score [+/-] &nbsp; Ball Speed [B/V] (100-900)</p>
+    <p>Lens Curvature [C]/[X] &nbsp; Lens Material [L]</p>
+    <p>Beam Diameter [D/F] &nbsp; Wavelength [T/G] &nbsp; Power-ups [U]</p>
+    <p>Handicap: [J] Left &nbsp; [K] Right &nbsp; Reset Round [R]</p>
+    <div id="settings-display" style="margin-top: 16px; font-size: 11px; color: #9ca3af;">
+      <!-- Settings will be displayed here -->
+    </div>
+  </div>
+  <div id="help" class="panel hidden">
+    <h2>Controls</h2>
+    <p>Left Paddle: W/S &nbsp; Right Paddle: ↑/↓</p>
+    <p>P: Pause &nbsp; F1: Help &nbsp; Esc: Menu &nbsp; R: Reset Round</p>
+    <p>AI Toggle: M (Right), N (Left) &nbsp; Difficulty: 1/2/3/4</p>
+    <p>Win Score: +/- &nbsp; Ball Speed: B/V (100-900) &nbsp; Lens: C/X, L</p>
+    <p>Power-up Frequency: U (OFF/Low/Moderate/High)</p>
+    <p>Handicap: J (Left), K (Right) &nbsp; Beam: D/F (Diameter), T/G (Wavelength)</p>
+  </div>
+  <div id="paused" class="panel hidden"><h1>Paused</h1><p>[P] Resume &nbsp; [Esc] Menu</p></div>
+  <div id="gameover" class="panel hidden"><h1 id="winner"></h1><p>[Enter] Play Again &nbsp; [Esc] Menu</p></div>
+</div>
+
+<script src="beamer.js"></script>
+</body>
+</html>
