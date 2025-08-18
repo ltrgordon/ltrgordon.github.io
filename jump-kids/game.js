@@ -271,7 +271,7 @@ function shrinkPlayer(p){
 function findInMap(symbol){ for (let y=0;y<H;y++){ const x=LEVEL[y].indexOf(symbol); if (x!==-1) return {x,y}; } return {x:2,y:2}; }
 function buildWorld(){
   const spawn = findInMap('P');
-  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], items:[], popCoins:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
+  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
@@ -281,10 +281,7 @@ function buildWorld(){
       if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
       if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
       if (c==='B'){
-        const content = (Math.random() < 0.5)
-          ? {type:'coins',amount:2+Math.floor(Math.random()*3)}
-          : {type:'shamrock'};
-        world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'mystery',bounce:0,used:false,content});
+        world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});
       }
       if (c==='G'){
         const poleH = TILE*5.5;
@@ -533,7 +530,7 @@ function drawQBlock(x,y){
   ctx.font = 'bold 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('?', x+TILE/2, y+TILE/2+1);
 }
-function drawMysteryBox(x,y,used){
+function drawChest(x,y){
   ctx.save();
   ctx.translate(x,y);
   ctx.fillStyle = '#4b2e00';
@@ -541,10 +538,14 @@ function drawMysteryBox(x,y,used){
   ctx.beginPath();
   ctx.moveTo(4,12); ctx.lineTo(28,12); ctx.lineTo(24,8); ctx.lineTo(8,8); ctx.closePath();
   ctx.fill();
-  if (!used){
-    ctx.fillStyle = '#f2c14e';
-    ctx.fillRect(8,4,16,8);
-  }
+  ctx.fillStyle = '#f2c14e';
+  ctx.fillRect(8,4,16,8);
+  ctx.restore();
+}
+function drawChestPiece(x,y,w,h,color){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.fillRect(x,y,w,h);
   ctx.restore();
 }
 function drawCoin(x,y,r){
@@ -717,35 +718,48 @@ function update(dt){
   // Final ground snap to stop jitter and ensure he rests on platforms
   if (!p.grounded) trySnapToGround(p);
 
-  // Mystery boxes
+  // Blocks & chests hit from below
   if (prevVy < 0){
     for (const b of world.blocks){
       if (b.used) continue;
       const hit = p.x < b.x + b.w && p.x + p.w > b.x && prevBottom <= b.y + b.h && p.bottom >= b.y + b.h;
       if (hit){
         b.used = true; b.bounce = 1;
-        if (b.type === 'mystery' && b.content){
-          if (b.content.type==='coins'){
-            const amt = b.content.amount;
-            for (let i=0;i<amt;i++){
-              const vx = -60 + Math.random()*120;
-              const vy = -300 - Math.random()*60;
-              world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx, vy, grounded:false, type:'coin', remove:false});
-            }
-          } else if (b.content.type==='shamrock'){
-            const dir = Math.random() < 0.5 ? -60 : 60;
-            world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx:dir, vy:-260, grounded:false, type:'shamrock', remove:false});
+      }
+    }
+    for (const ch of world.chests){
+      const hit = p.x < ch.x + ch.w && p.x + p.w > ch.x && prevBottom <= ch.y + ch.h && p.bottom >= ch.y + ch.h;
+      if (hit){
+        const coinLoot = Math.random() < 0.5;
+        if (coinLoot){
+          const count = 2 + Math.floor(Math.random()*3);
+          for (let i=0;i<count;i++){
+            const ang = Math.random()*Math.PI*2;
+            const speed = 200 + Math.random()*80;
+            const vx = Math.cos(ang)*speed;
+            const vy = Math.sin(ang)*speed - 200;
+            world.items.push({x:ch.x + 8, y:ch.y - 8, w:16, h:16, vx, vy, grounded:false, type:'coin', remove:false});
           }
-          const tx = Math.floor(b.x / TILE);
-          const ty = Math.floor(b.y / TILE) + 1;
-          LEVEL[ty] = LEVEL[ty].substring(0, tx) + '_' + LEVEL[ty].substring(tx+1);
-          b.remove = true;
+        } else {
+          const dir = Math.random() < 0.5 ? -60 : 60;
+          world.items.push({x:ch.x + 8, y:ch.y - 16, w:16, h:16, vx:dir, vy:-260, grounded:false, type:'shamrock', remove:false});
         }
+        const pieces = [
+          {x:ch.x+4, y:ch.y+4, w:8, h:8, vx:-100, vy:-200, color:'#4b2e00'},
+          {x:ch.x+20, y:ch.y+4, w:8, h:8, vx:100, vy:-200, color:'#4b2e00'},
+          {x:ch.x+12, y:ch.y, w:8, h:8, vx:0, vy:-240, color:'#f2c14e'},
+          {x:ch.x+12, y:ch.y+20, w:8, h:8, vx:0, vy:-120, color:'#4b2e00'}
+        ];
+        world.chestBursts.push({pieces, life:0});
+        const tx = Math.floor(ch.x / TILE);
+        const ty = Math.floor(ch.y / TILE) + 1;
+        LEVEL[ty] = LEVEL[ty].substring(0, tx) + '_' + LEVEL[ty].substring(tx+1);
+        ch.remove = true;
       }
     }
   }
-  world.blocks = world.blocks.filter(b => !b.remove);
-
+  world.chests = world.chests.filter(ch => !ch.remove);
+  
   // Popped coin visuals
   for (const c of world.popCoins){
     c.vy += GRAVITY*dt;
@@ -753,6 +767,17 @@ function update(dt){
     c.life += dt;
   }
   world.popCoins = world.popCoins.filter(c => c.life < 0.6);
+
+  // Chest burst pieces
+  for (const burst of world.chestBursts){
+    for (const pc of burst.pieces){
+      pc.vy += GRAVITY*dt;
+      pc.x += pc.vx*dt;
+      pc.y += pc.vy*dt;
+    }
+    burst.life += dt;
+  }
+  world.chestBursts = world.chestBursts.filter(b => b.life < 0.6);
 
   // Items (coins and shamrock)
   for (const it of world.items){
@@ -937,8 +962,15 @@ function draw(){
   for (const b of world.blocks){
     const bx = b.x - camX;
     const by = b.y - b.bounce*10;
-    if (b.type==='mystery') drawMysteryBox(bx,by,b.used);
-    else drawQBlock(bx,by);
+    drawQBlock(bx,by);
+  }
+  for (const ch of world.chests){
+    drawChest(ch.x - camX, ch.y);
+  }
+  for (const burst of world.chestBursts){
+    for (const pc of burst.pieces){
+      drawChestPiece(pc.x - camX, pc.y, pc.w, pc.h, pc.color);
+    }
   }
   const t = performance.now()/1000;
   for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2, c.r); }
