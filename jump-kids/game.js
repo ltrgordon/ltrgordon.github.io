@@ -233,8 +233,13 @@ class Entity{
   get left(){ return this.x; } get right(){ return this.x+this.w; } get top(){ return this.y; } get bottom(){ return this.y+this.h; }
 }
 class Player extends Entity{
-  constructor(x,y){ super(x,y,20,28); this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0; this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false; }
-  respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; this.big=false; this.w=20; this.h=28; }
+  constructor(x,y){
+    super(x,y,20,28);
+    this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
+    this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
+    this.action=null; this.lockControls=false; this.invisible=0;
+  }
+  respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; this.big=false; this.w=20; this.h=28; this.action=null; this.lockControls=false; this.invisible=0; }
 }
 class Goomba extends Entity{
   constructor(x,y){ super(x,y,24,22); this.speed=65; this.vx=-this.speed; }
@@ -387,11 +392,21 @@ const keys = {left:false,right:false,jump:false,dash:false};
 let restartRequested = false;
 function setKey(k, val){ keys[k]=val; }
 function bufferJump(){ if (!world || !world.player) return; world.player.jumpBuffer = Math.max(world.player.jumpBuffer, JUMP_BUFFER); }
+function triggerSpecial(which){
+  if (!world || !world.player) return;
+  const p = world.player;
+  const ability = SPECIAL_MOVES[p.charId];
+  if (!ability) return;
+  if (which==='s1' && ability.s1) ability.s1(p, world);
+  if (which==='s2' && ability.s2) ability.s2(p, world);
+}
 addEventListener('keydown', e=>{ const k=e.key.toLowerCase(); unlockAudio();
   if (k==='arrowleft'||k==='a') setKey('left',true);
   if (k==='arrowright') setKey('right',true);
   if (k==='d') setKey('dash',true);
   if (k===' '||k==='z'||k==='w'||k==='arrowup'){ setKey('jump',true); bufferJump(); }
+  if (k==='s') triggerSpecial('s1');
+  if (k==='f') triggerSpecial('s2');
   if (k==='p'){ if (world.state==='play'){ world.state='pause'; HUD.msg.textContent='Paused — press P to resume'; playBeep(440,0.06,0.06); } else if (world.state==='pause'){ world.state='play'; HUD.msg.textContent=''; playBeep(520,0.06,0.06); } }
   if (k==='r'){ restartRequested = true; }
 });
@@ -578,8 +593,11 @@ function drawPlayer(x,y,p){
   ctx.save();
   ctx.translate(x + p.w/2, y + p.h);
   if (p.facing<0) ctx.scale(-1,1);
-  ctx.translate(-p.w/2, -p.h);
+  ctx.translate(0, -p.h/2);
+  if (p.action==='flip') ctx.rotate(p.flip||0);
+  ctx.translate(-p.w/2, -p.h/2);
   const id = p.charId || selectedChar || 'lucy';
+  if (id==='joey' && p.invisible>0) ctx.globalAlpha = 0.3;
   switch(id){
     case 'lucy': // gymnast leotard, long blond hair, pink hat band
       ctx.fillStyle = '#ff5fa2'; ctx.fillRect(0,6, p.w, p.h-6); // outfit
@@ -667,9 +685,19 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 // Update step
+function handleSpecialCollision(p,e){
+  const ability = SPECIAL_MOVES[p.charId];
+  if (ability && ability.onEnemyCollide){
+    return ability.onEnemyCollide(p,e);
+  }
+  return false;
+}
+
 function update(dt){
   if (menuEl && !menuEl.classList.contains('hidden')){ return; }
   const p = world.player;
+  const ability = SPECIAL_MOVES[p.charId];
+  if (ability && ability.update) ability.update(p, dt, world);
   for (const b of world.blocks){ if (b.bounce>0) b.bounce = Math.max(0, b.bounce - dt*4); }
   if (world.state === 'pause') return;
   if (world.state !== 'win' && world.state !== 'gameover') world.time += dt;
@@ -692,14 +720,16 @@ function update(dt){
   // Horizontal with dash/run
   const acc = MOVE_ACC * (keys.dash ? 1.5 : 1);
   const max = MOVE_MAX * (keys.dash ? 1.5 : 1);
-  if (keys.left) p.vx = Math.max(-max, p.vx - acc*dt);
-  if (keys.right) p.vx = Math.min( max, p.vx + acc*dt);
-  if (!keys.left && !keys.right){
-    if (p.vx>0) p.vx = Math.max(0, p.vx - FRICTION*dt);
-    if (p.vx<0) p.vx = Math.min(0, p.vx + FRICTION*dt);
+  if (!p.lockControls){
+    if (keys.left) p.vx = Math.max(-max, p.vx - acc*dt);
+    if (keys.right) p.vx = Math.min( max, p.vx + acc*dt);
+    if (!keys.left && !keys.right){
+      if (p.vx>0) p.vx = Math.max(0, p.vx - FRICTION*dt);
+      if (p.vx<0) p.vx = Math.min(0, p.vx + FRICTION*dt);
+    }
+    if (Math.abs(p.vx)<1) p.vx = 0;
+    if (keys.left && !keys.right) p.facing = -1; else if (keys.right && !keys.left) p.facing = 1;
   }
-  if (Math.abs(p.vx)<1) p.vx = 0;
-  if (keys.left && !keys.right) p.facing = -1; else if (keys.right && !keys.left) p.facing = 1;
 
   // Gravity + Jump (with coyote + buffer)
   p.vy += GRAVITY*dt;
@@ -707,8 +737,9 @@ function update(dt){
   if (p.grounded) p.coyote = COYOTE_TIME; else p.coyote = Math.max(0, p.coyote - dt);
   if (p.jumpBuffer>0) p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
   // Apply buffered jump when allowed
-  if (p.jumpBuffer>0 && (p.grounded || p.coyote>0)){
-    p.vy = -JUMP_VEL * (keys.dash ? 1.25 : 1);
+  if (!p.lockControls && p.jumpBuffer>0 && (p.grounded || p.coyote>0)){
+    const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
+    p.vy = -jv;
     p.grounded = false;
     p.jumpBuffer = 0;
     playBeep(700,0.05,0.07);
@@ -833,7 +864,8 @@ function update(dt){
       let collidedX = moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
       const dx = (p.x + p.w/2) - (e.x + e.w/2);
-      const dist = Math.abs(dx);
+      const invisible = (p.charId==='joey' && p.invisible>0);
+      const dist = invisible ? Infinity : Math.abs(dx);
       const dir = Math.sign(dx) || e.facing;
       e.facing = dir;
       if (e.state==='idle'){
@@ -842,7 +874,7 @@ function update(dt){
         const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
         const footTy = Math.floor((e.bottom+1)/TILE)+1;
         if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
-        if (dist < 160 && e.grounded && e.reactCD<=0){
+        if (!invisible && dist < 160 && e.grounded && e.reactCD<=0){
           e.vy = e.jump; // surprise jump
           e.state = 'chargePrep';
           e.reactCD = 0.8;
@@ -860,6 +892,7 @@ function update(dt){
       }
       // Player collisions
       if (aabb(p,e)){
+        if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
           p.vy = -0.6*JUMP_VEL; // bounce off, Hellmonk survives
@@ -889,6 +922,7 @@ function update(dt){
       moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
       if (!e.remove && aabb(p,e)){
+        if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
           p.vy = -0.55*JUMP_VEL;
@@ -907,6 +941,7 @@ function update(dt){
       const footTy = Math.floor((e.bottom+1)/TILE)+1; // +1 to map world Y -> tile row
       if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
       if (!e.remove && aabb(p,e)){
+        if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
         else if (p.invuln<=0){
@@ -942,9 +977,13 @@ function update(dt){
   
   // Fell out of world
   if (p.y > (H+2)*TILE){
-    p.lives--; HUD.lives.textContent = p.lives;
-    if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
-    p.respawn();
+    if (ability && ability.onPit){
+      ability.onPit(p, world);
+    } else {
+      p.lives--; HUD.lives.textContent = p.lives;
+      if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
+      p.respawn();
+    }
   }
 
   // Camera follow

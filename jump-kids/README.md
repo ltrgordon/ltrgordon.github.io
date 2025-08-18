@@ -10,7 +10,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump, D to dash.
+- Keyboard: Left/Right to move, Space or Z to jump, D to dash, S for S1 and F for S2.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -31,6 +31,12 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Pause: press P to pause/resume; shows a minimal overlay.
 - SFX: simple beeps and a coin pickup sound (unlocked on first input).
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
+
+## Characters & Special Moves
+- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 cartwheel that pushes enemies backward.
+- **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes.
+- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks down anything in his path.
+- **Leo** – No special moves. Jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
 
 ## Tile/Map Encoding
 The level is an ASCII grid split across two arrays in `game.js`:
