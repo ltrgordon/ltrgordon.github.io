@@ -160,12 +160,12 @@ const BASE = [
 "______________________________________________________________________________________________________________",
 "______________________________________________________________________________________________________________",
 "____________________________________________________________________C_________________________________________",
-"___________________________________________==______________________====_______________________________________",
+"__________R________________________________==______________________====_______________________________________",
 "___________________________C__________________C_________________________C_____________________________________",
-"__________________________===_________E_________________________E___________==______________________C_________",
+"__________________________===_________E_R_______________________E___________==______________________C_________",
 "______________________________C____________====______________====______________________==_____________________",
 "_________C_____________==_______==_____________________C_______________________________==_______E____________",
-"________====___C_______________________C__________E__________C__________==_________________________====_______",
+"________====___C____R__________________C__________E__________C__________==_________________________====_______",
 "______________________________________________________________________________________________________________",
 "_____P___________==__________________________====________________=___________________________C________________",
 "###########___#########____#######____#############__#########__#########___##########___#############__G____",
@@ -181,13 +181,13 @@ const EXT = [
 // 2 high coins
 "________________________C_______________________C__________________________C______________________________C___",
 // 3 high platforms
-"_______________________====_______________==_____________________====___________________________==___________",
+"_______________________====___R___________==_____________________====___________________________==___________",
 // 4 staggered coins
 "__________C__________C___________C_________________C________________C____________C___________________________",
 // 5 mixed platforms and enemies
 "__________==_____E______________====____________H______________====____________E___________==_____C__________",
 // 6 higher platforms and coins
-"_____C________====__________C______________==____________C___________====____________C_____________==________",
+"_____C____R___====__________C______________==____________C___________====____________C_____________==________",
 // 7 tall jumps with hellmonks guarding
 "________==__________________==____________________H______________==___________________H______________==______",
 // 8 run-ups and pits
@@ -195,7 +195,7 @@ const EXT = [
 // 9 sky
 "______________________________________________________________________________________________________________",
 // 10 above ground ledges
-"________C_______==___________________C____________==__________C_____________==___________________C__________",
+"________C_______==___________________C____________R=__________C_____________==___________________C__________",
 // 11 ground (with checkpoint K near the start of second half)
 "#############__K__############____#########_____###############____###########_____############_____#########",
 // 12 ground with final goal near end
@@ -212,7 +212,7 @@ function buildLevelFromArrays(base, ext){
 let LEVEL = buildLevelFromArrays(BASE, EXT);
 let H = LEVEL.length, W = LEVEL[0].length;
 function tileAt(tx, ty){ if (ty<0||ty>=H||tx<0||tx>=W) return '_'; return LEVEL[ty][tx] || '_'; }
-function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']' || c==='B'; }
+function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']'; }
 // Find the top surface (y in world px) of the first solid tile at or below startTy in the given column
 function groundTopAt(tx, startTy){
   for (let ty=startTy; ty<H; ty++){
@@ -253,7 +253,11 @@ class Zakko extends Entity{
 }
 
 function growPlayer(p){
-  if (p.big) return;
+  if (p.big){
+    p.coins += 5; HUD.coins.textContent = p.coins;
+    playCoin();
+    return;
+  }
   p.big = true;
   const oldH = p.h, oldW = p.w;
   p.h = 40; p.w = 26;
@@ -278,11 +282,12 @@ function buildWorld(){
       if (c==='E') world.enemies.push(new Goomba(x*TILE,(y-1)*TILE));
       if (c==='H') world.enemies.push(new Hellmonk(x*TILE,(y-1)*TILE));
       if (c==='Z'){ const top = groundTopAt(x,y) - 160; world.enemies.push(new Zakko(x*TILE, top)); }
-      if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
-      if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
-      if (c==='B'){
-        world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});
-      }
+        if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
+        if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
+        if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
+        if (c==='B'){
+          world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});
+        }
       if (c==='G'){
         const poleH = TILE*5.5;
         let topY = surfaceTopAt(x, y);
@@ -780,18 +785,20 @@ function update(dt){
   world.chestBursts = world.chestBursts.filter(b => b.life < 0.6);
 
   // Items (coins and shamrock)
-  for (const it of world.items){
-    if (it.remove) continue;
-    it.vy += GRAVITY*dt;
-    moveWithCollisions(it, it.vx*dt, 0);
-    moveWithCollisions(it, 0, it.vy*dt);
-    if (it.grounded) it.vx = 0;
-    if (aabb(p,it)){
-      if (it.type === 'shamrock'){
-        growPlayer(p);
-        playShamrock();
-      } else if (it.type === 'coin'){
-        p.coins++; HUD.coins.textContent = p.coins;
+    for (const it of world.items){
+      if (it.remove) continue;
+      if (!it.static){
+        it.vy += GRAVITY*dt;
+        moveWithCollisions(it, it.vx*dt, 0);
+        moveWithCollisions(it, 0, it.vy*dt);
+        if (it.grounded) it.vx = 0;
+      }
+      if (aabb(p,it)){
+        if (it.type === 'shamrock'){
+          growPlayer(p);
+          playShamrock();
+        } else if (it.type === 'coin'){
+          p.coins++; HUD.coins.textContent = p.coins;
         playCoin();
       }
       it.remove = true;
