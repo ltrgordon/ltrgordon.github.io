@@ -20,7 +20,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Stable collisions: consistent tile mapping + ground snapping to eliminate jitter and sinking.
 - Camera: follows the player with horizontal lead for better visibility.
 - Collectibles: coins float and bob; count shown in the HUD.
-- Treasure chests: striking one from below releases 2–4 coins or a shamrock power‑up that makes the player bigger and able to take one extra hit.
+- Shamrock power‑ups: scattered through the level, they make the player bigger and able to take one extra hit; grabbing another while already big awards 5 coins.
 - Enemies:
   - Goomba: walks back and forth, turns at edges; stomp to defeat.
   - Hellmonk: monkey with a bright yellow helmet. If you stomp it, you bounce (it doesn’t die). When close, it jumps in surprise, then rushes the player.
@@ -48,7 +48,7 @@ Legend (selected):
 - `K`: checkpoint flag
 - `G`: goal flag (the rightmost `G` becomes the end goal)
 - `P`: player spawn (column)
-- `B`: treasure chest with random coins or a shamrock
+- `R`: shamrock power‑up
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
