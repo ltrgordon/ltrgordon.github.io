@@ -134,22 +134,19 @@ function updateCharSelection(id, previewOnly=false){
   }
 }
 if (charGrid){
-  const isMobile = () => window.innerWidth <= 1023;
   const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
   
   charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
   charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
   charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
   
-  // Hide portrait logic: only hide on mobile when leaving grid/focus
-  charGrid.addEventListener('mouseout', (e)=>{ 
-    if (isMobile() && !charGrid.contains(e.relatedTarget)) togglePreview(false); 
+  // Hide portrait when leaving the grid or focus moves elsewhere
+  charGrid.addEventListener('mouseout', (e)=>{
+    if (!charGrid.contains(e.relatedTarget)) togglePreview(false);
   });
-  charGrid.addEventListener('focusout', ()=>{ 
-    if (isMobile()) {
-      const anyFocused = !!charGrid.querySelector('.char-card:focus'); 
-      if (!anyFocused) togglePreview(false); 
-    }
+  charGrid.addEventListener('focusout', ()=>{
+    const anyFocused = !!charGrid.querySelector('.char-card:focus');
+    if (!anyFocused) togglePreview(false);
   });
 }
 

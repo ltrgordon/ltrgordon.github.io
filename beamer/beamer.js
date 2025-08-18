@@ -2,44 +2,13 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-// Dynamic canvas sizing for mobile
-function resizeCanvas() {
-  const isMobile = window.innerWidth <= 1023;
-  const dpr = window.devicePixelRatio || 1;
-  
-  if (isMobile) {
-    // On mobile, use full viewport
-    const displayWidth = window.innerWidth;
-    const displayHeight = window.innerHeight;
-    
-    canvas.width = displayWidth * dpr;
-    canvas.height = displayHeight * dpr;
-    
-    canvas.style.width = displayWidth + 'px';
-    canvas.style.height = displayHeight + 'px';
-    
-    ctx.scale(dpr, dpr);
-  } else {
-    // On desktop, use fixed size
-    const displayWidth = 960;
-    const displayHeight = 640;
-    
-    canvas.width = displayWidth * dpr;
-    canvas.height = displayHeight * dpr;
-    
-    canvas.style.width = displayWidth + 'px';
-    canvas.style.height = displayHeight + 'px';
-    
-    ctx.scale(dpr, dpr);
-  }
-}
-
-// Initial resize and listen for orientation changes
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', () => {
-  setTimeout(resizeCanvas, 100);
-});
+// Fixed desktop-sized canvas
+const dpr = window.devicePixelRatio || 1;
+canvas.width = 960 * dpr;
+canvas.height = 640 * dpr;
+canvas.style.width = '960px';
+canvas.style.height = '640px';
+ctx.scale(dpr, dpr);
 
 const overlay = document.getElementById('overlay');
 const menuPanel = document.getElementById('menu');
