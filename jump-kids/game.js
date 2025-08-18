@@ -61,6 +61,11 @@ function playBeep(freq=600, dur=0.08, vol=0.08){
   o.start(); o.stop(audioCtx.currentTime + dur);
 }
 function playCoin(){ if (!audioReady) return; try{ SFX.coin.currentTime=0; SFX.coin.play(); }catch{} }
+function playShamrock(){
+  if (!audioReady) return;
+  playBeep(520,0.1,0.1);
+  setTimeout(()=>playBeep(760,0.12,0.1),100);
+}
 
 // Canvas colors (avoid CSS var() in canvas for broader browser support)
 const COL = { ground:'#7c4a1f', grass:'#49a020', brick:'#b85a35', coin:'#f2c14e' };
@@ -266,7 +271,7 @@ function shrinkPlayer(p){
 function findInMap(symbol){ for (let y=0;y<H;y++){ const x=LEVEL[y].indexOf(symbol); if (x!==-1) return {x,y}; } return {x:2,y:2}; }
 function buildWorld(){
   const spawn = findInMap('P');
-  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
+  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], items:[], popCoins:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
@@ -548,6 +553,19 @@ function drawCoin(x,y,r){
   ctx.beginPath(); ellipsePath(x,y,r*1.0,r*0.9); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
+function drawShamrock(x,y){
+  ctx.save();
+  ctx.translate(x+8,y+8);
+  ctx.fillStyle = '#00c853';
+  for (let i=0;i<3;i++){
+    const ang = i*(Math.PI*2/3);
+    const cx = Math.cos(ang)*5;
+    const cy = Math.sin(ang)*5;
+    ctx.beginPath(); ellipsePath(cx,cy,4,4); ctx.fill();
+  }
+  ctx.fillRect(-1,4,2,6);
+  ctx.restore();
+}
 
 // Replace drawMario with drawPlayer supporting character styles
 function drawPlayer(x,y,p){
@@ -707,13 +725,42 @@ function update(dt){
       if (hit){
         b.used = true; b.bounce = 1;
         if (b.content && b.content.type==='coins'){
-          p.coins += b.content.amount; HUD.coins.textContent = p.coins; playCoin();
+          const amt = b.content.amount;
+          p.coins += amt; HUD.coins.textContent = p.coins;
+          for (let i=0;i<amt;i++){
+            world.popCoins.push({x:b.x + TILE/2, y:b.y - 4, vy:-260 - i*20, life:0});
+            playCoin();
+          }
         } else if (b.content && b.content.type==='shamrock'){
-          growPlayer(p);
+          const dir = Math.random() < 0.5 ? -40 : 40;
+          world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx:dir, vy:-260, grounded:false, type:'shamrock', remove:false});
         }
       }
     }
   }
+
+  // Popped coin visuals
+  for (const c of world.popCoins){
+    c.vy += GRAVITY*dt;
+    c.y += c.vy*dt;
+    c.life += dt;
+  }
+  world.popCoins = world.popCoins.filter(c => c.life < 0.6);
+
+  // Shamrock items
+  for (const it of world.items){
+    if (it.remove) continue;
+    it.vy += GRAVITY*dt;
+    moveWithCollisions(it, it.vx*dt, 0);
+    moveWithCollisions(it, 0, it.vy*dt);
+    if (it.grounded) it.vx = 0;
+    if (aabb(p,it)){
+      it.remove = true;
+      growPlayer(p);
+      playShamrock();
+    }
+  }
+  world.items = world.items.filter(it => !it.remove);
 
   // Collect coins
   for (const c of world.coins){
@@ -883,6 +930,8 @@ function draw(){
   }
   const t = performance.now()/1000;
   for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2, c.r); }
+  for (const pc of world.popCoins){ drawCoin(pc.x - camX, pc.y, 7); }
+  for (const it of world.items){ if (it.type==='shamrock') drawShamrock(it.x - camX, it.y); }
   for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else drawGoomba(e.x - camX, e.y); }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
