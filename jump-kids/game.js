@@ -724,20 +724,27 @@ function update(dt){
       const hit = p.x < b.x + b.w && p.x + p.w > b.x && prevBottom <= b.y + b.h && p.bottom >= b.y + b.h;
       if (hit){
         b.used = true; b.bounce = 1;
-        if (b.content && b.content.type==='coins'){
-          const amt = b.content.amount;
-          p.coins += amt; HUD.coins.textContent = p.coins;
-          for (let i=0;i<amt;i++){
-            world.popCoins.push({x:b.x + TILE/2, y:b.y - 4, vy:-260 - i*20, life:0});
-            playCoin();
+        if (b.type === 'mystery' && b.content){
+          if (b.content.type==='coins'){
+            const amt = b.content.amount;
+            for (let i=0;i<amt;i++){
+              const vx = -60 + Math.random()*120;
+              const vy = -300 - Math.random()*60;
+              world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx, vy, grounded:false, type:'coin', remove:false});
+            }
+          } else if (b.content.type==='shamrock'){
+            const dir = Math.random() < 0.5 ? -60 : 60;
+            world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx:dir, vy:-260, grounded:false, type:'shamrock', remove:false});
           }
-        } else if (b.content && b.content.type==='shamrock'){
-          const dir = Math.random() < 0.5 ? -40 : 40;
-          world.items.push({x:b.x + 8, y:b.y - 16, w:16, h:16, vx:dir, vy:-260, grounded:false, type:'shamrock', remove:false});
+          const tx = Math.floor(b.x / TILE);
+          const ty = Math.floor(b.y / TILE) + 1;
+          LEVEL[ty] = LEVEL[ty].substring(0, tx) + '_' + LEVEL[ty].substring(tx+1);
+          b.remove = true;
         }
       }
     }
   }
+  world.blocks = world.blocks.filter(b => !b.remove);
 
   // Popped coin visuals
   for (const c of world.popCoins){
@@ -747,7 +754,7 @@ function update(dt){
   }
   world.popCoins = world.popCoins.filter(c => c.life < 0.6);
 
-  // Shamrock items
+  // Items (coins and shamrock)
   for (const it of world.items){
     if (it.remove) continue;
     it.vy += GRAVITY*dt;
@@ -755,9 +762,14 @@ function update(dt){
     moveWithCollisions(it, 0, it.vy*dt);
     if (it.grounded) it.vx = 0;
     if (aabb(p,it)){
+      if (it.type === 'shamrock'){
+        growPlayer(p);
+        playShamrock();
+      } else if (it.type === 'coin'){
+        p.coins++; HUD.coins.textContent = p.coins;
+        playCoin();
+      }
       it.remove = true;
-      growPlayer(p);
-      playShamrock();
     }
   }
   world.items = world.items.filter(it => !it.remove);
@@ -931,7 +943,10 @@ function draw(){
   const t = performance.now()/1000;
   for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2, c.r); }
   for (const pc of world.popCoins){ drawCoin(pc.x - camX, pc.y, 7); }
-  for (const it of world.items){ if (it.type==='shamrock') drawShamrock(it.x - camX, it.y); }
+  for (const it of world.items){
+    if (it.type==='shamrock') drawShamrock(it.x - camX, it.y);
+    else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8, 7);
+  }
   for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else drawGoomba(e.x - camX, e.y); }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
