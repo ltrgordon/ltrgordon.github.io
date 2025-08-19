@@ -84,12 +84,17 @@ export function initInput(){
     if (k==='arrowup'||k==='w') setKey('up',false);
     if (k==='arrowdown') setKey('down',false);
   });
-  document.addEventListener('DOMContentLoaded', ()=>{
+  const bindAll = ()=>{
     bindButton('left','left');
     bindButton('right','right');
     bindButton('jump','jump');
     bindButton('dash','dash');
-  });
+  };
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindAll);
+  } else {
+    bindAll();
+  }
 }
 
 function bindButton(id, name){
