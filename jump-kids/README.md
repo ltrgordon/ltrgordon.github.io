@@ -1,6 +1,6 @@
 # Jump Kids
 
-A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.  Gameplay code now uses ES modules for clearer dependencies and easier maintenance.
+A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.  Gameplay code now uses ES modules for clearer dependencies and easier maintenance. The core logic is further split into focused modules (`entities.js`, `input.js`, `physics.js`, `rendering.js`) that keep features identical while making future upgrades simpler.
 
 ## Overview
 - Canvas‑based runner/platformer with tile collisions and simple entities.
@@ -81,24 +81,19 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 
 - `config.js` – Centralized constants for physics, controls, and colors.
 - `entity.js` – Base `Entity` class with update/render hooks.
+- `entities.js` – Level data, tile helpers, and concrete entity types plus world builder.
+- `input.js` – Keyboard/mobile input listeners and simple audio helpers.
+- `physics.js` – Movement, collisions, enemy AI, and game rules.
+- `rendering.js` – Canvas drawing utilities and DPI‑aware canvas fitting.
 - `special-moves.js` – Character abilities built via a factory and imported by the main game.
+- `game.js` – Small orchestrator that ties the modules together, handles menus, and runs the loop.
 - `index.html` – Layout, HUD, canvas, on‑screen buttons; loads `game.js` and `styles.css`.
 - `styles.css` – Light, responsive UI and controls styling.
-- `game.js` – Gameplay module importing configuration, entities, and special moves:
-  - Constants and helpers (DPI fit, ellipse fallback, time formatting)
-  - Level definition (BASE/EXT) and tile helpers (`tileAt`, `isSolid`); optional JSON loader (`level1.json`)
-  - Surface finding helpers to anchor poles (`surfaceTopAt`, `groundTopAt`)
-  - Entities: `Entity`, `Player`, `Goomba`, `Hellmonk`
-  - Input (keyboard + mobile buttons); pause (P), restart (R)
-  - Physics/collision: AABB, circle/rect, movement with horizontal/vertical resolution plus `trySnapToGround`
-  - Jump feel: coyote time and jump buffering
-  - AI: Goomba patrol; Hellmonk surprise‑jump and charge behavior
-  - Game loop: `update` + `draw`
-  - Rendering: tiles, clouds, coins, player, enemies, checkpoint, Irish flag, victory overlay, pause overlay
-  - Audio: coin pickup sample and small oscillator beeps
+
+See `developers.md` for a deeper tour of the loop, level format, and common extension points.
 
 ## Customization Tips
-- Level layout: edit the `BASE`/`EXT` strings in `game.js`, or modify `level1.json`. Keep arrays the same height.
+- Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `level1.json`. Keep arrays the same height.
 - Add enemies: place `E` or `H` where you want; logic auto‑spawns them.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.
 - Tuning: adjust movement/gravity constants at the top of `game.js`.
