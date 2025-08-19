@@ -21,15 +21,21 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Camera: follows the player with horizontal lead for better visibility.
 - Collectibles: coins float and bob; count shown in the HUD.
 - Shamrock power‑ups: scattered through the level, they make the player bigger and able to take one extra hit; grabbing another while already big awards 5 coins.
+- Rainbow power‑ups: rare pickups that grant 30 seconds of invincibility.
 - Enemies:
   - Goomba: walks back and forth, turns at edges; stomp to defeat.
   - Hellmonk: monkey with a bright yellow helmet. If you stomp it, you bounce (it doesn’t die). When close, it jumps in surprise, then rushes the player.
+  - Ghost: drifts through the lower spooky path.
+  - Fireball: rolling flame enemy that patrols the underground.
+  - Swooping bird: guards the high moving platforms.
 - Flags:
   - Checkpoint (black‑and‑white checkered): touching it updates the respawn point.
   - End goal (Irish flag): anchored on a pole that rises from the platform. Touching the pole awards 1–10 bonus coins based on hit height, ends the level, and shows the victory overlay.
 - Victory overlay: centered splash with Coins and Time plus a simple victory dance.
 - Pause: press P to pause/resume; shows a minimal overlay.
 - SFX: simple beeps and a coin pickup sound (unlocked on first input).
+- Moving platforms and high‑altitude coins with swooping bird enemies.
+- Rolling hills at the start and distant castle ramparts later in the level.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
@@ -55,6 +61,11 @@ Legend (selected):
 - `G`: goal flag (the rightmost `G` becomes the end goal)
 - `P`: player spawn (column)
 - `R`: shamrock power‑up
+- `N`: rainbow power‑up (invincibility)
+- `O`: ghost enemy
+- `F`: fire enemy
+- `S`: bird enemy
+- `M`: moving platform (two tiles wide)
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
