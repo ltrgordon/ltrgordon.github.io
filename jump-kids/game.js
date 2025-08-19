@@ -157,50 +157,49 @@ if (charGrid){
 
 // Simple level encoding (extended to ~2x length)
 const BASE = [
-"______________________________________________________________________________________________________________",
-"______________________________________________________________________________________________________________",
-"____________________________________________________________________C_________________________________________",
+"M_____________________________________________________________________________________________________________",
+"S_______________________________________S_____________________________________________________________________",
+"________________________________________M_C_________________________C_________________________________________",
 "__________R________________________________==______________________====_______________________________________",
-"___________________________C__________________C_________________________C_____________________________________",
-"__________________________===_________E_R_______________________E___________==______________________C_________",
+"___________________________C__________________C_______________________S_C_____________________________________",
+"__________________________===_________E_R_______________________E_____M_C___==______________________C_________",
 "______________________________C____________====______________====______________________==_____________________",
 "_________C_____________==_______==_____________________C_______________________________==_______E____________",
 "________====___C____R__________________C__________E__________C__________==_________________________====_______",
 "______________________________________________________________________________________________________________",
-"_____P___________==__________________________====________________=___________________________C________________",
-"###########___#########____#######____#############__#########__#########___##########___#############__G____",
-"###########___#########____#######____#############__#########__#########___##########___############__GGG___",
-"###########___#########____#######____#############__#########__#########___##########___############_GGGGG__",
+"___L_P__________==__________________________====________________=___________________________C________________",
+"__LT#######___#########____#######____#############__#########__#########___##########___#############__G____",
+"__L########___#########____#######____#############__#########__#########___##########___############__GGG___",
+"__L########___#########____#######____#############__#########__#########___##########___############_GGGGG__",
+"__L___________________________________________________________________________________________________________",
+"__L___________________________________________________________________________________________________________",
+"__L_N_______________O___________________F___________________K___________________O___________________F_________",
+"##L###########################################################################################################",
+"##L###########################################################################################################",
+"##L###########################################################################################################",
 ];
 // Build a second half with higher platforms, coins, enemies (E) and Hellmonks (H)
 const EXT = [
-// 0
-"____________________________________________________________C______________________________C__________________",
-// 1
-"_______________________________________________________________________________________________C______________",
-// 2 high coins
-"________________________C_______________________C__________________________C______________________________C___",
-// 3 high platforms
+"M___________________________________________________________C______________________________C__________________",
+"S______________________________S________________________________________________________________C______________",
+"________________________C_____M_C_______________C__________________________C______________________________C___",
 "_______________________====___R___________==_____________________====___________________________==___________",
-// 4 staggered coins
 "__________C__________C___________C_________________C________________C____________C___________________________",
-// 5 mixed platforms and enemies
 "__________==_____E______________====____________H______________====____________E___________==_____C__________",
-// 6 higher platforms and coins
 "_____C____R___====__________C______________==____________C___________====____________C_____________==________",
-// 7 tall jumps with hellmonks guarding
-"________==__________________==____________________H______________==___________________H______________==______",
-// 8 run-ups and pits
-"_____________=________________________C__________E________C______________==______________H_______C___________",
-// 9 sky
+"________==__________________==____________________H_________Z____==___________________H______________==______",
+"_____________=________________________C_Z________E________C______________==______________H_______C_____X_____^",
 "______________________________________________________________________________________________________________",
-// 10 above ground ledges
-"________C_______==___________________C____________R=__________C_____________==___________________C__________",
-// 11 ground (with checkpoint K near the start of second half)
-"#############__K__############____#########_____###############____###########_____############_____#########",
-// 12 ground with final goal near end
-"#############_____############____#########_____###############____###########_____############_____##__GGGGG",
-// 13 ground thickness row (not used, kept consistent with BASE height)
+"L_______C_______==___________________C____________R=__________C_____________==___________________C__________",
+"L############__#__############____#########_____###############____###########_____############_____#########",
+"L#############_____############____#########_____###############____###########_____############_____##__GGGGG",
+"L_____________________________________________________________________________________________________________",
+"L_____________________________________________________________________________________________________________",
+"L_____________________________________________________________________________________________________________",
+"L_____________________________________________________________________________________________________________",
+"L_____________________________________________________________________________________________________________",
+"L_____________________________________________________________________________________________________________",
+"L_________N___________________O___________________F___________________O___________________F__________X__^_____",
 ];
 // New: level builder + mutable LEVEL size so we can reload JSON
 function buildLevelFromArrays(base, ext){
@@ -212,7 +211,7 @@ function buildLevelFromArrays(base, ext){
 let LEVEL = buildLevelFromArrays(BASE, EXT);
 let H = LEVEL.length, W = LEVEL[0].length;
 function tileAt(tx, ty){ if (ty<0||ty>=H||tx<0||tx>=W) return '_'; return LEVEL[ty][tx] || '_'; }
-function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']'; }
+function isSolid(c){ return c==='#' || c==='=' || c==='[' || c===']' || c==='T' || c==='^'; }
 // Find the top surface (y in world px) of the first solid tile at or below startTy in the given column
 function groundTopAt(tx, startTy){
   for (let ty=startTy; ty<H; ty++){
@@ -238,7 +237,7 @@ class Player extends Entity{
     this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
-    this.rainbow=0;
+    this.rainbow=0; this.onLadder=false;
   }
   respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; this.big=false; this.w=20; this.h=28; this.action=null; this.lockControls=false; this.invisible=0; }
 }
@@ -270,7 +269,14 @@ class FireEnemy extends Entity{
 
 // Bird enemy for high platforms
 class Bird extends Entity{
-  constructor(x,y){ super(x,y,24,20); this.vx = 80; this.baseY = y; this.range = 80; }
+  constructor(x,y){
+    super(x,y,24,20);
+    this.vx = 80;
+    this.baseY = y;
+    this.range = 80;
+    this.vy = 0;
+    this.state = 'patrol';
+  }
 }
 
 // Skeleton enemy: crumbles when stomped, then reforms
@@ -302,6 +308,24 @@ function shrinkPlayer(p){
   p.big = false;
   p.h = 28; p.w = 20;
   p.y += (oldH - p.h);
+}
+
+function damagePlayer(p){
+  if (p.rainbow>0) return;
+  if (p.invuln>0) return;
+  if (p.big){
+    shrinkPlayer(p);
+    p.invuln = 1;
+  } else {
+    p.lives--; HUD.lives.textContent = p.lives;
+    if (p.lives<=0){
+      HUD.msg.textContent="Game Over — press R or Jump to restart";
+      world.state='gameover';
+      playBeep(220,0.2,0.12);
+      return;
+    }
+    p.respawn();
+  }
 }
 
 // Instantiate world from current LEVEL
@@ -422,7 +446,7 @@ startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu
 document.addEventListener('keydown', (e)=>{ if (menuEl && !menuEl.classList.contains('hidden') && (e.key==='Enter' || e.key===' ')) startFromMenu(); });
 
 // Input
-const keys = {left:false,right:false,jump:false,dash:false};
+const keys = {left:false,right:false,jump:false,dash:false,up:false,down:false};
 let restartRequested = false;
 function setKey(k, val){ keys[k]=val; }
 function bufferJump(){ if (!world || !world.player) return; world.player.jumpBuffer = Math.max(world.player.jumpBuffer, JUMP_BUFFER); }
@@ -438,7 +462,9 @@ addEventListener('keydown', e=>{ const k=e.key.toLowerCase(); unlockAudio();
   if (k==='arrowleft'||k==='a') setKey('left',true);
   if (k==='arrowright') setKey('right',true);
   if (k==='d') setKey('dash',true);
-  if (k===' '||k==='z'||k==='w'||k==='arrowup'){ setKey('jump',true); bufferJump(); }
+  if (k===' '||k==='z'){ setKey('jump',true); bufferJump(); }
+  if (k==='arrowup'||k==='w') setKey('up',true);
+  if (k==='arrowdown') setKey('down',true);
   if (k==='s') triggerSpecial('s1');
   if (k==='f') triggerSpecial('s2');
   if (k==='p'){ if (world.state==='play'){ world.state='pause'; HUD.msg.textContent='Paused — press P to resume'; playBeep(440,0.06,0.06); } else if (world.state==='pause'){ world.state='play'; HUD.msg.textContent=''; playBeep(520,0.06,0.06); } }
@@ -448,7 +474,9 @@ addEventListener('keyup', e=>{ const k=e.key.toLowerCase();
   if (k==='arrowleft'||k==='a') setKey('left',false);
   if (k==='arrowright') setKey('right',false);
   if (k==='d') setKey('dash',false);
-  if (k===' '||k==='z'||k==='w'||k==='arrowup') setKey('jump',false);
+  if (k===' '||k==='z') setKey('jump',false);
+  if (k==='arrowup'||k==='w') setKey('up',false);
+  if (k==='arrowdown') setKey('down',false);
 });
 function bindButton(id, name){
   const el=document.getElementById(id);
@@ -586,6 +614,31 @@ function drawBrick(x,y){
   ctx.beginPath();
   for (let r=8; r<TILE; r+=8){ ctx.moveTo(x, y+r); ctx.lineTo(x+TILE, y+r); }
   ctx.stroke();
+}
+
+function drawTrapdoor(x,y){
+  drawGround(x,y);
+  ctx.fillStyle = '#4a2e13';
+  ctx.fillRect(x+4,y+20,TILE-8,8);
+}
+
+function drawLadder(x,y){
+  ctx.fillStyle = '#b97a56';
+  ctx.fillRect(x+6,y,4,TILE);
+  ctx.fillRect(x+22,y,4,TILE);
+  ctx.fillStyle = '#d9a066';
+  ctx.fillRect(x+6,y+8,20,4);
+  ctx.fillRect(x+6,y+20,20,4);
+}
+
+function drawSpikes(x,y){
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.moveTo(x,y+TILE);
+  ctx.lineTo(x+TILE/2,y);
+  ctx.lineTo(x+TILE,y+TILE);
+  ctx.closePath();
+  ctx.fill();
 }
 function drawQBlock(x,y){
   // basic question block
@@ -803,18 +856,28 @@ function update(dt){
     if (keys.left && !keys.right) p.facing = -1; else if (keys.right && !keys.left) p.facing = 1;
   }
 
-  // Gravity + Jump (with coyote + buffer)
-  p.vy += GRAVITY*dt;
-  if (p.vy>1200) p.vy=1200;
-  if (p.grounded) p.coyote = COYOTE_TIME; else p.coyote = Math.max(0, p.coyote - dt);
-  if (p.jumpBuffer>0) p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
-  // Apply buffered jump when allowed
-  if (!p.lockControls && p.jumpBuffer>0 && (p.grounded || p.coyote>0)){
-    const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
-    p.vy = -jv;
-    p.grounded = false;
-    p.jumpBuffer = 0;
-    playBeep(700,0.05,0.07);
+  // Ladders and gravity
+  const centerTx = Math.floor((p.x + p.w/2)/TILE);
+  const centerTy = Math.floor((p.y + p.h/2)/TILE);
+  p.onLadder = tileAt(centerTx, centerTy)==='L';
+  if (p.onLadder && !p.lockControls){
+    p.vy = 0;
+    if (keys.up) p.vy = -MOVE_MAX;
+    else if (keys.down) p.vy = MOVE_MAX;
+    if (keys.jump){ p.onLadder=false; p.vy = -JUMP_VEL; }
+  } else {
+    p.vy += GRAVITY*dt;
+    if (p.vy>1200) p.vy=1200;
+    if (p.grounded) p.coyote = COYOTE_TIME; else p.coyote = Math.max(0, p.coyote - dt);
+    if (p.jumpBuffer>0) p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
+    // Apply buffered jump when allowed
+    if (!p.lockControls && p.jumpBuffer>0 && (p.grounded || p.coyote>0)){
+      const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
+      p.vy = -jv;
+      p.grounded = false;
+      p.jumpBuffer = 0;
+      playBeep(700,0.05,0.07);
+    }
   }
 
   // Integrate with collision
@@ -822,6 +885,13 @@ function update(dt){
   const prevVy = p.vy;
   const prevBottom = p.bottom;
   moveWithCollisions(p, 0, p.vy*dt);
+  // Trapdoor check
+  const belowTy = Math.floor((p.bottom+1)/TILE);
+  const centerTx2 = Math.floor((p.x + p.w/2)/TILE);
+  if (tileAt(centerTx2, belowTy)==='T'){
+    const row = LEVEL[belowTy];
+    LEVEL[belowTy] = row.substring(0, centerTx2) + '_' + row.substring(centerTx2+1);
+  }
   // Moving platform landing
   for (const m of world.platforms){
     if (prevBottom <= m.y && p.bottom >= m.y && p.right > m.x && p.left < m.x + m.w && p.vy>=0){
@@ -833,7 +903,12 @@ function update(dt){
   }
 
   // Final ground snap to stop jitter and ensure he rests on platforms
-  if (!p.grounded) trySnapToGround(p);
+  if (!p.grounded && !p.onLadder) trySnapToGround(p);
+  // Spike collision
+  const footTy = Math.floor(p.bottom/TILE);
+  const leftTx = Math.floor(p.left/TILE);
+  const rightTx = Math.floor((p.right-1)/TILE);
+  if (tileAt(leftTx, footTy)==='^' || tileAt(rightTx, footTy)==='^') damagePlayer(p);
 
   // Blocks & chests hit from below
   if (prevVy < 0){
@@ -1046,17 +1121,32 @@ function update(dt){
         }
       }
     } else if (e instanceof Bird){
-      e.x += e.vx*dt;
-      if (e.x < e.baseX - e.range || e.x > e.baseX + e.range) e.vx *= -1;
-      e.y = e.baseY + Math.sin(world.time*2 + e.x*0.02)*20;
+      if (e.state==='patrol'){
+        e.x += e.vx*dt;
+        if (e.x < e.baseX - e.range || e.x > e.baseX + e.range) e.vx *= -1;
+        e.y = e.baseY + Math.sin(world.time*2 + e.x*0.02)*20;
+        const dx = (p.x + p.w/2) - (e.x + e.w/2);
+        const dy = (p.y) - e.y;
+        if (Math.abs(dx) < 180 && dy > 0 && dy < 200){
+          e.state='swoop';
+          e.vx = Math.sign(dx) * 120;
+          e.vy = 300;
+        }
+      } else if (e.state==='swoop'){
+        e.x += e.vx*dt;
+        e.y += e.vy*dt;
+        e.vy += GRAVITY*0.5*dt;
+        if (e.y >= e.baseY){ e.state='return'; e.vy = -200; }
+      } else if (e.state==='return'){
+        e.x += e.vx*dt;
+        e.y += e.vy*dt;
+        if (e.y <= e.baseY){ e.y = e.baseY; e.vy = 0; e.state='patrol'; }
+      }
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ e.remove=true; p.vy=-0.55*JUMP_VEL; }
-        else if (p.invuln<=0){
-          if (p.big){ shrinkPlayer(p); p.invuln=1; }
-          else { p.lives--; HUD.lives.textContent=p.lives; if(p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return;} p.respawn(); }
-        }
+        else damagePlayer(p);
       }
     } else if (e instanceof Skeleton){
       if (e.state==='crumbled'){
@@ -1150,6 +1240,9 @@ function draw(){
       const sx = x*TILE - camX, sy = (y-1)*TILE;
       if (c==='#') drawGround(sx,sy);
       else if (c==='=') drawBrick(sx,sy);
+      else if (c==='T') drawTrapdoor(sx,sy);
+      else if (c==='L') drawLadder(sx,sy);
+      else if (c==='^') drawSpikes(sx,sy);
     }
   }
   for (const m of world.platforms){ drawPlatform(m.x - camX, m.y, m.w); }

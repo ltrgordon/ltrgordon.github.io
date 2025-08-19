@@ -10,7 +10,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump, D to dash, S for S1 and F for S2.
+- Keyboard: Left/Right to move, Space or Z to jump, D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1 and F for S2.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -28,7 +28,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
   - Ghost: drifts through the lower spooky path.
   - Fireball: rolling flame enemy that patrols the underground.
   - Skeleton: collapses into bones when stomped, then reassembles.
-  - Swooping bird: guards the high moving platforms.
+- Swooping bird: guards the high moving platforms and dives at nearby players.
 - Flags:
   - Checkpoint (black‑and‑white checkered): touching it updates the respawn point.
   - End goal (Irish flag): anchored on a pole that rises from the platform. Touching the pole awards 1–10 bonus coins based on hit height, ends the level, and shows the victory overlay.
@@ -36,6 +36,9 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Pause: press P to pause/resume; shows a minimal overlay.
 - SFX: simple beeps and a coin pickup sound (unlocked on first input).
 - Moving platforms and high‑altitude coins with swooping bird enemies.
+- Trapdoors leading to multi‑floor underground routes.
+- Spike pits bridged by small moving platforms.
+- Ladders connecting upper and lower paths.
 - Rolling hills span the background for the entire level.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
@@ -68,6 +71,9 @@ Legend (selected):
 - `S`: bird enemy
 - `M`: moving platform (two tiles wide)
 - `X`: skeleton enemy that crumbles and reforms
+- `T`: trapdoor
+- `L`: ladder
+- `^`: spike hazard
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
