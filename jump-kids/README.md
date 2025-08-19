@@ -1,20 +1,26 @@
 # Jump Kids
 
-A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.
+A small, modular browser platformer inspired by classic side‑scrollers.
+This build uses modern ES modules with explicit imports/exports and a base entity system with update/render hooks.
+The UI (HTML/CSS) and gameplay (JS) are separated for easier iteration and reuse.
 
 ## Overview
+
 - Canvas‑based runner/platformer with tile collisions and simple entities.
 - Single level that is programmatically extended to ~2× length with a tougher, higher second half.
 - Checkpoint and end‑goal flags; victory overlay shows stats.
 - Keyboard and mobile button controls.
+- Start menu with character preview and level selection.
 
 ## How to Play
+
 - Open `index.html` in any modern browser.
 - Keyboard: Left/Right to move, Space or Z to jump, D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1 and F for S2.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
 ## Key Features
+
 - Movement: acceleration, friction, gravity, jump; Dash boosts run speed and jump height.
 - Jump feel: coyote time and jump buffering for more forgiving mobile/keyboard input.
 - Stable collisions: consistent tile mapping + ground snapping to eliminate jitter and sinking.
@@ -43,19 +49,23 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
+
 - **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 cartwheel that pushes enemies backward.
 - **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes.
 - **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks down anything in his path.
 - **Leo** – No special moves. Jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
 
 ## Tile/Map Encoding
+
 The level is an ASCII grid split across two arrays in `game.js`:
+
 - `BASE`: starting section.
 - `EXT`: second half appended to the right.
 
 Alternatively, levels can be loaded from `level1.json` (auto‑loaded at startup). If loading the JSON fails (e.g., due to `file://` restrictions), the built‑in level is used.
 
 Legend (selected):
+
 - `#`: solid ground
 - `=`: brick/platform
 - `C`: coin
@@ -75,35 +85,33 @@ Legend (selected):
 - `L`: ladder
 - `^`: spike hazard
 
-Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
+Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)\*TILE” convention for collision and rendering.
 
 ## Code Structure
-- `index.html` – Layout, HUD, canvas, on‑screen buttons; loads `game.js` and `styles.css`.
-- `styles.css` – Light, responsive UI and controls styling.
-- `game.js` – Gameplay modules:
-  - Constants and helpers (DPI fit, ellipse fallback, time formatting)
-  - Level definition (BASE/EXT) and tile helpers (`tileAt`, `isSolid`); optional JSON loader (`level1.json`)
-  - Surface finding helpers to anchor poles (`surfaceTopAt`, `groundTopAt`)
-  - Entities: `Entity`, `Player`, `Goomba`, `Hellmonk`
-  - Input (keyboard + mobile buttons); pause (P), restart (R)
-  - Physics/collision: AABB, circle/rect, movement with horizontal/vertical resolution plus `trySnapToGround`
-  - Jump feel: coyote time and jump buffering
-  - AI: Goomba patrol; Hellmonk surprise‑jump and charge behavior
-  - Game loop: `update` + `draw`
-  - Rendering: tiles, clouds, coins, player, enemies, checkpoint, Irish flag, victory overlay, pause overlay
-  - Audio: coin pickup sample and small oscillator beeps
+
+- `index.html` – Layout, HUD, menu and canvas; loads the `game.js` module.
+- `styles.css` – Responsive UI and controls styling.
+- `config.js` – Core constants and character definitions.
+- `entities.js` – Base `Entity` class and `Player` implementation with update/render hooks.
+- `menu.js` – Character and level selection; resolves when the player starts the game.
+- `levels.js` – Level metadata for the menu.
+- `special-moves.js` – Character abilities exported as an ES module.
+- `game.js` – Entry point tying input, entities, rendering and the start menu together.
 
 ## Customization Tips
+
 - Level layout: edit the `BASE`/`EXT` strings in `game.js`, or modify `level1.json`. Keep arrays the same height.
 - Add enemies: place `E` or `H` where you want; logic auto‑spawns them.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.
 - Tuning: adjust movement/gravity constants at the top of `game.js`.
 
 ## Troubleshooting
+
 - JSON not loading: opening via `file://` may block `fetch`. Host via a simple server (e.g., `python -m http.server`) or rely on the built‑in level.
 - Overlay off‑screen: the overlay uses canvas CSS pixels (canvas size divided by `devicePixelRatio`); ensure the canvas is visible and not constrained by the page.
 - Floating flags: poles are anchored using `surfaceTopAt`/`groundTopAt`. If you place a flag above a hollow area, ensure there is solid ground somewhere in that column.
 - Blank canvas: this build avoids tile culling and uses simple shapes for broad browser support. Reload or check console if issues persist.
 
 ## License
+
 Personal/educational use. Replace or adapt as needed for your project.
