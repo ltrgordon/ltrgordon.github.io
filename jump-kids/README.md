@@ -1,6 +1,6 @@
 # Jump Kids
 
-A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.
+A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.  Gameplay code now uses ES modules for clearer dependencies and easier maintenance.
 
 ## Overview
 - Canvas‑based runner/platformer with tile collisions and simple entities.
@@ -78,9 +78,13 @@ Legend (selected):
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
 ## Code Structure
+
+- `config.js` – Centralized constants for physics, controls, and colors.
+- `entity.js` – Base `Entity` class with update/render hooks.
+- `special-moves.js` – Character abilities built via a factory and imported by the main game.
 - `index.html` – Layout, HUD, canvas, on‑screen buttons; loads `game.js` and `styles.css`.
 - `styles.css` – Light, responsive UI and controls styling.
-- `game.js` – Gameplay modules:
+- `game.js` – Gameplay module importing configuration, entities, and special moves:
   - Constants and helpers (DPI fit, ellipse fallback, time formatting)
   - Level definition (BASE/EXT) and tile helpers (`tileAt`, `isSolid`); optional JSON loader (`level1.json`)
   - Surface finding helpers to anchor poles (`surfaceTopAt`, `groundTopAt`)
