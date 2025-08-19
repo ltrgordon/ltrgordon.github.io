@@ -238,6 +238,7 @@ class Player extends Entity{
     this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
+    this.rainbow=0;
   }
   respawn(){ this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0; this.invuln=1.2; this.big=false; this.w=20; this.h=28; this.action=null; this.lockControls=false; this.invisible=0; }
 }
@@ -255,6 +256,21 @@ class Zakko extends Entity{
     this.knocked=false;
     this.speed=30;
   }
+}
+
+// Ghost enemy: slow floating spooky foe
+class Ghost extends Entity{
+  constructor(x,y){ super(x,y,24,24); this.vx = -40; this.phase = Math.random()*Math.PI*2; }
+}
+
+// Fire enemy: rolling flame along the ground
+class FireEnemy extends Entity{
+  constructor(x,y){ super(x,y,20,20); this.vx = -80; }
+}
+
+// Bird enemy for high platforms
+class Bird extends Entity{
+  constructor(x,y){ super(x,y,24,20); this.vx = 80; this.baseY = y; this.range = 80; }
 }
 
 function growPlayer(p){
@@ -280,15 +296,20 @@ function shrinkPlayer(p){
 function findInMap(symbol){ for (let y=0;y<H;y++){ const x=LEVEL[y].indexOf(symbol); if (x!==-1) return {x,y}; } return {x:2,y:2}; }
 function buildWorld(){
   const spawn = findInMap('P');
-  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[], goal:null, checkpoint:null, camX:0, state:'play', winT:0, time:0 };
+  const world = { player:new Player(spawn.x*TILE,(spawn.y-1)*TILE), enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[], goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0 };
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
       if (c==='E') world.enemies.push(new Goomba(x*TILE,(y-1)*TILE));
       if (c==='H') world.enemies.push(new Hellmonk(x*TILE,(y-1)*TILE));
       if (c==='Z'){ const top = groundTopAt(x,y) - 160; world.enemies.push(new Zakko(x*TILE, top)); }
+      if (c==='O') world.enemies.push(new Ghost(x*TILE,(y-1)*TILE));
+      if (c==='F') world.enemies.push(new FireEnemy(x*TILE,(y-1)*TILE));
+      if (c==='S') world.enemies.push(new Bird(x*TILE,(y-1)*TILE));
         if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
         if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
+        if (c==='N') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'rainbow',remove:false,static:true});
+        if (c==='M') world.platforms.push({x:x*TILE,y:(y-1)*TILE,w:TILE*2,h:8,dir:1,speed:40,range:64,baseX:x*TILE});
         if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
         if (c==='B'){
           world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});
@@ -529,6 +550,28 @@ function drawClouds(camX){
   }
   ctx.restore();
 }
+
+function drawHills(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  ctx.save(); ctx.fillStyle = '#88c070';
+  for(let i=0;i<3;i++){
+    const x = -camX*0.2 + i*400;
+    ctx.beginPath(); ctx.arc(x,280,200,Math.PI,2*Math.PI); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCastle(camX){
+  const start = 6000; // show later in level
+  const w = canvas.width / (window.devicePixelRatio||1);
+  if (camX < start) return;
+  ctx.save();
+  const x = start - camX + w/2;
+  ctx.fillStyle = '#b0b0b0';
+  ctx.fillRect(x,160,200,120);
+  for(let i=0;i<5;i++) ctx.fillRect(x+i*40,140,20,20);
+  ctx.restore();
+}
 function drawGround(x,y){
   ctx.fillStyle = COL.ground; ctx.fillRect(x,y,TILE,TILE);
   // top grass stripe for readability
@@ -588,6 +631,21 @@ function drawShamrock(x,y){
   ctx.restore();
 }
 
+function drawRainbow(x,y){
+  ctx.save();
+  ctx.translate(x+8,y+8);
+  const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
+  for(let i=0;i<colors.length;i++){
+    ctx.strokeStyle=colors[i]; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,8-i,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPlatform(x,y,w){
+  ctx.save(); ctx.fillStyle='#888'; ctx.fillRect(x,y,w,8); ctx.restore();
+}
+
 // Replace drawMario with drawPlayer supporting character styles
 function drawPlayer(x,y,p){
   ctx.save();
@@ -596,6 +654,13 @@ function drawPlayer(x,y,p){
   ctx.translate(0, -p.h/2);
   if (p.action==='flip') ctx.rotate(p.flip||0);
   ctx.translate(-p.w/2, -p.h/2);
+  if (p.rainbow>0){
+    const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
+    for(let i=0;i<colors.length;i++){
+      ctx.strokeStyle=colors[i]; ctx.lineWidth=1;
+      ctx.strokeRect(-2-i, -2-i, p.w+4+2*i, p.h+4+2*i);
+    }
+  }
   const id = p.charId || selectedChar || 'lucy';
   if (id==='joey' && p.invisible>0) ctx.globalAlpha = 0.3;
   switch(id){
@@ -701,6 +766,11 @@ function update(dt){
   for (const b of world.blocks){ if (b.bounce>0) b.bounce = Math.max(0, b.bounce - dt*4); }
   if (world.state === 'pause') return;
   if (world.state !== 'win' && world.state !== 'gameover') world.time += dt;
+  if (p.rainbow>0) p.rainbow = Math.max(0, p.rainbow - dt);
+  for (const m of world.platforms){
+    m.x += m.dir*m.speed*dt;
+    if (m.x < m.baseX - m.range || m.x > m.baseX + m.range){ m.dir *= -1; m.x += m.dir*m.speed*dt; }
+  }
   // Win state: freeze gameplay, animate victory
   if (world.state === 'win'){
     world.winT += dt;
@@ -750,6 +820,15 @@ function update(dt){
   const prevVy = p.vy;
   const prevBottom = p.bottom;
   moveWithCollisions(p, 0, p.vy*dt);
+  // Moving platform landing
+  for (const m of world.platforms){
+    if (prevBottom <= m.y && p.bottom >= m.y && p.right > m.x && p.left < m.x + m.w && p.vy>=0){
+      p.y = m.y - p.h;
+      p.vy = 0;
+      p.grounded = true;
+      p.x += m.dir*m.speed*dt;
+    }
+  }
 
   // Final ground snap to stop jitter and ensure he rests on platforms
   if (!p.grounded) trySnapToGround(p);
@@ -815,7 +894,7 @@ function update(dt){
   }
   world.chestBursts = world.chestBursts.filter(b => b.life < 0.6);
 
-  // Items (coins and shamrock)
+  // Items (coins, shamrock, rainbow)
     for (const it of world.items){
       if (it.remove) continue;
       if (!it.static){
@@ -830,12 +909,15 @@ function update(dt){
           playShamrock();
         } else if (it.type === 'coin'){
           p.coins++; HUD.coins.textContent = p.coins;
-        playCoin();
+          playCoin();
+        } else if (it.type === 'rainbow'){
+          p.rainbow = 30;
+          playBeep(880,0.15,0.12);
+        }
+        it.remove = true;
       }
-      it.remove = true;
     }
-  }
-  world.items = world.items.filter(it => !it.remove);
+    world.items = world.items.filter(it => !it.remove);
 
   // Collect coins
   for (const c of world.coins){
@@ -857,7 +939,7 @@ function update(dt){
   // Enemies
   for (const e of world.enemies){
     if (e.remove) continue;
-    e.vy += GRAVITY*dt;
+    if (!(e instanceof Ghost) && !(e instanceof Bird)) e.vy += GRAVITY*dt;
     if (e instanceof Hellmonk){
       // AI: patrol -> jump surprise -> charge when close
       if (e.reactCD>0) e.reactCD -= dt;
@@ -892,6 +974,7 @@ function update(dt){
       }
       // Player collisions
       if (aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy = -0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
@@ -922,6 +1005,7 @@ function update(dt){
       moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
       if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy = -0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
@@ -933,6 +1017,45 @@ function update(dt){
           else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
         }
       }
+    } else if (e instanceof Ghost){
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      // simple vertical bob
+      e.y += Math.sin(world.time*2 + e.phase)*20*dt;
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        if (p.invuln<=0){
+          if (p.big){ shrinkPlayer(p); p.invuln=1; }
+          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
+        }
+      }
+    } else if (e instanceof FireEnemy){
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+      const footTy = Math.floor((e.bottom+1)/TILE)+1;
+      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){ e.remove=true; p.vy=-0.55*JUMP_VEL; }
+        else if (p.invuln<=0){
+          if (p.big){ shrinkPlayer(p); p.invuln=1; }
+          else { p.lives--; HUD.lives.textContent=p.lives; if(p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return;} p.respawn(); }
+        }
+      }
+    } else if (e instanceof Bird){
+      e.x += e.vx*dt;
+      if (e.x < e.baseX - e.range || e.x > e.baseX + e.range) e.vx *= -1;
+      e.y = e.baseY + Math.sin(world.time*2 + e.x*0.02)*20;
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){ e.remove=true; p.vy=-0.55*JUMP_VEL; }
+        else if (p.invuln<=0){
+          if (p.big){ shrinkPlayer(p); p.invuln=1; }
+          else { p.lives--; HUD.lives.textContent=p.lives; if(p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return;} p.respawn(); }
+        }
+      }
     } else {
       // Goomba behavior
       moveWithCollisions(e, e.vx*dt, 0, true);
@@ -941,6 +1064,7 @@ function update(dt){
       const footTy = Math.floor((e.bottom+1)/TILE)+1; // +1 to map world Y -> tile row
       if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
       if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e)) continue;
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ e.remove=true; p.vy = -0.55*JUMP_VEL; }
@@ -996,6 +1120,8 @@ function draw(){
   const camX = world.camX|0;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawClouds(camX);
+  drawHills(camX);
+  drawCastle(camX);
   // Disable tile culling entirely for reliability; level is small enough
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
@@ -1005,6 +1131,7 @@ function draw(){
       else if (c==='=') drawBrick(sx,sy);
     }
   }
+  for (const m of world.platforms){ drawPlatform(m.x - camX, m.y, m.w); }
   for (const b of world.blocks){
     const bx = b.x - camX;
     const by = b.y - b.bounce*10;
@@ -1024,8 +1151,9 @@ function draw(){
   for (const it of world.items){
     if (it.type==='shamrock') drawShamrock(it.x - camX, it.y);
     else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8, 7);
+    else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y);
   }
-  for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else drawGoomba(e.x - camX, e.y); }
+  for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else if (e instanceof Ghost) drawGhost(e.x - camX, e.y); else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y); else if (e instanceof Bird) drawBird(e.x - camX, e.y); else drawGoomba(e.x - camX, e.y); }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
   if (world.checkpoint) drawCheckpoint(world.checkpoint.x - camX, world.checkpoint.y, world.checkpoint.activated, world.checkpoint.poleH);
@@ -1154,6 +1282,20 @@ function drawZakko(x,y,e){
     ctx.fillRect(0,e.h-20,20,20);
   }
   ctx.restore();
+}
+
+function drawGhost(x,y){
+  ctx.save(); ctx.translate(x,y); ctx.fillStyle='rgba(255,255,255,0.8)';
+  if (ctx.roundRect) ctx.roundRect(0,0,24,24,12); else { ctx.beginPath(); ellipsePath(12,12,12,12); }
+  ctx.fill(); ctx.fillStyle='#000'; ctx.fillRect(6,8,3,4); ctx.fillRect(15,8,3,4); ctx.restore();
+}
+
+function drawFireEnemy(x,y){
+  ctx.save(); ctx.translate(x,y); const grd=ctx.createLinearGradient(0,0,0,20); grd.addColorStop(0,'#ff0'); grd.addColorStop(1,'#f00'); ctx.fillStyle=grd; ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(20,20); ctx.lineTo(0,20); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+function drawBird(x,y){
+  ctx.save(); ctx.translate(x,y); ctx.fillStyle='#444'; ctx.beginPath(); ctx.moveTo(0,10); ctx.lineTo(12,0); ctx.lineTo(24,10); ctx.lineTo(12,20); ctx.closePath(); ctx.fill(); ctx.restore();
 }
 
 // DPI fit
