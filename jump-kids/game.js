@@ -199,15 +199,28 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 // Initial DOM readiness ---------------------------------------------------
-document.addEventListener('DOMContentLoaded', async ()=>{
+async function initMenu(){
   await discoverLevels();
   updateCharSelection(selectedChar || 'lucy', false);
   try{
     const resp = await fetch(LEVEL_PATH + 'level1.json');
-    if (resp.ok){ const data = await resp.json(); const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]); if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); } }
+    if (resp.ok){
+      const data = await resp.json();
+      const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+      if (newLevel && newLevel.length){
+        setLevel(newLevel);
+        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+        setSpecialMoves(SPECIAL_MOVES);
+      }
+    }
   }catch{}
   if (menuEl) menuEl.classList.remove('hidden');
-});
+}
+if (document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initMenu);
+} else {
+  initMenu();
+}
 
 // Fit canvas to device pixel ratio
 addEventListener('resize', fitCanvas); fitCanvas();
