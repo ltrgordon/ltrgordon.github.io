@@ -1,4 +1,8 @@
 // ======= Core constants & helpers =======
+import {TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME, JUMP_BUFFER, COL} from './config.js';
+import { Entity } from './entity.js';
+import { createSpecialMoves } from './special-moves.js';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 // Menu elements
@@ -31,18 +35,6 @@ function ellipsePath(x,y,rx,ry, ctxArg){
 
 const HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg') };
 
-const TILE = 32;
-const GRAVITY = 1800;      // px/s^2
-const MOVE_ACC = 2600;     // px/s^2
-const MOVE_MAX = 230;      // px/s
-const FRICTION = 1800;     // px/s^2
-const JUMP_VEL = 620;      // px/s
-const CAM_MARGIN_X = 340;  // camera lead
-const EPSY = 0.75;         // vertical snap epsilon (px) to stop jitter
-// New: jump feel helpers
-const COYOTE_TIME = 0.10;  // seconds after walking off ledge where jump still works
-const JUMP_BUFFER = 0.12;  // seconds to buffer jump pressed slightly before landing
-
 // Simple SFX (coin via asset, others via tiny beeps); unlock on first input
 let audioReady = false;
 let audioCtx = null;
@@ -66,9 +58,6 @@ function playShamrock(){
   playBeep(520,0.1,0.1);
   setTimeout(()=>playBeep(760,0.12,0.1),100);
 }
-
-// Canvas colors (avoid CSS var() in canvas for broader browser support)
-const COL = { ground:'#7c4a1f', grass:'#49a020', brick:'#b85a35', coin:'#f2c14e' };
 
 // ===== Character portraits (menu) =====
 function drawPortrait(id){
@@ -226,11 +215,9 @@ function surfaceTopAt(tx, startTy){
   }
 }
 
+let SPECIAL_MOVES = createSpecialMoves({W, H, tileAt, isSolid, groundTopAt});
+
 // Entities
-class Entity{
-  constructor(x,y,w,h){ this.x=x; this.y=y; this.w=w; this.h=h; this.vx=0; this.vy=0; this.dead=false; this.remove=false; this.grounded=false; }
-  get left(){ return this.x; } get right(){ return this.x+this.w; } get top(){ return this.y; } get bottom(){ return this.y+this.h; }
-}
 class Player extends Entity{
   constructor(x,y){
     super(x,y,20,28);
@@ -430,7 +417,7 @@ async function startFromMenu(){
     if (resp.ok){
       const data = await resp.json();
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
-      if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; }
+      if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); }
     }
   }catch{}
   resetGame();
@@ -1488,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   updateCharSelection(selectedChar || 'lucy', false);
   try{
     const resp = await fetch('level1.json');
-    if (resp.ok){ const data = await resp.json(); const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]); if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; } }
+    if (resp.ok){ const data = await resp.json(); const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]); if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); } }
   }catch{}
   // Show menu by default
   if (menuEl) menuEl.classList.remove('hidden');
