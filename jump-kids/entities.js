@@ -160,6 +160,23 @@ export class Skeleton extends Entity{
   }
 }
 
+// Enemy configuration -------------------------------------------------------
+export let ENEMY_CONFIGS = {
+  'E': { class: 'Goomba' },
+  'H': { class: 'Hellmonk' },
+  'Z': { class: 'Zakko' },
+  'O': { class: 'Ghost' },
+  'F': { class: 'FireEnemy' },
+  'S': { class: 'Bird' },
+  'X': { class: 'Skeleton' },
+};
+
+export function setEnemyConfigs(cfg){
+  ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
+}
+
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton };
+
 // World creation ----------------------------------------------------------
 function findInMap(symbol){
   for (let y=0;y<H;y++){
@@ -179,13 +196,21 @@ export function buildWorld(){
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
-      if (c==='E') world.enemies.push(new Goomba(x*TILE,(y-1)*TILE));
-      if (c==='H') world.enemies.push(new Hellmonk(x*TILE,(y-1)*TILE));
-      if (c==='Z'){ const top = groundTopAt(x,y) - 160; world.enemies.push(new Zakko(x*TILE, top)); }
-      if (c==='O') world.enemies.push(new Ghost(x*TILE,(y-1)*TILE));
-      if (c==='F') world.enemies.push(new FireEnemy(x*TILE,(y-1)*TILE));
-      if (c==='S') world.enemies.push(new Bird(x*TILE,(y-1)*TILE));
-      if (c==='X') world.enemies.push(new Skeleton(x*TILE,(y-1)*TILE));
+      const cfg = ENEMY_CONFIGS[c];
+      if (cfg){
+        const Cls = ENEMY_CLASSES[cfg.class];
+        if (Cls){
+          const enemyY = (y-1)*TILE;
+          const enemyX = x*TILE;
+          const ent = new Cls(enemyX, enemyY);
+          if (cfg.params){
+            Object.assign(ent, cfg.params);
+            if ('speed' in cfg.params && 'vx' in ent){ ent.vx = (ent.vx<0?-1:1) * ent.speed; }
+          }
+          if (cfg.class === 'Zakko'){ ent.y = groundTopAt(x,y) - ent.h; }
+          world.enemies.push(ent);
+        }
+      }
       if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
       if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
       if (c==='N') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'rainbow',remove:false,static:true});

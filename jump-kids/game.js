@@ -1,8 +1,15 @@
-import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt } from './entities.js';
+import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs } from './entities.js';
 import { createSpecialMoves } from './special-moves.js';
 import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
 import { update as updatePhysics } from './physics.js';
 import { initRenderer, draw, fitCanvas, ellipsePath } from './rendering.js';
+
+const LEVEL_PATH = 'assets/levels/';
+
+try{
+  const r = await fetch('assets/enemies.json', {cache:'no-store'});
+  if (r.ok){ const cfg = await r.json(); setEnemyConfigs(cfg); }
+}catch{}
 
 // Canvas and HUD setup ----------------------------------------------------
 const canvas = document.getElementById('game');
@@ -107,7 +114,7 @@ HUD.lives.textContent = world.player.lives;
 async function discoverLevels(){
   let entries = null;
   try{
-    const r = await fetch('levels.json', {cache:'no-store'});
+    const r = await fetch(LEVEL_PATH + 'levels.json', {cache:'no-store'});
     if (r.ok){ entries = await r.json(); }
   }catch{}
   let list = [];
@@ -118,7 +125,7 @@ async function discoverLevels(){
   } else {
     const candidates = ['level1.json','level-1-1.json','level-1.json'];
     const found = [];
-    for (const name of candidates){ try{ const r = await fetch(name, {cache:'no-store'}); if (r.ok){ found.push(name); } }catch{} }
+    for (const name of candidates){ try{ const r = await fetch(LEVEL_PATH + name, {cache:'no-store'}); if (r.ok){ found.push(name); } }catch{} }
     if (!found.includes('level1.json')) found.unshift('level1.json');
     list = [...new Set(found)].map(f=> ({file:f, name: (f.replace(/\.json$/,'').replace(/level[-_]?/i,'') || '1-1')}));
     levelSelect.innerHTML = '';
@@ -149,7 +156,7 @@ async function startFromMenu(){
   unlockAudio();
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
   try{
-    const resp = await fetch(levelFile);
+    const resp = await fetch(LEVEL_PATH + levelFile);
     if (resp.ok){
       const data = await resp.json();
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
@@ -196,7 +203,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await discoverLevels();
   updateCharSelection(selectedChar || 'lucy', false);
   try{
-    const resp = await fetch('level1.json');
+    const resp = await fetch(LEVEL_PATH + 'level1.json');
     if (resp.ok){ const data = await resp.json(); const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]); if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); } }
   }catch{}
   if (menuEl) menuEl.classList.remove('hidden');
