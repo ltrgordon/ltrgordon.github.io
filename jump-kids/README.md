@@ -1,10 +1,10 @@
 # Jump Kids
 
-A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.  Gameplay code now uses ES modules for clearer dependencies and easier maintenance. The core logic is further split into focused modules (`entities.js`, `input.js`, `physics.js`, `rendering.js`) that keep features identical while making future upgrades simpler.
+A small, modular browser platformer inspired by classic side‑scrollers. This version factors the UI (HTML/CSS) and gameplay (JS) into separate files for easier iteration and reuse.  Gameplay code now uses ES modules for clearer dependencies and easier maintenance. The core logic is further split into focused modules (`entities.js`, `input.js`, `physics.js`, `rendering.js`) that keep features identical while making future upgrades simpler.  Assets such as levels and enemy parameters live under `assets/` so art and sound can be swapped without touching logic.
 
 ## Overview
 - Canvas‑based runner/platformer with tile collisions and simple entities.
-- Single level that is programmatically extended to ~2× length with a tougher, higher second half.
+- Single level that is programmatically extended to ~2× length with a tougher, higher second half. Additional levels can be listed in `assets/levels/levels.json` and loaded without code changes.
 - Checkpoint and end‑goal flags; victory overlay shows stats.
 - Keyboard and mobile button controls.
 
@@ -53,14 +53,14 @@ The level is an ASCII grid split across two arrays in `game.js`:
 - `BASE`: starting section.
 - `EXT`: second half appended to the right.
 
-Alternatively, levels can be loaded from `level1.json` (auto‑loaded at startup). If loading the JSON fails (e.g., due to `file://` restrictions), the built‑in level is used.
+Alternatively, levels can be loaded from `assets/levels/level1.json` (auto‑loaded at startup) or any file listed in `assets/levels/levels.json`. If loading the JSON fails (e.g., due to `file://` restrictions), the built‑in level is used.
 
 Legend (selected):
 - `#`: solid ground
 - `=`: brick/platform
 - `C`: coin
-- `E`: Goomba enemy
-- `H`: Hellmonk enemy
+- `E`: Goomba enemy (configurable via `assets/enemies.json`)
+- `H`: Hellmonk enemy (configurable via `assets/enemies.json`)
 - `K`: checkpoint flag
 - `G`: goal flag (the rightmost `G` becomes the end goal)
 - `P`: player spawn (column)
@@ -81,7 +81,7 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 
 - `config.js` – Centralized constants for physics, controls, and colors.
 - `entity.js` – Base `Entity` class with update/render hooks.
-- `entities.js` – Level data, tile helpers, and concrete entity types plus world builder.
+- `entities.js` – Level data, tile helpers, enemy configuration support, and concrete entity types plus world builder.
 - `input.js` – Keyboard/mobile input listeners and simple audio helpers.
 - `physics.js` – Movement, collisions, enemy AI, and game rules.
 - `rendering.js` – Canvas drawing utilities and DPI‑aware canvas fitting.
@@ -89,12 +89,13 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 - `game.js` – Small orchestrator that ties the modules together, handles menus, and runs the loop.
 - `index.html` – Layout, HUD, canvas, on‑screen buttons; loads `game.js` and `styles.css`.
 - `styles.css` – Light, responsive UI and controls styling.
+- `assets/` – Level files, enemy parameters, and placeholders for images and audio.
 
 See `developers.md` for a deeper tour of the loop, level format, and common extension points.
 
 ## Customization Tips
-- Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `level1.json`. Keep arrays the same height.
-- Add enemies: place `E` or `H` where you want; logic auto‑spawns them.
+- Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `assets/levels/level1.json`. Keep arrays the same height and update `assets/levels/levels.json` to list new level files.
+- Add enemies: place `E`, `H`, etc. where you want; tweak behaviors in `assets/enemies.json` or add new symbols there.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.
 - Tuning: adjust movement/gravity constants at the top of `game.js`.
 
