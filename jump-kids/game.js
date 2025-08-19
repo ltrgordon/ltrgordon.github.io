@@ -540,7 +540,7 @@ function moveWithCollisions(ent, dx, dy, isEnemy=false){
         if (rectOverlap(ent.x,ent.y,ent.w,ent.h,tileRect.x,tileRect.y,tileRect.w,tileRect.h)){
           if (dy>0) ent.y = tileRect.y - ent.h - 0.01; // restore landing snap above tile
           else ent.y = tileRect.y + tileRect.h;
-          ent.vy = 10;
+          ent.vy = 0;
           onGround=true;
         }
       }
