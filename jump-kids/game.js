@@ -273,6 +273,18 @@ class Bird extends Entity{
   constructor(x,y){ super(x,y,24,20); this.vx = 80; this.baseY = y; this.range = 80; }
 }
 
+// Skeleton enemy: crumbles when stomped, then reforms
+class Skeleton extends Entity{
+  constructor(x,y){
+    super(x,y,24,30);
+    this.speed = 50;
+    this.vx = -this.speed;
+    this.state = 'walk';
+    this.reformT = 0;
+    this.baseH = 30;
+  }
+}
+
 function growPlayer(p){
   if (p.big){
     p.coins += 5; HUD.coins.textContent = p.coins;
@@ -306,6 +318,7 @@ function buildWorld(){
       if (c==='O') world.enemies.push(new Ghost(x*TILE,(y-1)*TILE));
       if (c==='F') world.enemies.push(new FireEnemy(x*TILE,(y-1)*TILE));
       if (c==='S') world.enemies.push(new Bird(x*TILE,(y-1)*TILE));
+      if (c==='X') world.enemies.push(new Skeleton(x*TILE,(y-1)*TILE));
         if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
         if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
         if (c==='N') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'rainbow',remove:false,static:true});
@@ -561,17 +574,6 @@ function drawHills(camX){
   ctx.restore();
 }
 
-function drawCastle(camX){
-  const start = 6000; // show later in level
-  const w = canvas.width / (window.devicePixelRatio||1);
-  if (camX < start) return;
-  ctx.save();
-  const x = start - camX + w/2;
-  ctx.fillStyle = '#b0b0b0';
-  ctx.fillRect(x,160,200,120);
-  for(let i=0;i<5;i++) ctx.fillRect(x+i*40,140,20,20);
-  ctx.restore();
-}
 function drawGround(x,y){
   ctx.fillStyle = COL.ground; ctx.fillRect(x,y,TILE,TILE);
   // top grass stripe for readability
@@ -1056,6 +1058,26 @@ function update(dt){
           else { p.lives--; HUD.lives.textContent=p.lives; if(p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return;} p.respawn(); }
         }
       }
+    } else if (e instanceof Skeleton){
+      if (e.state==='crumbled'){
+        e.reformT -= dt;
+        if (e.reformT <= 0){ e.state='walk'; e.h = e.baseH; e.y -= (e.baseH-10); e.vx = -e.speed; }
+      } else {
+        moveWithCollisions(e, e.vx*dt, 0, true);
+        moveWithCollisions(e, 0, e.vy*dt, true);
+        const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+        const footTy = Math.floor((e.bottom+1)/TILE)+1;
+        if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
+        if (!e.remove && aabb(p,e)){
+          if (p.rainbow>0){ e.state='crumbled'; e.reformT=2; e.vx=0; e.y += (e.baseH-10); e.h=10; p.vy=-0.55*JUMP_VEL; continue; }
+          const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+          if (fromAbove){ e.state='crumbled'; e.reformT=2; e.vx=0; e.y += (e.baseH-10); e.h=10; p.vy=-0.55*JUMP_VEL; }
+          else if (p.invuln<=0){
+            if (p.big){ shrinkPlayer(p); p.invuln=1; }
+            else { p.lives--; HUD.lives.textContent=p.lives; if(p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return;} p.respawn(); }
+          }
+        }
+      }
     } else {
       // Goomba behavior
       moveWithCollisions(e, e.vx*dt, 0, true);
@@ -1121,7 +1143,6 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawClouds(camX);
   drawHills(camX);
-  drawCastle(camX);
   // Disable tile culling entirely for reliability; level is small enough
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
@@ -1153,7 +1174,16 @@ function draw(){
     else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8, 7);
     else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y);
   }
-  for (const e of world.enemies){ if (e.remove) continue; if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e); else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e); else if (e instanceof Ghost) drawGhost(e.x - camX, e.y); else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y); else if (e instanceof Bird) drawBird(e.x - camX, e.y); else drawGoomba(e.x - camX, e.y); }
+  for (const e of world.enemies){
+    if (e.remove) continue;
+    if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
+    else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e);
+    else if (e instanceof Ghost) drawGhost(e.x - camX, e.y);
+    else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
+    else if (e instanceof Bird) drawBird(e.x - camX, e.y);
+    else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
+    else drawGoomba(e.x - camX, e.y);
+  }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
   if (world.checkpoint) drawCheckpoint(world.checkpoint.x - camX, world.checkpoint.y, world.checkpoint.activated, world.checkpoint.poleH);
@@ -1276,7 +1306,7 @@ function drawZakko(x,y,e){
     ctx.fillRect(2,0,16,40);
     // Mop of curly red hair
     ctx.fillStyle = '#b91c1c';
-    for (let i=-1;i<=3;i++){ ctx.beginPath(); ctx.arc(10 + i*6, -4, 14, 0, Math.PI*2); ctx.fill(); }
+    for (let i=-1;i<=3;i++){ ctx.beginPath(); ctx.arc(10 + i*6, -2 - (i%2)*4, 12, 0, Math.PI*2); ctx.fill(); }
   } else {
     ctx.fillStyle = '#d4a373';
     ctx.fillRect(0,e.h-20,20,20);
@@ -1291,12 +1321,52 @@ function drawGhost(x,y){
 }
 
 function drawFireEnemy(x,y){
-  ctx.save(); ctx.translate(x,y); const grd=ctx.createLinearGradient(0,0,0,20); grd.addColorStop(0,'#ff0'); grd.addColorStop(1,'#f00'); ctx.fillStyle=grd; ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(20,20); ctx.lineTo(0,20); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.save();
+  ctx.translate(x,y);
+  const grd=ctx.createRadialGradient(10,10,2,10,10,10);
+  grd.addColorStop(0,"#fff8");
+  grd.addColorStop(0.3,"#ff0");
+  grd.addColorStop(1,"#f00");
+  ctx.fillStyle=grd;
+  ctx.beginPath();
+  ctx.moveTo(10,0);
+  ctx.lineTo(20,20);
+  ctx.lineTo(0,20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawBird(x,y){
-  ctx.save(); ctx.translate(x,y); ctx.fillStyle='#444'; ctx.beginPath(); ctx.moveTo(0,10); ctx.lineTo(12,0); ctx.lineTo(24,10); ctx.lineTo(12,20); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle="#444";
+  ctx.beginPath();
+  ctx.moveTo(0,10);
+  ctx.lineTo(12,0);
+  ctx.lineTo(24,10);
+  ctx.lineTo(12,20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
+
+function drawSkeleton(x,y,e){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = "#ddd";
+  if (e.state==='crumbled'){
+    ctx.fillRect(0,e.h-6,24,6);
+  } else {
+    ctx.fillRect(4,0,16,24);
+    ctx.fillRect(0,24,24,6);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(8,8,3,3);
+    ctx.fillRect(13,8,3,3);
+  }
+  ctx.restore();
+}
+
 
 // DPI fit
 function fitCanvas(){

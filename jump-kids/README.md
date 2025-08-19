@@ -27,6 +27,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
   - Hellmonk: monkey with a bright yellow helmet. If you stomp it, you bounce (it doesn’t die). When close, it jumps in surprise, then rushes the player.
   - Ghost: drifts through the lower spooky path.
   - Fireball: rolling flame enemy that patrols the underground.
+  - Skeleton: collapses into bones when stomped, then reassembles.
   - Swooping bird: guards the high moving platforms.
 - Flags:
   - Checkpoint (black‑and‑white checkered): touching it updates the respawn point.
@@ -35,7 +36,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Pause: press P to pause/resume; shows a minimal overlay.
 - SFX: simple beeps and a coin pickup sound (unlocked on first input).
 - Moving platforms and high‑altitude coins with swooping bird enemies.
-- Rolling hills at the start and distant castle ramparts later in the level.
+- Rolling hills span the background for the entire level.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
@@ -66,6 +67,7 @@ Legend (selected):
 - `F`: fire enemy
 - `S`: bird enemy
 - `M`: moving platform (two tiles wide)
+- `X`: skeleton enemy that crumbles and reforms
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
