@@ -211,7 +211,9 @@ export function buildWorld(){
             Object.assign(ent, cfg.params);
             if ('speed' in cfg.params && 'vx' in ent){ ent.vx = (ent.vx<0?-1:1) * ent.speed; }
           }
-          if (cfg.class === 'Zakko'){ ent.y = groundTopAt(x,y) - ent.h; }
+          if (!(ent instanceof Bird) && !(ent instanceof Ghost)){
+            ent.y = groundTopAt(x,y) - ent.h;
+          }
           world.enemies.push(ent);
         }
       }
