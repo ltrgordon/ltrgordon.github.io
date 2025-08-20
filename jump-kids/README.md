@@ -7,6 +7,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Single level that is programmatically extended to ~2× length with a tougher, higher second half. Additional levels can be listed in `assets/levels/levels.json` and loaded without code changes.
 - Checkpoint and end‑goal flags; victory overlay shows stats.
 - Keyboard and mobile button controls.
+- Built‑in level editor accessible from the start menu for creating or modifying stages.
 
 ## How to Play
 - Open `index.html` in any modern browser.
@@ -97,6 +98,7 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 See `developers.md` for a deeper tour of the loop, level format, and common extension points.
 
 ## Customization Tips
+- Use the start‑menu level editor to create new stages or tweak existing ones. Pick a backdrop, then click tiles to place ground (`#`), platforms (`=`), moving platforms (`M`), power‑ups (`R`, `N`, `U`), enemies (`E`, `H`, `F`, `X`), checkpoints (`K`), goal flags (`G`), and coins (`C`). Save downloads a JSON file compatible with `assets/levels/levels.json`.
 - Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `assets/levels/level1.json`. Keep arrays the same height and update `assets/levels/levels.json` to list new level files.
 - Add enemies: place `E`, `H`, etc. where you want; tweak behaviors in `assets/enemies.json` or add new symbols there.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.

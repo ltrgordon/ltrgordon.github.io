@@ -2,7 +2,9 @@ import { TILE, COL } from './config.js';
 import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton } from './entities.js';
 
 let canvas, ctx;
+let backdrop = 'hills';
 export function initRenderer(cvs, context){ canvas=cvs; ctx=context; }
+export function setBackdrop(name){ backdrop = name; }
 
 // Ellipse helper usable by other modules
 export function ellipsePath(x,y,rx,ry, ctxArg){
@@ -42,6 +44,16 @@ function drawHills(camX){
     ctx.beginPath(); ctx.arc(x,280,200,Math.PI,2*Math.PI); ctx.fill();
   }
   ctx.restore();
+}
+
+function drawBackdrop(camX){
+  if (backdrop === 'hills'){
+    drawClouds(camX);
+    drawHills(camX);
+  } else if (backdrop === 'cave') {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
 }
 
 // Tile draw helpers -------------------------------------------------------
@@ -402,8 +414,7 @@ function drawPauseOverlay(){
 export function draw(world){
   const camX = world.camX|0;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawClouds(camX);
-  drawHills(camX);
+  drawBackdrop(camX);
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
