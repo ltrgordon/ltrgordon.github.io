@@ -154,6 +154,22 @@ function drawRainbow(x,y){
   }
   ctx.restore();
 }
+function drawMushroom(x,y){
+  ctx.save();
+  ctx.translate(x+8,y+8);
+  ctx.fillStyle='#fff';
+  ctx.fillRect(-4,4,8,8);
+  const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
+  for(let i=0;i<colors.length;i++){
+    ctx.fillStyle=colors[i];
+    ctx.beginPath();
+    ctx.moveTo(0,4);
+    ctx.arc(0,4,8,Math.PI + i*Math.PI/colors.length, Math.PI + (i+1)*Math.PI/colors.length);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
 function drawPlatform(x,y,w){
   ctx.save(); ctx.fillStyle='#888'; ctx.fillRect(x,y,w,8); ctx.restore();
 }
@@ -413,8 +429,8 @@ export function draw(world){
     drawCave(camX);
   } else {
     drawClouds(camX);
-    drawHills(camX);
   }
+  drawHills(camX);
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
@@ -437,6 +453,7 @@ export function draw(world){
     if (it.type==='shamrock') drawShamrock(it.x - camX, it.y);
     else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8, 7);
     else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y);
+    else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y);
   }
   for (const e of world.enemies){
     if (e.remove) continue;

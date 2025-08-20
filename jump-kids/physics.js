@@ -90,6 +90,14 @@ function growPlayer(p, HUD){
   p.h = 40; p.w = 26;
   p.y -= (p.h - oldH);
 }
+function activateMushroom(p){
+  const oldH = p.h;
+  p.big = true;
+  p.h = 56; p.w = 36;
+  p.y -= (p.h - oldH);
+  p.mega = 15;
+  p.rainbow = 15;
+}
 function shrinkPlayer(p){
   if (!p.big) return;
   const oldH = p.h;
@@ -132,6 +140,10 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   if (world.state === 'pause') return;
   if (world.state !== 'win' && world.state !== 'gameover') world.time += dt;
   if (p.rainbow>0) p.rainbow = Math.max(0, p.rainbow - dt);
+  if (p.mega>0){
+    p.mega = Math.max(0, p.mega - dt);
+    if (p.mega===0) shrinkPlayer(p);
+  }
   for (const m of world.platforms){
     m.x += m.dir*m.speed*dt;
     if (m.x < m.baseX - m.range || m.x > m.baseX + m.range){ m.dir *= -1; m.x += m.dir*m.speed*dt; }
@@ -169,13 +181,13 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
     p.vy = 0;
     if (keys.up) p.vy = -MOVE_MAX;
     else if (keys.down) p.vy = MOVE_MAX;
-    if (keys.jump){ p.onLadder=false; p.vy = -JUMP_VEL; }
+    if (keys.jump && p.mega<=0){ p.onLadder=false; p.vy = -JUMP_VEL; }
   } else {
     p.vy += GRAVITY*dt;
     if (p.vy>1200) p.vy=1200;
     if (p.grounded) p.coyote = COYOTE_TIME; else p.coyote = Math.max(0, p.coyote - dt);
     if (p.jumpBuffer>0) p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
-    if (!p.lockControls && p.jumpBuffer>0 && (p.grounded || p.coyote>0)){
+    if (!p.lockControls && p.jumpBuffer>0 && (p.grounded || p.coyote>0) && p.mega<=0){
       const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
       p.vy = -jv;
       p.grounded = false;
@@ -259,6 +271,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
     if (rectOverlap(p.x,p.y,p.w,p.h,it.x,it.y,it.w,it.h)){
       if (it.type==='shamrock'){ growPlayer(p, HUD); playShamrock(); }
       else if (it.type==='rainbow'){ p.rainbow = 30; HUD.msg.textContent='Invincible!'; }
+      else if (it.type==='mushroom'){ activateMushroom(p); HUD.msg.textContent='Mega!'; playShamrock(); }
       else if (it.type==='coin'){ p.coins++; HUD.coins.textContent=p.coins; playCoin(); }
       it.remove = true;
     }

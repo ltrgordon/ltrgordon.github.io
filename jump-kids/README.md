@@ -22,6 +22,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Collectibles: coins float and bob; count shown in the HUD.
 - Shamrock power‑ups: scattered through the level, they make the player bigger and able to take one extra hit; grabbing another while already big awards 5 coins.
 - Rainbow power‑ups: rare pickups that grant 30 seconds of invincibility.
+- Mega mushroom power‑ups: briefly grow huge and invincible for 15 seconds but disable jumping.
 - Enemies:
   - Goomba: walks back and forth, turns at edges; stomp to defeat.
   - Hellmonk: monkey with a bright yellow helmet. If you stomp it, you bounce (it doesn’t die). When close, it jumps in surprise, then rushes the player.
@@ -67,6 +68,7 @@ Legend (selected):
 - `P`: player spawn (column)
 - `R`: shamrock power‑up
 - `N`: rainbow power‑up (invincibility)
+- `U`: mega mushroom power‑up (giant invincible form, no jumping)
 - `O`: ghost enemy
 - `F`: fire enemy
 - `S`: bird enemy
