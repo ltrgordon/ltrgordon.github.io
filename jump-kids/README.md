@@ -37,9 +37,10 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - SFX: simple beeps and a coin pickup sound (unlocked on first input).
 - Moving platforms and high‑altitude coins with swooping bird enemies.
 - Trapdoors leading to multi‑floor underground routes.
+- Deep cavern section beneath the underground path filled with extra enemies, moving platforms, and frequent spike pits.
 - Spike pits bridged by small moving platforms.
-- Ladders connecting upper and lower paths.
-- Rolling hills span the background for the entire level.
+- Ladders connecting upper, underground, and cavern paths.
+- Rolling hills span the surface while the lower routes reveal a spooky underground cave backdrop.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves

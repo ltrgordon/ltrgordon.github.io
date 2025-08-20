@@ -22,6 +22,8 @@ Levels are ASCII grids defined by `BASE` and `EXT` arrays in `entities.js`. Each
 - `T` trapdoor, `L` ladder, `^` spikes
 `assets/levels/level1.json` uses the same format and can be swapped in from the menu.
 
+When the player descends beyond roughly 12 tiles, the renderer automatically replaces the hills with a dark cave backdrop.
+
 ## Extension Points
 - **Add enemies or items**: place new characters in the level grid and create corresponding classes in `entities.js` plus behavior in `physics.js` and drawing in `rendering.js`. Enemy parameters (speed, jump power, etc.) can be tweaked or extended in `assets/enemies.json` without touching code.
 - **New special moves**: implement abilities in `special-moves.js` and map them to character IDs.

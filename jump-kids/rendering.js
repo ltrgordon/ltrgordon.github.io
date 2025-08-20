@@ -44,6 +44,28 @@ function drawHills(camX){
   ctx.restore();
 }
 
+function drawCave(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  const h = canvas.height / (window.devicePixelRatio||1);
+  ctx.save();
+  const grd = ctx.createLinearGradient(0,0,0,h);
+  grd.addColorStop(0,'#222');
+  grd.addColorStop(1,'#000');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#111';
+  for(let i=0;i<6;i++){
+    const x = ((i*160 - camX*0.1) % (w+180)) - 90;
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x+40,0);
+    ctx.lineTo(x+20,40);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 // Tile draw helpers -------------------------------------------------------
 function drawGround(x,y){
   ctx.fillStyle = COL.ground; ctx.fillRect(x,y,TILE,TILE);
@@ -386,8 +408,13 @@ function drawPauseOverlay(){
 export function draw(world){
   const camX = world.camX|0;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawClouds(camX);
-  drawHills(camX);
+  const underground = world.player && world.player.y >= 12*TILE;
+  if (underground){
+    drawCave(camX);
+  } else {
+    drawClouds(camX);
+    drawHills(camX);
+  }
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
