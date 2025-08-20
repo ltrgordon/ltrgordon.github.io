@@ -2,7 +2,7 @@ import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSoli
 import { createSpecialMoves } from './special-moves.js';
 import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
 import { update as updatePhysics } from './physics.js';
-import { initRenderer, draw, fitCanvas, ellipsePath } from './rendering.js';
+import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rendering.js';
 
 const LEVEL_PATH = 'assets/levels/';
 
@@ -15,6 +15,7 @@ try{
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 initRenderer(canvas, ctx);
+setBackdrop('hills');
 const HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg') };
 setHUD(HUD);
 
@@ -27,6 +28,7 @@ const charPreview = document.getElementById('charPreview');
 const charPrevCtx = charPreview ? charPreview.getContext('2d') : null;
 const charSelect = document.getElementById('charSelect');
 const startBtn = document.getElementById('startBtn');
+const editorBtn = document.getElementById('editorBtn');
 const charPreviewWrap = document.querySelector('.char-preview-wrap');
 let selectedLevelFile = 'level1.json';
 let selectedChar = 'lucy';
@@ -159,6 +161,7 @@ async function startFromMenu(){
     const resp = await fetch(LEVEL_PATH + levelFile);
     if (resp.ok){
       const data = await resp.json();
+      setBackdrop(data.backdrop || 'hills');
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
       if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
     }
@@ -172,6 +175,11 @@ async function startFromMenu(){
 }
 startBtn.addEventListener('click', startFromMenu);
 startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
+if (editorBtn){
+  const openEditor = ()=>{ window.location.href = 'editor.html'; };
+  editorBtn.addEventListener('click', openEditor);
+  editorBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); openEditor(); });
+}
 document.addEventListener('keydown', (e)=>{ if (menuEl && !menuEl.classList.contains('hidden') && (e.key==='Enter' || e.key===' ')) startFromMenu(); });
 
 // Game reset --------------------------------------------------------------
@@ -208,6 +216,7 @@ async function initMenu(){
       const data = await resp.json();
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
       if (newLevel && newLevel.length){
+        setBackdrop(data.backdrop || 'hills');
         setLevel(newLevel);
         SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
         setSpecialMoves(SPECIAL_MOVES);

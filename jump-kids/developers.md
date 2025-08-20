@@ -10,7 +10,7 @@ The main loop lives in `game.js` and runs `update` then `draw` every frame via `
 `game.js` only coordinates these modules and manages menus and level loading.
 
 ## Level Format
-Levels are ASCII grids defined by `BASE` and `EXT` arrays in `entities.js`. Each row represents tiles from left to right; `EXT` is appended to the right of `BASE` at load time. External level files live in `assets/levels/` and are listed in `assets/levels/levels.json` so new levels can be plugged in without modifying code. A sample tile legend:
+Levels are ASCII grids defined by `BASE` and `EXT` arrays in `entities.js`. Each row represents tiles from left to right; `EXT` is appended to the right of `BASE` at load time. External level files live in `assets/levels/` and are listed in `assets/levels/levels.json` so new levels can be plugged in without modifying code. `editor.html` provides a browser-based editor (also reachable from the start menu) to visually place tiles and export JSON. A sample tile legend:
 - `#` ground block
 - `=` brick/platform
 - `C` coin
