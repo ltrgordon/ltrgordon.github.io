@@ -21,6 +21,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Stable collisions: consistent tile mapping + ground snapping to eliminate jitter and sinking.
 - Camera: follows the player with horizontal lead for better visibility.
 - Collectibles: coins float and bob; count shown in the HUD.
+- Refreshed artwork: player characters and enemies feature more detailed, dynamic canvas sprites.
 - Shamrock power‑ups: scattered through the level, they make the player bigger and able to take one extra hit; grabbing another while already big awards 5 coins.
 - Rainbow power‑ups: rare pickups that grant 30 seconds of invincibility.
 - Mega mushroom power‑ups: briefly grow huge and invincible for 15 seconds but disable jumping.
