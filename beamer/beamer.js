@@ -870,6 +870,8 @@ function applyPowerup(kind,hitter){
 
 function resetRound() {
   ball.reset();
+  // Clear the existing beam trail so the new round starts smoothly
+  trail = [[ball.x, ball.y]];
   left.resetToHandicap();
   right.resetToHandicap();
   powerups = [];
@@ -903,6 +905,9 @@ function startScoring(player) {
   // If game is not over, reset immediately (like desktop version)
   if (state !== 'gameover') {
     ball.reset();
+    // Reset the beam trail to avoid drawing a long segment from the
+    // previous round's final position to the new serve
+    trail = [[ball.x, ball.y]];
     left.resetToHandicap();
     right.resetToHandicap();
     rallyHits = 0;
@@ -1073,10 +1078,21 @@ function render(){
   ctx.fillRect(left.x,left.y,left.width,left.height);
   ctx.fillRect(right.x,right.y,right.width,right.height);
 
-  ctx.fillStyle='#ff3b3b';
+  // Draw the ball as a sharp javelin-like tip instead of a circle
+  const angle = Math.atan2(ball.vy, ball.vx);
+  const tipLength = ball.r * 2;
+  const baseWidth = ball.r * 0.6;
+  ctx.save();
+  ctx.translate(ball.x, ball.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = '#ff3b3b';
   ctx.beginPath();
-  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.moveTo(tipLength, 0);          // tip of the javelin
+  ctx.lineTo(-ball.r, baseWidth);    // lower back corner
+  ctx.lineTo(-ball.r, -baseWidth);   // upper back corner
+  ctx.closePath();
   ctx.fill();
+  ctx.restore();
 
   // powerups
   powerups.forEach(p=>p.draw(ctx));
