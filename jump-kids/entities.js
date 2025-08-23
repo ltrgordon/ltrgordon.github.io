@@ -1,5 +1,5 @@
 import { TILE } from './config.js';
-import { Entity, Snake } from './entity.js';
+import { Entity } from './entity.js';
 
 // Built-in level data used as fallback when JSON fails to load
 export const BASE = [
@@ -192,15 +192,11 @@ function findInMap(symbol){
 
 export function buildWorld(){
   const spawn = findInMap('P');
-  console.log('Building world, spawn position:', spawn);
-  console.log('LEVEL dimensions:', H, 'x', W);
-  console.log('LEVEL first few rows:', LEVEL.slice(0, 3));
   const world = {
     player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
     enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
     goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0
   };
-  console.log('Player created at:', world.player.x, world.player.y);
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];
@@ -244,14 +240,14 @@ export function buildWorld(){
     }
   }
   
-  // Add snakes to pit areas
-  addSnakesToPits(world);
+  // Add fire enemies to pit areas
+  addFireEnemiesToPits(world);
   
   return world;
 }
 
 // Snake placement logic - find pit areas and place snakes
-function addSnakesToPits(world) {
+function addFireEnemiesToPits(world) {
   // Define pit locations manually based on our level design
   // These correspond to the gaps in the ground level where we removed spikes
   const pitLocations = [
@@ -273,17 +269,17 @@ function addSnakesToPits(world) {
   const usedPits = pitLocations.filter((_, index) => index % 2 === 0);
   
   usedPits.forEach(pit => {
-    // Place 2-3 snakes in each pit
-    const snakeCount = 2 + Math.floor(Math.random() * 2); // 2 or 3 snakes
+    // Place 2-3 fire enemies at the bottom of each pit
+    const fireEnemyCount = 2 + Math.floor(Math.random() * 2); // 2 or 3 fire enemies
     
-    for (let i = 0; i < snakeCount; i++) {
-      const snakeX = (pit.startX + (pit.endX - pit.startX) * (i / (snakeCount - 1))) * TILE;
-      const snakeY = (pit.y - 1) * TILE + TILE - 8; // Place near bottom of pit
+    for (let i = 0; i < fireEnemyCount; i++) {
+      const fireX = (pit.startX + (pit.endX - pit.startX) * (i / Math.max(1, fireEnemyCount - 1))) * TILE;
+      const fireY = (pit.y - 2) * TILE; // Place at bottom of pit, one tile up from floor
       
-      const snake = new Snake(snakeX, snakeY);
-      world.enemies.push(snake);
+      const fireEnemy = new FireEnemy(fireX, fireY);
+      world.enemies.push(fireEnemy);
     }
   });
 }
 
-export { Snake };
+

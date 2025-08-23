@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Snake } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -514,7 +514,7 @@ function drawPauseOverlay(){
 // Main draw ---------------------------------------------------------------
 export function draw(world){
   const camX = world.camX|0;
-  const camY = -80; // Vertical offset to show more of the bottom including ground
+  const camY = 0; // No vertical offset to maintain physics alignment
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackdrop(camX);
   
@@ -547,8 +547,7 @@ export function draw(world){
   }
   for (const e of world.enemies){
     if (e.remove) continue;
-    if (e instanceof Snake) e.render(ctx, camX);
-    else if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
+    if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
     else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e);
     else if (e instanceof Ghost) drawGhost(e.x - camX, e.y);
     else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
@@ -567,7 +566,7 @@ export function draw(world){
 export function fitCanvas(){
   const dpr=Math.min(2, devicePixelRatio||1);
   const cssW = canvas.clientWidth || canvas.offsetWidth || (canvas.width/dpr) || 960;
-  const cssH = canvas.clientHeight || canvas.offsetHeight || (canvas.height/dpr) || 800;
+  const cssH = canvas.clientHeight || canvas.offsetHeight || (canvas.height/dpr) || 900;
   canvas.width = Math.floor(cssW * dpr);
   canvas.height = Math.floor(cssH * dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
