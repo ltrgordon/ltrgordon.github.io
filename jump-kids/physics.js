@@ -1,5 +1,5 @@
 import { TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME } from './config.js';
-import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, respawnAllEnemies } from './entities.js';
+import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, respawnAllEnemies } from './entities.js';
 import { consumeRestart, playBeep, playCoin, playShamrock } from './input.js';
 
 // Basic geometry helpers --------------------------------------------------
@@ -335,7 +335,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
 
   for (const e of world.enemies){
     if (e.remove) continue;
-    if (!(e instanceof Ghost) && !(e instanceof Bird)) e.vy += GRAVITY*dt;
+    if (!(e instanceof Ghost) && !(e instanceof Bird) && !(e instanceof Butterfly)) e.vy += GRAVITY*dt;
     if (e instanceof GiantMonkey){
       if (e.throwCD>0) e.throwCD -= dt;
       const dx = (p.x + p.w/2) - (e.x + e.w/2);
@@ -526,10 +526,10 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         
         damagePlayer(p, world, HUD);
       }
-    } else if (e instanceof Bird){
+    } else if (e instanceof Bird || e instanceof Butterfly){
       e.vy += (Math.sin(world.time*2) * e.range - (e.y - e.baseY)) * 2 * dt;
       e.x += e.vx*dt; e.y += e.vy*dt;
-      if (e.x < e.baseX - 80 || e.x > e.baseX + 80) e.vx *= -1;
+      if (e.baseX !== undefined && (e.x < e.baseX - 80 || e.x > e.baseX + 80)) e.vx *= -1;
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
@@ -572,6 +572,20 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ p.vy = -0.55*JUMP_VEL; e.state='crumbled'; e.h=6; e.reformT=0; }
+        else damagePlayer(p, world, HUD);
+      }
+    } else if (e instanceof Sunflower){
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+      const footTy = Math.floor((e.bottom+1)/TILE)+1;
+      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ p.vy=-0.55*JUMP_VEL; continue; }
+        if (handleSpecialCollision(p,e,specialMoves)) continue;
+
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){ p.vy = -1.5*JUMP_VEL; playBeep(600,0.08,0.05); }
         else damagePlayer(p, world, HUD);
       }
     } else {

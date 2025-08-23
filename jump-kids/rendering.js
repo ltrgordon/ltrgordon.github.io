@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -59,6 +59,21 @@ function drawTrees(camX){
   ctx.restore();
 }
 
+function drawFlowers(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  ctx.save();
+  for(let i=0;i<5;i++){
+    const x = -camX*0.3 + i*220;
+    ctx.fillStyle = '#4caf50';
+    ctx.fillRect(x+38,160,8,180); // stem
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath(); ellipsePath(x+42,160,40,40,ctx); ctx.fill();
+    ctx.fillStyle = '#ff9800';
+    ctx.beginPath(); ellipsePath(x+42,160,16,16,ctx); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -76,6 +91,9 @@ function drawBackdrop(camX){
   } else if (backdrop === 'trees') {
     drawClouds(camX);
     drawTrees(camX);
+  } else if (backdrop === 'flowers'){
+    drawClouds(camX);
+    drawFlowers(camX);
   }
 }
 
@@ -451,6 +469,38 @@ function drawBird(x,y){
   ctx.restore();
 }
 
+function drawSunflower(x,y){
+  const t = performance.now()/1000;
+  const sway = Math.sin(t*2 + x*0.1)*2;
+  ctx.save();
+  ctx.translate(x+12, y+32);
+  ctx.rotate(sway*0.02);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(-2,-32,4,32); // stem
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath(); ellipsePath(0,-40,12,12,ctx); ctx.fill();
+  ctx.fillStyle = '#ff9800';
+  ctx.beginPath(); ellipsePath(0,-40,6,6,ctx); ctx.fill();
+  ctx.restore();
+}
+
+function drawButterfly(x,y){
+  const t = performance.now()/1000;
+  const flap = Math.sin(t*10 + x*0.1)*6;
+  ctx.save();
+  ctx.translate(x+10, y+8);
+  // body
+  ctx.fillStyle = '#444';
+  ctx.fillRect(-2,-6,4,12);
+  // wings
+  ctx.fillStyle = '#ff80ab';
+  ctx.save(); ctx.rotate(flap*0.05);
+  ctx.beginPath(); ellipsePath(-8,0,8,10,ctx); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.rotate(-flap*0.05);
+  ctx.beginPath(); ellipsePath(8,0,8,10,ctx); ctx.fill(); ctx.restore();
+  ctx.restore();
+}
+
 function drawSkeleton(x,y,e){
   const t = performance.now()/1000;
   const bob = Math.sin(t*4 + x*0.05)*2;
@@ -595,6 +645,8 @@ export function draw(world){
     else if (e instanceof Ghost) drawGhost(e.x - camX, e.y);
     else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
+    else if (e instanceof Butterfly) drawButterfly(e.x - camX, e.y);
+    else if (e instanceof Sunflower) drawSunflower(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
     else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
     else if (e instanceof Banana) drawBanana(e.x - camX, e.y);

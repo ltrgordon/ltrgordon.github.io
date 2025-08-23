@@ -24,6 +24,8 @@ const tiles = [
   {ch:'H', label:'Hellmonk', color:'#ff9800'},
   {ch:'F', label:'Fire', color:'#e64a19'},
   {ch:'X', label:'Skeleton', color:'#b0bec5'},
+  {ch:'W', label:'Sunflower', color:'#ffeb3b'},
+  {ch:'D', label:'Butterfly', color:'#ff80ab'},
   {ch:'K', label:'Checkpoint', color:'#fff'},
   {ch:'G', label:'Goal', color:'#2e7d32'}
 ];
