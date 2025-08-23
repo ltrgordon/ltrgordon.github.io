@@ -500,15 +500,22 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         else damagePlayer(p, world, HUD);
       }
     } else {
-      // Default enemy handling (Goombas and other basic enemies)
+      // Default enemy handling (Goombas, Snakes, and other basic enemies)
       moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
       
-      // Basic AI: turn around at edges and walls
-      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
-      const footTy = Math.floor((e.bottom+1)/TILE)+1;
-      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) {
-        e.vx *= -1; // Turn around at edges
+      // Update snake wiggling animation
+      if (e.constructor.name === 'Snake') {
+        e.update(dt, world);
+      }
+      
+      // Basic AI: turn around at edges and walls (except for snakes which stay still)
+      if (e.constructor.name !== 'Snake') {
+        const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+        const footTy = Math.floor((e.bottom+1)/TILE)+1;
+        if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) {
+          e.vx *= -1; // Turn around at edges
+        }
       }
       
       // Player collision
@@ -528,6 +535,14 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
           e.vy = -200; // Give enemy a small bounce up
           playBeep(600, 0.08, 0.05); // Play bounce sound
           continue; // Leo takes no damage
+        }
+        
+        // Snake collision - snakes are always deadly (cannot be stomped)
+        if (e.constructor.name === 'Snake') {
+          if (p.invuln <= 0) {
+            damagePlayer(p, world, HUD);
+          }
+          continue;
         }
         
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);

@@ -1,5 +1,5 @@
 import { TILE } from './config.js';
-import { Entity } from './entity.js';
+import { Entity, Snake } from './entity.js';
 
 // Built-in level data used as fallback when JSON fails to load
 export const BASE = [
@@ -21,8 +21,8 @@ export const BASE = [
 "__L___________________________________________________________________________________________________________",
 "__L_N_______________O_______________________________________K___________________O_____________________________",
 "##L#____###____###____#____###____###____###____#___###____###____###____#____###____###____###____#___###_",
-"##L#____V^V____V^V____#V^V____###____V^V____#___#V^__V^V____V^V____V^V____#V^____###____V^V____#___#V^",
-"##L#____V^V____V^V____#V^V____###____V^V____#___#V^__V^V____V^V____V^V____#V^____###____V^V____#___#V^",
+"##L#____###____###____#___####____###____###____#___###____###____###____#___####____###____###____#___###_",
+"##L#____###____###____#___####____###____###____#___###____###____###____#___####____###____###____#___###_",
 "##L#______________________________________________#___#____________________________________#________________#___#_",
 "##L###########################################################################################################"
 ];
@@ -47,8 +47,8 @@ export const EXT = [
 "L_____________________________________________________________________________________________________________",
 "L______________________________________________________________________________E______________________________",
 "##L#____###____###____###___###____###____###____#___###____###____###____###___###____###____###____#___###",
-"##L#____V^V____V^V____V^V_V^V____###____V^V____#___#V^__V^V____V^V____V^V____V^V_V^V____###____V^V____#___#V^",
-"##L#____V^V____V^V____V^V_V^V____###____V^V____#___#V^__V^V____V^V____V^V____V^V_V^V____###____V^V____#___#V^",
+"##L#____###____###____###__####____###____###____#___###____###____###____###__####____###____###____#___###",
+"##L#____###____###____###__####____###____###____#___###____###____###____###__####____###____###____#___###",
 "##L#______________________________________#___#_______________________________________#_________________#___#",
 "##L###########################################################################################################"
 ];
@@ -243,5 +243,47 @@ export function buildWorld(){
       }
     }
   }
+  
+  // Add snakes to pit areas
+  addSnakesToPits(world);
+  
   return world;
 }
+
+// Snake placement logic - find pit areas and place snakes
+function addSnakesToPits(world) {
+  // Define pit locations manually based on our level design
+  // These correspond to the gaps in the ground level where we removed spikes
+  const pitLocations = [
+    { startX: 4, endX: 6, y: 22 },   // First pit area
+    { startX: 11, endX: 13, y: 22 }, // Second pit area
+    { startX: 26, endX: 28, y: 22 }, // Third pit area
+    { startX: 35, endX: 37, y: 22 }, // Fourth pit area
+    { startX: 42, endX: 44, y: 22 }, // Fifth pit area
+    { startX: 49, endX: 51, y: 22 }, // Sixth pit area
+    { startX: 58, endX: 60, y: 22 }, // Seventh pit area
+    { startX: 65, endX: 67, y: 22 }, // Eighth pit area
+    { startX: 74, endX: 76, y: 22 }, // Ninth pit area
+    { startX: 81, endX: 83, y: 22 }, // Tenth pit area
+    { startX: 90, endX: 92, y: 22 }, // Eleventh pit area
+    { startX: 97, endX: 99, y: 22 }  // Twelfth pit area
+  ];
+  
+  // Only use every other pit to reduce the number by half
+  const usedPits = pitLocations.filter((_, index) => index % 2 === 0);
+  
+  usedPits.forEach(pit => {
+    // Place 2-3 snakes in each pit
+    const snakeCount = 2 + Math.floor(Math.random() * 2); // 2 or 3 snakes
+    
+    for (let i = 0; i < snakeCount; i++) {
+      const snakeX = (pit.startX + (pit.endX - pit.startX) * (i / (snakeCount - 1))) * TILE;
+      const snakeY = (pit.y - 1) * TILE + TILE - 8; // Place near bottom of pit
+      
+      const snake = new Snake(snakeX, snakeY);
+      world.enemies.push(snake);
+    }
+  });
+}
+
+export { Snake };

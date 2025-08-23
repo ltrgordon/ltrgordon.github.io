@@ -183,10 +183,18 @@ async function startFromMenu(){
     if (resp.ok){
       const data = await resp.json();
       console.log('Loaded level data from JSON:', data);
+      console.log('Base array has spikes?', data.base ? data.base.some(row => row.includes('^')) : 'no base data');
+      console.log('Ext array has spikes?', data.ext ? data.ext.some(row => row.includes('^')) : 'no ext data');
       setBackdrop(data.backdrop || 'hills');
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+      console.log('Built level has spikes?', newLevel ? newLevel.some(row => row.includes('^')) : 'no level built');
       if (newLevel && newLevel.length){ 
         setLevel(newLevel); 
+        console.log('Level set successfully, checking LEVEL global...');
+        // Add a small delay to let the level set properly
+        setTimeout(() => {
+          console.log('LEVEL global has spikes?', LEVEL ? LEVEL.some(row => row.includes('^')) : 'no LEVEL global');
+        }, 100);
         SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
         setSpecialMoves(SPECIAL_MOVES); 
       }
@@ -248,6 +256,7 @@ function loop(ts){
       updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);
     }
   }
+  
   if (world) {
     draw(world);
   } else {

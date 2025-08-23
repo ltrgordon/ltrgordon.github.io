@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Snake } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -517,10 +517,9 @@ export function draw(world){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackdrop(camX);
   
-  console.log('Drawing world - H:', H, 'W:', W, 'camX:', camX);
-  console.log('LEVEL exists:', !!LEVEL, 'LEVEL length:', LEVEL ? LEVEL.length : 'null');
   
   let tilesDrawn = 0;
+  let spikesFound = 0;
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
@@ -529,7 +528,11 @@ export function draw(world){
       else if (c==='=') { drawBrick(sx,sy); tilesDrawn++; }
       else if (c==='T') { drawTrapdoor(sx,sy); tilesDrawn++; }
       else if (c==='L') { drawLadder(sx,sy); tilesDrawn++; }
-      else if (c==='^') { drawSpikes(sx,sy); tilesDrawn++; }
+      else if (c==='^') { 
+        drawSpikes(sx,sy); 
+        tilesDrawn++; 
+        spikesFound++;
+      }
     }
   }
   console.log('Tiles drawn:', tilesDrawn);
@@ -548,7 +551,8 @@ export function draw(world){
   }
   for (const e of world.enemies){
     if (e.remove) continue;
-    if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
+    if (e instanceof Snake) e.render(ctx, camX);
+    else if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
     else if (e instanceof Zakko) drawZakko(e.x - camX, e.y, e);
     else if (e instanceof Ghost) drawGhost(e.x - camX, e.y);
     else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
