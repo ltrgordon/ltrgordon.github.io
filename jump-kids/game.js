@@ -177,31 +177,31 @@ async function startFromMenu(){
   unlockAudio();
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
   
-  // If running from file protocol, use built-in level data
-  if (isFileProtocol) {
-    console.log('Using built-in level data');
+  // Try to load from JSON first, fallback to built-in data if that fails
+  try{
+    const resp = await fetch(LEVEL_PATH + levelFile + '?v=' + Date.now());
+    if (resp.ok){
+      const data = await resp.json();
+      console.log('Loaded level data from JSON:', data);
+      setBackdrop(data.backdrop || 'hills');
+      const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+      if (newLevel && newLevel.length){ 
+        setLevel(newLevel); 
+        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
+        setSpecialMoves(SPECIAL_MOVES); 
+      }
+    } else {
+      throw new Error('Failed to fetch level file');
+    }
+  }catch(error){
+    // Fallback to built-in level data
+    console.log('Failed to load level file:', error, 'using built-in data');
     setBackdrop('hills');
     const newLevel = buildLevelFromArrays(BASE, EXT);
     if (newLevel && newLevel.length){ 
       setLevel(newLevel); 
       SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
       setSpecialMoves(SPECIAL_MOVES); 
-    }
-  } else {
-    try{
-      const resp = await fetch(LEVEL_PATH + levelFile);
-      if (resp.ok){
-        const data = await resp.json();
-        setBackdrop(data.backdrop || 'hills');
-        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
-        if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
-      }
-    }catch{
-      // Fallback to built-in level data
-      console.log('Failed to load level file, using built-in data');
-      setBackdrop('hills');
-      const newLevel = buildLevelFromArrays(BASE, EXT);
-      if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
     }
   }
   
