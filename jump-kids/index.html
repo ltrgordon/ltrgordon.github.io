@@ -1,127 +1,87 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Jump Kids</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div id="wrap">
-      <header>
-        <div class="title">Super Mario Bros — MVP</div>
-        <div id="hud">
-          <span>Coins: <b id="coins">0</b></span>
-          <span>Lives: <b id="lives">3</b></span>
-          <span>World: <b id="world">1-1</b></span>
-        </div>
-        <div id="msg">Reach the flag to finish the demo level</div>
-      </header>
-
-      <canvas id="game" width="960" height="540"></canvas>
-
-      <footer>
-        <button class="btn" id="left" aria-label="Move left">←</button>
-        <button class="btn" id="dash" aria-label="Dash">⚡</button>
-        <button class="btn" id="jump" aria-label="Jump">⤒</button>
-        <button class="btn" id="right" aria-label="Move right">→</button>
-      </footer>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Jump Kids</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <div class="title">Super Mario Bros — MVP</div>
+    <div id="hud">
+      <span>Coins: <b id="coins">0</b></span>
+      <span>Lives: <b id="lives">3</b></span>
+      <span>World: <b id="world">1-1</b></span>
     </div>
+    <div id="msg">Reach the flag to finish the demo level</div>
+  </header>
 
-    <!-- Start Menu Overlay -->
-    <div id="menu" aria-modal="true" role="dialog">
-      <div class="menu-card">
-        <h1 class="menu-title arcade">Jump Kids</h1>
+  <canvas id="game" width="960" height="540"></canvas>
 
-        <div class="menu-scroll">
-          <div class="menu-section">
-            <div class="menu-section-title">Select Level</div>
-            <div
-              id="levelGrid"
-              class="level-grid"
-              aria-label="Level select"
-            ></div>
-            <div class="sr-only">
-              <label for="levelSelect">Level</label>
-              <select id="levelSelect" aria-label="Select level"></select>
-            </div>
-          </div>
+  <footer>
+    <button class="btn" id="left" aria-label="Move left">←</button>
+    <button class="btn" id="dash" aria-label="Dash">⚡</button>
+    <button class="btn" id="jump" aria-label="Jump">⤒</button>
+    <button class="btn" id="right" aria-label="Move right">→</button>
+  </footer>
+</div>
 
-          <div class="menu-section">
-            <div class="menu-section-title">Select Fighter</div>
-            <div class="char-select">
-              <div
-                id="charGrid"
-                class="char-grid"
-                role="listbox"
-                aria-label="Character select"
-              >
-                <button
-                  class="char-card"
-                  data-char="lucy"
-                  role="option"
-                  aria-selected="true"
-                >
-                  <div class="char-name">Lucy • 8</div>
-                </button>
-                <button
-                  class="char-card"
-                  data-char="joey"
-                  role="option"
-                  aria-selected="false"
-                >
-                  <div class="char-name">Joey • 6</div>
-                </button>
-                <button
-                  class="char-card"
-                  data-char="abe"
-                  role="option"
-                  aria-selected="false"
-                >
-                  <div class="char-name">Abe • 3</div>
-                </button>
-                <button
-                  class="char-card"
-                  data-char="leo"
-                  role="option"
-                  aria-selected="false"
-                >
-                  <div class="char-name">Leo • 1</div>
-                </button>
-              </div>
-              <div class="char-preview-wrap">
-                <canvas
-                  id="charPreview"
-                  width="420"
-                  height="300"
-                  aria-label="Character portrait"
-                ></canvas>
-              </div>
-            </div>
-          </div>
+<!-- Start Menu Overlay -->
+<div id="menu" aria-modal="true" role="dialog">
+  <div class="menu-card">
+    <h1 class="menu-title arcade">Jump Kids</h1>
+
+    <div class="menu-scroll">
+      <div class="menu-section">
+        <div class="menu-section-title">Select Level</div>
+        <div id="levelGrid" class="level-grid" aria-label="Level select"></div>
+        <div class="sr-only">
+          <label for="levelSelect">Level</label>
+          <select id="levelSelect" aria-label="Select level"></select>
         </div>
+      </div>
 
-        <button id="startBtn" class="menu-start big">Start</button>
-        <div class="menu-help">
-          Controls: ← → move, Space/Z jump, D dash, S S1, F S2, P pause. After
-          Game Over: R or Jump to restart.
+      <div class="menu-section">
+        <div class="menu-section-title">Select Fighter</div>
+        <div class="char-select">
+          <div id="charGrid" class="char-grid" role="listbox" aria-label="Character select">
+            <button class="char-card" data-char="lucy" role="option" aria-selected="true">
+              <div class="char-name">Lucy • 8</div>
+            </button>
+            <button class="char-card" data-char="joey" role="option" aria-selected="false">
+              <div class="char-name">Joey • 6</div>
+            </button>
+            <button class="char-card" data-char="abe" role="option" aria-selected="false">
+              <div class="char-name">Abe • 3</div>
+            </button>
+            <button class="char-card" data-char="leo" role="option" aria-selected="false">
+              <div class="char-name">Leo • 1</div>
+            </button>
+          </div>
+          <div class="char-preview-wrap">
+            <canvas id="charPreview" width="420" height="300" aria-label="Character portrait"></canvas>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="help">
-      Keyboard: ← → move, D dash, Space/Z jump, S for S1 and F for S2. Mobile:
-      use buttons.
-    </div>
+    <button id="startBtn" class="menu-start big">Start</button>
+    <div class="menu-help">Controls: ← → move, Space/Z jump, D dash, S S1, F S2, P pause. After Game Over: R or Jump to restart.</div>
+  </div>
+</div>
 
-    <script src="special-moves.js"></script>
-    <script type="module" src="game.js"></script>
+<div id="help">Keyboard: ← → move, D dash, Space/Z jump, S for S1 and F for S2. Mobile: use buttons.</div>
 
-    <!-- Notes:
+<script src="special-moves.js"></script>
+<script src="game.js"></script>
+
+<!-- Notes:
 - Extended level length and added higher platforms, coins, Goombas, and Hellmonks in the second half.
 - Irish flag goal and victory overlay now show Coins and Time.
 - Hellmonk AI: bounces player on stomp, jumps when close and rushes at player.
 - Ground snap and consistent tile mapping maintained for stable collisions.
 -->
-  </body>
+</body>
 </html>
