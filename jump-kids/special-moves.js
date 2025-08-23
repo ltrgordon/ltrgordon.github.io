@@ -1,5 +1,10 @@
-// Special moves for each character
-const SPECIAL_MOVES = {
+import { JUMP_VEL, TILE } from './config.js';
+
+// Build the special moves object given core helpers.
+// `utils` should provide tileAt/isSolid/groundTopAt along with level dimensions.
+export function createSpecialMoves(utils){
+  const { W, H, tileAt, isSolid, groundTopAt } = utils;
+  return {
   lucy: {
     s1(p){
       if(!p.grounded) return;
@@ -121,4 +126,5 @@ const SPECIAL_MOVES = {
       p.vx = 0; p.vy = 0; p.grounded = true;
     }
   }
-};
+  };
+}
