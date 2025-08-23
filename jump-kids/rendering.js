@@ -1,10 +1,9 @@
 import { TILE, COL } from './config.js';
 
-export function render(ctx, entities) {
+export function render(ctx, player) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.fillStyle = COL.ground;
   ctx.fillRect(0, ctx.canvas.height - TILE, ctx.canvas.width, TILE);
-  for (const e of entities) {
-    e.render(ctx);
-  }
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(player.x, player.y - player.h, player.w, player.h);
 }
