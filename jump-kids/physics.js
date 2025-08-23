@@ -1,5 +1,5 @@
 import { TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME } from './config.js';
-import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, respawnAllEnemies } from './entities.js';
+import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, respawnAllEnemies } from './entities.js';
 import { consumeRestart, playBeep, playCoin, playShamrock } from './input.js';
 
 // Basic geometry helpers --------------------------------------------------
@@ -336,7 +336,41 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   for (const e of world.enemies){
     if (e.remove) continue;
     if (!(e instanceof Ghost) && !(e instanceof Bird)) e.vy += GRAVITY*dt;
-    if (e instanceof Hellmonk){
+    if (e instanceof GiantMonkey){
+      if (e.throwCD>0) e.throwCD -= dt;
+      const dx = (p.x + p.w/2) - (e.x + e.w/2);
+      const dir = Math.sign(dx) || 1;
+      e.vx = dir * e.speed;
+      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+      const footTy = Math.floor((e.bottom+1)/TILE)+1;
+      if (!isSolid(tileAt(aheadTx, footTy)) && e.grounded){ e.vy = e.jump; }
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      if (e.throwCD<=0 && Math.abs(dx)<200){
+        const banana = new Banana(e.x + e.w/2, e.y+8);
+        banana.vx = dir * 140;
+        banana.vy = -120;
+        world.enemies.push(banana);
+        e.throwCD = 2.5;
+      }
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        if (handleSpecialCollision(p,e,specialMoves)) continue;
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){
+          p.vy = -0.6*JUMP_VEL;
+          if (--e.hp<=0) e.remove=true;
+        } else damagePlayer(p, world, HUD);
+      }
+    } else if (e instanceof Banana){
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      if (e.grounded) e.remove=true;
+      if (!e.remove && aabb(p,e)){
+        damagePlayer(p, world, HUD);
+        e.remove=true;
+      }
+    } else if (e instanceof Hellmonk){
       if (e.reactCD>0) e.reactCD -= dt;
       let collidedX = moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
