@@ -152,6 +152,27 @@ export class Bird extends Entity{
   }
 }
 
+// Sunflower enemy: bouncy plant that launches players upward
+export class Sunflower extends Entity{
+  constructor(x,y){
+    super(x,y,24,32);
+    this.speed = 40;
+    this.vx = -this.speed;
+  }
+}
+
+// Butterfly enemy: flutters high in the sky
+export class Butterfly extends Entity{
+  constructor(x,y){
+    super(x,y,20,16);
+    this.vx = 40;
+    this.baseY = y;
+    this.baseX = x;
+    this.range = 40;
+    this.vy = 0;
+  }
+}
+
 // Skeleton enemy: crumbles when stomped, then reforms
 export class Skeleton extends Entity{
   constructor(x,y){
@@ -195,13 +216,15 @@ export let ENEMY_CONFIGS = {
   'S': { class: 'Bird' },
   'X': { class: 'Skeleton' },
   'Y': { class: 'GiantMonkey' },
+  'W': { class: 'Sunflower' },
+  'D': { class: 'Butterfly' },
 };
 
 export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){
@@ -234,7 +257,7 @@ export function buildWorld(){
             Object.assign(ent, cfg.params);
             if ('speed' in cfg.params && 'vx' in ent){ ent.vx = (ent.vx<0?-1:1) * ent.speed; }
           }
-          if (!(ent instanceof Bird) && !(ent instanceof Ghost)){
+          if (!(ent instanceof Bird) && !(ent instanceof Ghost) && !(ent instanceof Butterfly)){
             ent.y = groundTopAt(x,y) - ent.h;
           }
           world.enemies.push(ent);
@@ -245,7 +268,7 @@ export function buildWorld(){
             x: ent.x,
             y: ent.y,
             params: cfg.params ? {...cfg.params} : null,
-            groundAdjusted: !(ent instanceof Bird) && !(ent instanceof Ghost)
+            groundAdjusted: !(ent instanceof Bird) && !(ent instanceof Ghost) && !(ent instanceof Butterfly)
           });
         }
       }
