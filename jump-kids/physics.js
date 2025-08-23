@@ -136,7 +136,7 @@ function handleSpecialCollision(p,e,specialMoves){
 export function update(world, keys, HUD, dt, resetGame, specialMoves){
   const p = world.player;
   const ability = specialMoves[p.charId];
-  if (ability && ability.update) ability.update(p, dt, world);
+  if (ability && ability.update) ability.update(p, dt, world, keys);
   for (const b of world.blocks){ if (b.bounce>0) b.bounce = Math.max(0, b.bounce - dt*4); }
   if (world.state === 'pause') return;
   if (world.state !== 'win' && world.state !== 'gameover') world.time += dt;

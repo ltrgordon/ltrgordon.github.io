@@ -19,6 +19,7 @@ export function createSpecialMoves(utils){
       p.lockControls = true;
       p.vx = 300 * p.facing;
       p.cartTime = 0.4;
+      p.cartRot = 0;
     },
     update(p,dt){
       if(p.action==='flip'){
@@ -26,7 +27,8 @@ export function createSpecialMoves(utils){
         if(p.grounded) p.action=null;
       } else if(p.action==='cartwheel'){
         p.cartTime -= dt;
-        if(p.cartTime<=0){ p.action=null; p.lockControls=false; }
+        p.cartRot += dt * Math.PI * 4;
+        if(p.cartTime<=0){ p.action=null; p.lockControls=false; p.cartRot=0; }
       }
     },
     onEnemyCollide(p,e){
@@ -80,10 +82,10 @@ export function createSpecialMoves(utils){
     },
     s2(p){
       if(p.action) return;
-      p.action = 'rush';
+      p.action = 'punchRun';
       p.lockControls = true;
       p.vx = 400 * p.facing; // Fast forward charge
-      p.rushTime = 0.5; // Duration of rush
+      p.punchTime = 0.5; // Duration of run
     },
     update(p,dt,world){
       if(p.action==='smash'){
@@ -112,11 +114,11 @@ export function createSpecialMoves(utils){
           p.lockControls = false;
           p.smashDown = false;
         }
-      } else if(p.action==='rush'){
-        p.rushTime -= dt;
-        if(p.rushTime<=0){ 
-          p.action=null; 
-          p.lockControls=false; 
+      } else if(p.action==='punchRun'){
+        p.punchTime -= dt;
+        if(p.punchTime<=0){
+          p.action=null;
+          p.lockControls=false;
           p.vx *= 0.3; // Slow down after rush
         }
       }
@@ -130,9 +132,7 @@ export function createSpecialMoves(utils){
       }
     },
     onEnemyCollide(p,e){
-      if(p.action==='rush'){
-        // Rush attack knocks enemies back and defeats them
-        e.remove = true;
+      if(p.action==='punchRun'){
         const direction = Math.sign(e.x - p.x) || p.facing;
         e.x += direction * 80; // Strong knockback
         e.vx = direction * 350;
@@ -143,7 +143,29 @@ export function createSpecialMoves(utils){
     }
   },
   leo: {
-    update(p,dt){},
+    update(p,dt,world,keys){
+      if(p.action==='bubble'){
+        p.vx = 0;
+        p.vy = -80;
+        if(!keys.jump || keys.left || keys.right || keys.dash || keys.up || keys.down){
+          p.action=null;
+          p.lockControls=false;
+          p.bubbleHold = 0;
+        }
+        return;
+      }
+      if(keys.jump){
+        p.bubbleHold = (p.bubbleHold||0) + dt;
+        if(p.bubbleHold>=3){
+          p.action='bubble';
+          p.lockControls=true;
+          p.vx=0;
+          p.vy=-80;
+        }
+      } else {
+        p.bubbleHold = 0;
+      }
+    },
     onEnemyCollide(p,e){
       e.remove = true;
       e.vx = Math.sign(e.x - p.x) * 200;

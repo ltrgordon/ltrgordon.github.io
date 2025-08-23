@@ -47,10 +47,10 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
-- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 cartwheel that pushes enemies backward.
+- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path.
 - **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes.
-- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks down anything in his path.
-- **Leo** – No special moves. Jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
+- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front.
+- **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
 
 ## Tile/Map Encoding
 The level is an ASCII grid split across two arrays in `game.js`:

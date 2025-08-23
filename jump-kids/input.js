@@ -47,10 +47,14 @@ function bufferJump(){
 }
 function triggerSpecial(which){
   if (!worldRef || !worldRef.player || !specialMoves) return;
-  const ability = specialMoves[worldRef.player.charId];
+  const p = worldRef.player;
+  const ability = specialMoves[p.charId];
   if (!ability) return;
-  if (which==='s1' && ability.s1) ability.s1(worldRef.player, worldRef);
-  if (which==='s2' && ability.s2) ability.s2(worldRef.player, worldRef);
+  if (p.charId==='leo' && p.action==='bubble'){
+    p.action=null; p.lockControls=false; p.bubbleHold=0; return;
+  }
+  if (which==='s1' && ability.s1) ability.s1(p, worldRef);
+  if (which==='s2' && ability.s2) ability.s2(p, worldRef);
 }
 
 export function initInput(){
