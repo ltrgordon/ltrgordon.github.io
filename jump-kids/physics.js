@@ -411,6 +411,38 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         if (fromAbove){ p.vy = -0.55*JUMP_VEL; e.state='crumbled'; e.h=6; e.reformT=0; }
         else damagePlayer(p, world, HUD);
       }
+    } else {
+      // Default enemy handling (Goombas and other basic enemies)
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      
+      // Basic AI: turn around at edges and walls
+      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
+      const footTy = Math.floor((e.bottom+1)/TILE)+1;
+      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) {
+        e.vx *= -1; // Turn around at edges
+      }
+      
+      // Player collision
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ 
+          e.remove=true; 
+          p.vy = -0.55*JUMP_VEL; 
+          continue; 
+        }
+        if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){
+          // Player stomps on Goomba
+          p.vy = -0.6*JUMP_VEL; // Bounce player up
+          e.remove = true; // Remove the Goomba
+          playBeep(440, 0.1, 0.05); // Play stomp sound
+        } else if (p.invuln<=0){
+          // Player gets hurt
+          damagePlayer(p, world, HUD);
+        }
+      }
     }
   }
   world.enemies = world.enemies.filter(e=>!e.remove);
