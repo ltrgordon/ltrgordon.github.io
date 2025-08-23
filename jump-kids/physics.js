@@ -221,11 +221,6 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   const rightTx = Math.floor((p.right-1)/TILE);
   if (tileAt(leftTx, footTy)==='^' || tileAt(rightTx, footTy)==='^') damagePlayer(p, world, HUD);
 
-  // Check for falling into pits (below the level)
-  if (p.y > H * TILE) {
-    damagePlayer(p, world, HUD);
-  }
-
   if (prevVy < 0){
     for (const b of world.blocks){
       if (b.used) continue;
@@ -386,35 +381,6 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
         damagePlayer(p, world, HUD);
-      }
-    } else if (e instanceof Goomba){
-      // Basic Goomba AI: walk back and forth, turn at edges and walls
-      if (e.vx === 0) e.vx = -e.speed; // Initialize movement if not set
-      
-      // Move horizontally
-      let collidedX = moveWithCollisions(e, e.vx*dt, 0, true);
-      moveWithCollisions(e, 0, e.vy*dt, true);
-      
-      // Check for edge ahead (turn around if no ground ahead)
-      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
-      const footTy = Math.floor((e.bottom+1)/TILE)+1;
-      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) {
-        e.vx *= -1;
-      }
-      
-      // Handle player collision
-      if (!e.remove && aabb(p,e)){
-        if (p.rainbow>0){ e.remove=true; p.vy = -0.55*JUMP_VEL; continue; }
-        if (handleSpecialCollision(p,e,specialMoves)) continue;
-        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if (fromAbove){
-          p.vy = -0.55*JUMP_VEL;
-          e.remove=true;
-          playBeep(440,0.1,0.05);
-        } else if (p.invuln<=0){
-          if (p.big){ shrinkPlayer(p); p.invuln = 1; }
-          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
-        }
       }
     } else if (e instanceof Bird){
       e.vy += (Math.sin(world.time*2) * e.range - (e.y - e.baseY)) * 2 * dt;
