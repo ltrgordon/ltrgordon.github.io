@@ -9,14 +9,6 @@ const LEVEL_PATH = 'assets/levels/';
 // Check if we're running from file:// protocol
 const isFileProtocol = window.location.protocol === 'file:';
 
-// Show file mode indicator if running from file system
-if (isFileProtocol) {
-  const fileModeIndicator = document.getElementById('fileMode');
-  if (fileModeIndicator) {
-    fileModeIndicator.style.display = 'block';
-  }
-}
-
 try{
   const r = await fetch('assets/enemies.json', {cache:'no-store'});
   if (r.ok){ const cfg = await r.json(); setEnemyConfigs(cfg); }
@@ -26,25 +18,9 @@ try{
   }
 }
 
-// Canvas and HUD setup ----------------------------------------------------
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-initRenderer(canvas, ctx);
-setBackdrop('hills');
-const HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg') };
-setHUD(HUD);
-
-// Menu elements -----------------------------------------------------------
-const menuEl = document.getElementById('menu');
-const levelSelect = document.getElementById('levelSelect');
-const levelGrid = document.getElementById('levelGrid');
-const charGrid = document.getElementById('charGrid');
-const charPreview = document.getElementById('charPreview');
-const charPrevCtx = charPreview ? charPreview.getContext('2d') : null;
-const charSelect = document.getElementById('charSelect');
-const startBtn = document.getElementById('startBtn');
-const editorBtn = document.getElementById('editorBtn');
-const charPreviewWrap = document.querySelector('.char-preview-wrap');
+// Global variables that will be initialized when DOM is ready
+let canvas, ctx, HUD;
+let menuEl, levelSelect, levelGrid, charGrid, charPreview, charPrevCtx, charSelect, startBtn, editorBtn, charPreviewWrap;
 let selectedLevelFile = 'level1.json';
 let selectedChar = 'lucy';
 
@@ -113,24 +89,19 @@ function updateCharSelection(id, previewOnly=false){
     }
   }
 }
-if (charGrid){
-  const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
-  charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
-  charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
-  charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
-  charGrid.addEventListener('mouseout', (e)=>{ if (!charGrid.contains(e.relatedTarget)) togglePreview(false); });
-  charGrid.addEventListener('focusout', ()=>{ const anyFocused = !!charGrid.querySelector('.char-card:focus'); if (!anyFocused) togglePreview(false); });
+function setupCharacterEventListeners(){
+  if (charGrid){
+    const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
+    charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
+    charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
+    charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
+    charGrid.addEventListener('mouseout', (e)=>{ if (!charGrid.contains(e.relatedTarget)) togglePreview(false); });
+    charGrid.addEventListener('focusout', ()=>{ const anyFocused = !!charGrid.querySelector('.char-card:focus'); if (!anyFocused) togglePreview(false); });
+  }
 }
 
-// World and input initialization -----------------------------------------
-let SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-let world = buildWorld();
-inputSetWorld(world);
-setSpecialMoves(SPECIAL_MOVES);
-initInput();
-
-HUD.coins.textContent = world.player.coins;
-HUD.lives.textContent = world.player.lives;
+// Global variables for world and special moves (initialized later)
+let SPECIAL_MOVES, world;
 
 // Level & menu handling ---------------------------------------------------
 async function discoverLevels(){
@@ -233,14 +204,18 @@ async function startFromMenu(){
   menuEl.classList.add('hidden');
   playBeep(700,0.08,0.08);
 }
-startBtn.addEventListener('click', startFromMenu);
-startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
-if (editorBtn){
-  const openEditor = ()=>{ window.location.href = 'editor.html'; };
-  editorBtn.addEventListener('click', openEditor);
-  editorBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); openEditor(); });
+function setupButtonEventListeners(){
+  if (startBtn) {
+    startBtn.addEventListener('click', startFromMenu);
+    startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
+  }
+  if (editorBtn){
+    const openEditor = ()=>{ window.location.href = 'editor.html'; };
+    editorBtn.addEventListener('click', openEditor);
+    editorBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); openEditor(); });
+  }
+  document.addEventListener('keydown', (e)=>{ if (menuEl && !menuEl.classList.contains('hidden') && (e.key==='Enter' || e.key===' ')) startFromMenu(); });
 }
-document.addEventListener('keydown', (e)=>{ if (menuEl && !menuEl.classList.contains('hidden') && (e.key==='Enter' || e.key===' ')) startFromMenu(); });
 
 // Game reset --------------------------------------------------------------
 function resetGame(){
@@ -268,13 +243,70 @@ requestAnimationFrame(loop);
 
 // Initial DOM readiness ---------------------------------------------------
 async function initMenu(){
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+  }
+  
+  // Additional delay to ensure all elements are available
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Initialize DOM elements
+  canvas = document.getElementById('game');
+  if (!canvas) {
+    console.error('Game canvas not found');
+    return;
+  }
+  
+  ctx = canvas.getContext('2d');
+  initRenderer(canvas, ctx);
+  setBackdrop('hills');
+  HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg') };
+  setHUD(HUD);
+
+  // Menu elements
+  menuEl = document.getElementById('menu');
+  levelSelect = document.getElementById('levelSelect');
+  levelGrid = document.getElementById('levelGrid');
+  charGrid = document.getElementById('charGrid');
+  charPreview = document.getElementById('charPreview');
+  charPrevCtx = charPreview ? charPreview.getContext('2d') : null;
+  charSelect = document.getElementById('charSelect');
+  startBtn = document.getElementById('startBtn');
+  editorBtn = document.getElementById('editorBtn');
+  charPreviewWrap = document.querySelector('.char-preview-wrap');
+
+  if (!menuEl || !charGrid || !charPreview || !startBtn) {
+    console.error('Required menu elements not found');
+    return;
+  }
+
+  // Show file mode indicator if running from file system
+  if (isFileProtocol) {
+    const fileModeIndicator = document.getElementById('fileMode');
+    if (fileModeIndicator) {
+      fileModeIndicator.style.display = 'block';
+    }
+  }
+
+  // Set up event listeners
+  setupCharacterEventListeners();
+  setupButtonEventListeners();
+
+  // Initialize world and input system
+  SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+  world = buildWorld();
+  inputSetWorld(world);
+  setSpecialMoves(SPECIAL_MOVES);
+  initInput();
+
+  HUD.coins.textContent = world.player.coins;
+  HUD.lives.textContent = world.player.lives;
+
   await discoverLevels();
   
-  // Show menu first to ensure canvas is properly initialized
+  // Show menu
   if (menuEl) menuEl.classList.remove('hidden');
-  
-  // Small delay to ensure DOM is ready for canvas operations
-  await new Promise(resolve => setTimeout(resolve, 100));
   
   // Ensure character preview canvas is properly visible
   if (charPreviewWrap) {
@@ -322,11 +354,9 @@ async function initMenu(){
     }
   }
 }
-if (document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', initMenu);
-} else {
-  initMenu();
-}
+
+// Initialize immediately
+initMenu();
 
 // Fit canvas to device pixel ratio
 addEventListener('resize', fitCanvas); fitCanvas();
