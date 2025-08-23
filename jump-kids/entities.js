@@ -192,11 +192,15 @@ function findInMap(symbol){
 
 export function buildWorld(){
   const spawn = findInMap('P');
+  console.log('Building world, spawn position:', spawn);
+  console.log('LEVEL dimensions:', H, 'x', W);
+  console.log('LEVEL first few rows:', LEVEL.slice(0, 3));
   const world = {
     player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
     enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
     goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0
   };
+  console.log('Player created at:', world.player.x, world.player.y);
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
       const c=LEVEL[y][x];

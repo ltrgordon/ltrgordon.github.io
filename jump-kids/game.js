@@ -9,6 +9,14 @@ const LEVEL_PATH = 'assets/levels/';
 // Check if we're running from file:// protocol
 const isFileProtocol = window.location.protocol === 'file:';
 
+// Show file mode indicator if running from file system
+if (isFileProtocol) {
+  const fileModeIndicator = document.getElementById('fileMode');
+  if (fileModeIndicator) {
+    fileModeIndicator.style.display = 'block';
+  }
+}
+
 try{
   const r = await fetch('assets/enemies.json', {cache:'no-store'});
   if (r.ok){ const cfg = await r.json(); setEnemyConfigs(cfg); }
@@ -198,6 +206,8 @@ async function startFromMenu(){
   }
   
   resetGame();
+  console.log('Game reset complete, world:', world ? 'exists' : 'undefined');
+  console.log('World state:', world ? world.state : 'no world');
   world.player.charId = selectedChar;
   world.state = 'play';
   HUD.msg.textContent = 'Reach the flag to finish the demo level';
@@ -234,9 +244,15 @@ function loop(ts){
   const dt = Math.min(1/60, (ts-last)/1000);
   last = ts;
   if (!menuEl || menuEl.classList.contains('hidden')){
-    updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);
+    if (world) {
+      updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);
+    }
   }
-  draw(world);
+  if (world) {
+    draw(world);
+  } else {
+    console.log('World is undefined in main loop');
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -293,17 +309,49 @@ async function initMenu(){
   setupCharacterEventListeners();
   setupButtonEventListeners();
 
-  // Initialize world and input system
+  await discoverLevels();
+  
+  // Initialize level data FIRST - use built-in data if file protocol
+  if (isFileProtocol) {
+    console.log('Initializing with built-in level data');
+    setBackdrop('hills');
+    const newLevel = buildLevelFromArrays(BASE, EXT);
+    if (newLevel && newLevel.length){
+      setLevel(newLevel);
+    }
+  } else {
+    try{
+      const resp = await fetch(LEVEL_PATH + 'level1.json');
+      if (resp.ok){
+        const data = await resp.json();
+        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+        if (newLevel && newLevel.length){
+          setBackdrop(data.backdrop || 'hills');
+          setLevel(newLevel);
+        }
+      }
+    }catch{
+      // Fallback to built-in data
+      setBackdrop('hills');
+      const newLevel = buildLevelFromArrays(BASE, EXT);
+      if (newLevel && newLevel.length){
+        setLevel(newLevel);
+      }
+    }
+  }
+
+  // NOW initialize world and input system (after level is loaded)
   SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
   world = buildWorld();
+  console.log('Initial world created:', world ? 'success' : 'failed');
+  console.log('World player:', world ? world.player : 'no world');
+  console.log('World enemies count:', world ? world.enemies.length : 'no world');
   inputSetWorld(world);
   setSpecialMoves(SPECIAL_MOVES);
   initInput();
 
   HUD.coins.textContent = world.player.coins;
   HUD.lives.textContent = world.player.lives;
-
-  await discoverLevels();
   
   // Show menu
   if (menuEl) menuEl.classList.remove('hidden');
@@ -318,41 +366,6 @@ async function initMenu(){
   }
   
   updateCharSelection(selectedChar || 'lucy', false);
-  
-  // Initialize level data - use built-in data if file protocol
-  if (isFileProtocol) {
-    console.log('Initializing with built-in level data');
-    setBackdrop('hills');
-    const newLevel = buildLevelFromArrays(BASE, EXT);
-    if (newLevel && newLevel.length){
-      setLevel(newLevel);
-      SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-      setSpecialMoves(SPECIAL_MOVES);
-    }
-  } else {
-    try{
-      const resp = await fetch(LEVEL_PATH + 'level1.json');
-      if (resp.ok){
-        const data = await resp.json();
-        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
-        if (newLevel && newLevel.length){
-          setBackdrop(data.backdrop || 'hills');
-          setLevel(newLevel);
-          SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-          setSpecialMoves(SPECIAL_MOVES);
-        }
-      }
-    }catch{
-      // Fallback to built-in data
-      setBackdrop('hills');
-      const newLevel = buildLevelFromArrays(BASE, EXT);
-      if (newLevel && newLevel.length){
-        setLevel(newLevel);
-        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-        setSpecialMoves(SPECIAL_MOVES);
-      }
-    }
-  }
 }
 
 // Initialize immediately

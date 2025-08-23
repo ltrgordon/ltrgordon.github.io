@@ -47,6 +47,13 @@ function drawHills(camX){
 }
 
 function drawBackdrop(camX){
+  // Draw sky background
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, '#87CEEB'); // Sky blue
+  gradient.addColorStop(1, '#C2E9FB'); // Light blue
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
   if (backdrop === 'hills'){
     drawClouds(camX);
     drawHills(camX);
@@ -509,17 +516,23 @@ export function draw(world){
   const camX = world.camX|0;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackdrop(camX);
+  
+  console.log('Drawing world - H:', H, 'W:', W, 'camX:', camX);
+  console.log('LEVEL exists:', !!LEVEL, 'LEVEL length:', LEVEL ? LEVEL.length : 'null');
+  
+  let tilesDrawn = 0;
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
       const sx = x*TILE - camX, sy = (y-1)*TILE;
-      if (c==='#') drawGround(sx,sy);
-      else if (c==='=') drawBrick(sx,sy);
-      else if (c==='T') drawTrapdoor(sx,sy);
-      else if (c==='L') drawLadder(sx,sy);
-      else if (c==='^') drawSpikes(sx,sy);
+      if (c==='#') { drawGround(sx,sy); tilesDrawn++; }
+      else if (c==='=') { drawBrick(sx,sy); tilesDrawn++; }
+      else if (c==='T') { drawTrapdoor(sx,sy); tilesDrawn++; }
+      else if (c==='L') { drawLadder(sx,sy); tilesDrawn++; }
+      else if (c==='^') { drawSpikes(sx,sy); tilesDrawn++; }
     }
   }
+  console.log('Tiles drawn:', tilesDrawn);
   for (const m of world.platforms){ drawPlatform(m.x - camX, m.y, m.w); }
   for (const b of world.blocks){ const bx = b.x - camX; const by = b.y - b.bounce*10; drawQBlock(bx,by); }
   for (const ch of world.chests){ drawChest(ch.x - camX, ch.y); }
