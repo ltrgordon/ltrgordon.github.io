@@ -164,6 +164,27 @@ export class Skeleton extends Entity{
   }
 }
 
+// Giant monkey boss that throws bananas
+export class GiantMonkey extends Entity{
+  constructor(x,y){
+    super(x,y,32,32);
+    this.speed = 45;
+    this.vx = -this.speed;
+    this.jump = -420;
+    this.hp = 3;
+    this.throwCD = 0;
+  }
+}
+
+// Banana projectile tossed by giant monkey
+export class Banana extends Entity{
+  constructor(x,y){
+    super(x,y,12,12);
+    this.vx = 0;
+    this.vy = 0;
+  }
+}
+
 // Enemy configuration -------------------------------------------------------
 export let ENEMY_CONFIGS = {
   'E': { class: 'Goomba' },
@@ -173,13 +194,14 @@ export let ENEMY_CONFIGS = {
   'F': { class: 'FireEnemy' },
   'S': { class: 'Bird' },
   'X': { class: 'Skeleton' },
+  'Y': { class: 'GiantMonkey' },
 };
 
 export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){

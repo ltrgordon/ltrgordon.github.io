@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -46,6 +46,19 @@ function drawHills(camX){
   ctx.restore();
 }
 
+function drawTrees(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  ctx.save();
+  for(let i=0;i<6;i++){
+    const x = -camX*0.25 + i*180;
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(x,140,24,200);
+    ctx.fillStyle = '#228b22';
+    ctx.beginPath(); ctx.arc(x+12,140,60,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -60,6 +73,9 @@ function drawBackdrop(camX){
   } else if (backdrop === 'cave') {
     ctx.fillStyle = '#222';
     ctx.fillRect(0,0,canvas.width,canvas.height);
+  } else if (backdrop === 'trees') {
+    drawClouds(camX);
+    drawTrees(camX);
   }
 }
 
@@ -455,6 +471,32 @@ function drawSkeleton(x,y,e){
   ctx.restore();
 }
 
+function drawGiantMonkey(x,y,e){
+  const t = performance.now()/1000;
+  const bob = Math.sin(t*4 + x*0.05)*2;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(4,12,24,24);
+  ctx.fillStyle='#c89f7a';
+  ctx.fillRect(8,0,16,16);
+  ctx.fillStyle='#000';
+  ctx.fillRect(12,6,3,4); ctx.fillRect(18,6,3,4);
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(-4,14,8,16); ctx.fillRect(28,14,8,16);
+  ctx.fillRect(8,36,8,12); ctx.fillRect(16,36,8,12);
+  ctx.restore();
+}
+
+function drawBanana(x,y){
+  ctx.save();
+  ctx.translate(x+6,y+6);
+  ctx.rotate(-0.3);
+  ctx.fillStyle='#f2c14e';
+  ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 // HUD overlays ------------------------------------------------------------
 function formatTime(s){
   const m = Math.floor(s/60); const sec = s - m*60; const mm = ''+m; const ss = sec.toFixed(2).padStart(5,'0');
@@ -554,6 +596,8 @@ export function draw(world){
     else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
+    else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
+    else if (e instanceof Banana) drawBanana(e.x - camX, e.y);
     else drawGoomba(e.x - camX, e.y);
   }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
