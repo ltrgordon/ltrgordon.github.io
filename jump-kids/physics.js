@@ -1,5 +1,5 @@
 import { TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME } from './config.js';
-import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton } from './entities.js';
+import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, respawnAllEnemies } from './entities.js';
 import { consumeRestart, playBeep, playCoin, playShamrock } from './input.js';
 
 // Basic geometry helpers --------------------------------------------------
@@ -120,6 +120,7 @@ function damagePlayer(p, world, HUD){
       return;
     }
     p.respawn();
+    respawnAllEnemies(world);
   }
 }
 
@@ -256,6 +257,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         return;
       }
       p.respawn();
+      respawnAllEnemies(world);
       return;
     }
   }
@@ -382,8 +384,21 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
           e.vx = -dir * Math.max(e.speed, 120);
           e.state = 'idle';
         } else if (p.invuln<=0){
-          if (p.big){ shrinkPlayer(p); p.invuln = 1; }
-          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
+          if (p.big){ 
+            shrinkPlayer(p); 
+            p.invuln = 1; 
+          } else { 
+            p.lives--; 
+            HUD.lives.textContent = p.lives; 
+            if (p.lives<=0){ 
+              HUD.msg.textContent="Game Over — press R or Jump to restart"; 
+              world.state='gameover'; 
+              playBeep(220,0.2,0.12); 
+              return; 
+            } 
+            p.respawn(); 
+            respawnAllEnemies(world);
+          }
         }
       }
     } else if (e instanceof Zakko){
@@ -407,8 +422,21 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
           if (!e.knocked){ e.knocked=true; e.h=80; e.y += 80; }
           else e.remove=true;
         } else if (p.invuln<=0){
-          if (p.big){ shrinkPlayer(p); p.invuln=1; }
-          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
+          if (p.big){ 
+            shrinkPlayer(p); 
+            p.invuln=1; 
+          } else { 
+            p.lives--; 
+            HUD.lives.textContent = p.lives; 
+            if (p.lives<=0){ 
+              HUD.msg.textContent="Game Over — press R or Jump to restart"; 
+              world.state='gameover'; 
+              playBeep(220,0.2,0.12); 
+              return; 
+            } 
+            p.respawn(); 
+            respawnAllEnemies(world);
+          }
         }
       }
     } else if (e instanceof Ghost){
@@ -426,8 +454,21 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         }
         
         if (p.invuln<=0){
-          if (p.big){ shrinkPlayer(p); p.invuln=1; }
-          else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
+          if (p.big){ 
+            shrinkPlayer(p); 
+            p.invuln=1; 
+          } else { 
+            p.lives--; 
+            HUD.lives.textContent = p.lives; 
+            if (p.lives<=0){ 
+              HUD.msg.textContent="Game Over — press R or Jump to restart"; 
+              world.state='gameover'; 
+              playBeep(220,0.2,0.12); 
+              return; 
+            } 
+            p.respawn(); 
+            respawnAllEnemies(world);
+          }
         }
       }
     } else if (e instanceof FireEnemy){
@@ -621,6 +662,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       p.lives--; HUD.lives.textContent = p.lives;
       if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
       p.respawn();
+      respawnAllEnemies(world);
     }
   }
 

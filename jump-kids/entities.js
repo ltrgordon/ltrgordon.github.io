@@ -195,7 +195,8 @@ export function buildWorld(){
   const world = {
     player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
     enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
-    goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0
+    goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0,
+    initialEnemies: [] // Track initial enemy configurations for respawning
   };
   for (let y=0;y<H;y++){
     for (let x=0;x<W;x++){
@@ -215,6 +216,15 @@ export function buildWorld(){
             ent.y = groundTopAt(x,y) - ent.h;
           }
           world.enemies.push(ent);
+          
+          // Store initial enemy configuration for respawning
+          world.initialEnemies.push({
+            class: cfg.class,
+            x: ent.x,
+            y: ent.y,
+            params: cfg.params ? {...cfg.params} : null,
+            groundAdjusted: !(ent instanceof Bird) && !(ent instanceof Ghost)
+          });
         }
       }
       if (c==='C') world.coins.push({x:x*TILE+8,y:(y-1)*TILE+8,r:7,taken:false});
@@ -278,6 +288,44 @@ function addFireEnemiesToPits(world) {
       
       const fireEnemy = new FireEnemy(fireX, fireY);
       world.enemies.push(fireEnemy);
+      
+      // Store initial fire enemy configuration for respawning
+      world.initialEnemies.push({
+        class: 'FireEnemy',
+        x: fireX,
+        y: fireY,
+        params: null,
+        groundAdjusted: false
+      });
+    }
+  });
+}
+
+// Function to respawn all enemies to their initial positions and states
+export function respawnAllEnemies(world) {
+  // Clear current enemies
+  world.enemies = [];
+  
+  // Recreate all enemies from their initial configurations
+  world.initialEnemies.forEach(config => {
+    const Cls = ENEMY_CLASSES[config.class];
+    if (Cls) {
+      const enemy = new Cls(config.x, config.y);
+      
+      // Apply any stored parameters
+      if (config.params) {
+        Object.assign(enemy, config.params);
+        if ('speed' in config.params && 'vx' in enemy) {
+          enemy.vx = (enemy.vx < 0 ? -1 : 1) * enemy.speed;
+        }
+      }
+      
+      // Reset enemy state
+      enemy.remove = false;
+      if ('reactCD' in enemy) enemy.reactCD = 0;
+      if ('state' in enemy) enemy.state = 'idle';
+      
+      world.enemies.push(enemy);
     }
   });
 }
