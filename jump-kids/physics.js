@@ -216,10 +216,49 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   }
 
   if (!p.grounded && !p.onLadder) trySnapToGround(p);
-  const footTy = Math.floor(p.bottom/TILE);
-  const leftTx = Math.floor(p.left/TILE);
-  const rightTx = Math.floor((p.right-1)/TILE);
-  if (tileAt(leftTx, footTy)==='^' || tileAt(rightTx, footTy)==='^') damagePlayer(p, world, HUD);
+  
+  // Enhanced spike detection - check entire player hitbox
+  let hitSpikes = false;
+  const playerLeft = Math.floor(p.left/TILE);
+  const playerRight = Math.floor((p.right-1)/TILE);
+  const playerTop = Math.floor(p.top/TILE) + 1; // Convert to level coordinates
+  const playerBottom = Math.floor((p.bottom-1)/TILE) + 1;
+  
+  // Check all tiles the player is overlapping
+  for (let tx = playerLeft; tx <= playerRight; tx++) {
+    for (let ty = playerTop; ty <= playerBottom; ty++) {
+      if (tileAt(tx, ty) === '^') {
+        hitSpikes = true;
+        break;
+      }
+    }
+    if (hitSpikes) break;
+  }
+  
+  if (hitSpikes) {
+    console.log('Player hit spikes!');
+    
+    // Leo's special ability: immunity to spikes
+    if (p.charId === 'leo') {
+      console.log('Leo is immune to spikes!');
+      // Give Leo a little bounce to indicate he's safe
+      p.vy = -150;
+      playBeep(700, 0.1, 0.05); // Play immunity sound
+      HUD.msg.textContent = 'Leo is safe from spikes!';
+    } else {
+      // Spikes are deadly for other characters - instant death
+      p.lives--; 
+      HUD.lives.textContent = p.lives;
+      if (p.lives<=0){
+        HUD.msg.textContent="Game Over — press R or Jump to restart";
+        world.state='gameover';
+        playBeep(220,0.2,0.12);
+        return;
+      }
+      p.respawn();
+      return;
+    }
+  }
 
   if (prevVy < 0){
     for (const b of world.blocks){
@@ -326,6 +365,17 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       if (aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy = -0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.max(Math.abs(e.vx || e.speed || 100), 150); // Bounce enemy away
+          e.vy = -250; // Give enemy a bounce up
+          e.state = 'idle'; // Reset enemy state
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
+        
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
           p.vy = -0.6*JUMP_VEL;
@@ -366,6 +416,15 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       e.y += Math.sin(world.time*2 + e.phase)*20*dt;
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.max(Math.abs(e.vx || 100), 120); // Bounce enemy away
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
+        
         if (p.invuln<=0){
           if (p.big){ shrinkPlayer(p); p.invuln=1; }
           else { p.lives--; HUD.lives.textContent = p.lives; if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; } p.respawn(); }
@@ -380,6 +439,16 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.max(Math.abs(e.vx || 100), 120); // Bounce enemy away
+          e.vy = -200; // Give enemy a small bounce up
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
+        
         damagePlayer(p, world, HUD);
       }
     } else if (e instanceof Bird){
@@ -389,6 +458,15 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.max(Math.abs(e.vx || 100), 120); // Bounce enemy away
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
+        
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ p.vy = -0.55*JUMP_VEL; e.remove=true; }
         else damagePlayer(p, world, HUD);
@@ -407,6 +485,16 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       if (!e.remove && aabb(p,e)){
         if (p.rainbow>0){ e.state='crumbled'; e.h=6; e.reformT=0; p.vy=-0.55*JUMP_VEL; continue; }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.max(Math.abs(e.vx || 100), 120); // Bounce enemy away
+          e.vy = -200; // Give enemy a small bounce up
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
+        
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ p.vy = -0.55*JUMP_VEL; e.state='crumbled'; e.h=6; e.reformT=0; }
         else damagePlayer(p, world, HUD);
@@ -431,6 +519,16 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
           continue; 
         }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
+        
+        // Leo's special ability: immunity to enemies
+        if (p.charId === 'leo') {
+          // Enemies bounce back from Leo
+          const dir = p.x < e.x ? 1 : -1; // Direction away from Leo
+          e.vx = dir * Math.abs(e.vx || 100); // Bounce enemy away
+          e.vy = -200; // Give enemy a small bounce up
+          playBeep(600, 0.08, 0.05); // Play bounce sound
+          continue; // Leo takes no damage
+        }
         
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){
@@ -463,8 +561,47 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   }
 
   if (p.y > (H+2)*TILE){
+    console.log('Player fell into pit! Player Y:', p.y, 'Threshold:', (H+2)*TILE);
     if (ability && ability.onPit){
       ability.onPit(p, world);
+    } else if (p.charId === 'leo') {
+      // Leo's special ability: float out of pits
+      console.log('Leo floating out of pit');
+      
+      // Find a safe spot to teleport Leo to (search for solid ground ahead)
+      let safeX = p.x + 200; // Try 200 pixels ahead first
+      let foundSafe = false;
+      
+      // Search for the next solid ground platform within reasonable distance
+      for (let searchX = p.x + 100; searchX < p.x + 500; searchX += TILE) {
+        const tileX = Math.floor(searchX / TILE);
+        // Look for solid ground from top to bottom
+        for (let tileY = 0; tileY < H - 1; tileY++) {
+          const currentTile = tileAt(tileX, tileY);
+          const belowTile = tileAt(tileX, tileY + 1);
+          // Found air above solid ground - this is a good landing spot
+          if (currentTile === '_' && isSolid(belowTile)) {
+            safeX = tileX * TILE;
+            foundSafe = true;
+            break;
+          }
+        }
+        if (foundSafe) break;
+      }
+      
+      // If no safe spot found, just move Leo forward and up
+      if (!foundSafe) {
+        safeX = p.x + 300;
+      }
+      
+      // Teleport Leo to safety with floating animation
+      p.x = safeX;
+      p.y = 100; // High up in the air
+      p.vy = -100; // Gentle downward float
+      p.vx = 0; // Stop horizontal movement
+      
+      playBeep(800, 0.15, 0.1); // Play magical float sound
+      HUD.msg.textContent = 'Leo floats to safety!';
     } else {
       p.lives--; HUD.lives.textContent = p.lives;
       if (p.lives<=0){ HUD.msg.textContent="Game Over — press R or Jump to restart"; world.state='gameover'; playBeep(220,0.2,0.12); return; }
