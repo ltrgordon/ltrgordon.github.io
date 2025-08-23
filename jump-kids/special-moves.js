@@ -40,26 +40,31 @@ export function createSpecialMoves(utils){
   },
   joey: {
     s1(p){
-      p.invisible = 10;
+      p.invisible = 5; // Reduced from 10 to 5 seconds
     },
     s2(p){
-      if(p.action) return;
-      p.action = 'spin';
+      if(!p.grounded) return; // Must be grounded to start high jump
+      p.vy = -JUMP_VEL * 1.5; // Same height as Lucy's S1
+      p.grounded = false;
+      p.action = 'spinJump';
       p.lockControls = true;
-      p.vx = 320 * p.facing;
-      p.spinTime = 0.35;
+      p.spinRotation = 0;
     },
     update(p,dt){
       if(p.invisible>0) p.invisible = Math.max(0, p.invisible - dt);
-      if(p.action==='spin'){
-        p.spinTime -= dt;
-        if(p.spinTime<=0){ p.action=null; p.lockControls=false; }
+      if(p.action==='spinJump'){
+        p.spinRotation += dt * Math.PI * 4; // Fast spinning
+        if(p.grounded) { 
+          p.action=null; 
+          p.lockControls=false; 
+          p.spinRotation = 0;
+        }
       }
     },
     onEnemyCollide(p,e){
-      if(p.action==='spin'){
-        e.remove = true;
-        return true;
+      if(p.action==='spinJump'){
+        e.remove = true; // Defeat enemy on spinning contact
+        return true; // Joey takes no damage
       }
       return false;
     }
@@ -67,7 +72,6 @@ export function createSpecialMoves(utils){
   abe: {
     s1(p,world){
       if(!p.grounded) return;
-      console.log('Abe S1 triggered - starting smash');
       p.vy = -JUMP_VEL * 1.3; // Higher jump for dramatic effect
       p.grounded = false;
       p.action = 'smash';
@@ -85,14 +89,12 @@ export function createSpecialMoves(utils){
       if(p.action==='smash'){
         // When Abe reaches peak of jump, make him slam down fast
         if(p.vy > 0 && !p.smashDown) {
-          console.log('Abe starting slam down');
           p.smashDown = true;
           p.vy = 400; // Force fast downward velocity for dramatic slam
         }
         
         // When he hits the ground, create shockwave effect
         if(p.smashDown && p.grounded){
-          console.log('Abe smash impact!');
           // Create screen shake effect
           p.smashImpact = 0.3; // Duration of impact effect
           

@@ -178,6 +178,7 @@ function drawPlayer(x,y,p){
   if (p.facing<0) ctx.scale(-1,1);
   ctx.translate(0, -p.h/2);
   if (p.action==='flip') ctx.rotate(p.flip||0);
+  if (p.action==='spinJump') ctx.rotate(p.spinRotation||0);
   ctx.translate(-p.w/2, -p.h/2);
   if (p.rainbow>0){
     const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];

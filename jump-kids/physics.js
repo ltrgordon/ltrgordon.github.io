@@ -95,8 +95,8 @@ function activateMushroom(p){
   p.big = true;
   p.h = 56; p.w = 36;
   p.y -= (p.h - oldH);
-  p.mega = 15;
-  p.rainbow = 15;
+  p.mega = 7.5; // Reduced from 15 to 7.5 seconds
+  p.rainbow = 7.5; // Reduced from 15 to 7.5 seconds
 }
 function shrinkPlayer(p){
   if (!p.big) return;
@@ -311,7 +311,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
     if (it.type==='coin') it.vx*=0.98;
     if (rectOverlap(p.x,p.y,p.w,p.h,it.x,it.y,it.w,it.h)){
       if (it.type==='shamrock'){ growPlayer(p, HUD); playShamrock(); }
-      else if (it.type==='rainbow'){ p.rainbow = 30; HUD.msg.textContent='Invincible!'; }
+      else if (it.type==='rainbow'){ p.rainbow = 15; HUD.msg.textContent='Invincible!'; } // Reduced from 30 to 15 seconds
       else if (it.type==='mushroom'){ activateMushroom(p); HUD.msg.textContent='Mega!'; playShamrock(); }
       else if (it.type==='coin'){ p.coins++; HUD.coins.textContent=p.coins; playCoin(); }
       it.remove = true;
