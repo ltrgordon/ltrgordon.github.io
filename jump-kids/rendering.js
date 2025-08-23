@@ -213,6 +213,7 @@ function drawPlayer(x,y,p){
   ctx.translate(0, -p.h/2);
   if (p.action==='flip') ctx.rotate(p.flip||0);
   if (p.action==='spinJump') ctx.rotate(p.spinRotation||0);
+  if (p.action==='cartwheel') ctx.rotate(p.cartRot||0);
   ctx.translate(-p.w/2, -p.h/2);
   if (p.rainbow>0){
     const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
@@ -268,8 +269,13 @@ function drawPlayer(x,y,p){
     ctx.fillStyle=head; ctx.fillRect(-1,0,p.w+2,8);
     ctx.fillStyle=accent; ctx.fillRect(0,2,p.w,2);
   } else if(id==='abe'){
-    ctx.fillStyle=head; ctx.fillRect(-3,bodyTop+4,6,6); ctx.fillRect(p.w-3,bodyTop+4,6,6);
-    ctx.strokeStyle=accent; ctx.lineWidth=1; ctx.strokeRect(-3,bodyTop+4,6,6); ctx.strokeRect(p.w-3,bodyTop+4,6,6);
+    if(p.action==='punchRun'){
+      ctx.fillStyle=head; ctx.fillRect(p.w,bodyTop+4,6,6); ctx.fillRect(p.w+6,bodyTop+4,6,6);
+      ctx.strokeStyle=accent; ctx.lineWidth=1; ctx.strokeRect(p.w,bodyTop+4,6,6); ctx.strokeRect(p.w+6,bodyTop+4,6,6);
+    } else {
+      ctx.fillStyle=head; ctx.fillRect(-3,bodyTop+4,6,6); ctx.fillRect(p.w-3,bodyTop+4,6,6);
+      ctx.strokeStyle=accent; ctx.lineWidth=1; ctx.strokeRect(-3,bodyTop+4,6,6); ctx.strokeRect(p.w-3,bodyTop+4,6,6);
+    }
   } else if(id==='leo'){
     ctx.fillStyle=accent; ctx.fillRect(p.w/2-2, headR+1,4,3);
   } else {
@@ -278,14 +284,25 @@ function drawPlayer(x,y,p){
 
   // arms
   ctx.fillStyle = skin;
-  ctx.fillRect(-3,bodyTop+2,6,10);
-  ctx.fillRect(p.w-3,bodyTop+2,6,10);
+  if(id==='abe' && p.action==='punchRun'){
+    ctx.fillRect(p.w,bodyTop+2,6,10);
+    ctx.fillRect(p.w+6,bodyTop+2,6,10);
+  } else {
+    ctx.fillRect(-3,bodyTop+2,6,10);
+    ctx.fillRect(p.w-3,bodyTop+2,6,10);
+  }
 
   // legs with simple step animation
   const legY = p.h-8;
   ctx.fillStyle = '#3b3b3b';
   ctx.fillRect(2,legY+step,6,8);
   ctx.fillRect(p.w-8,legY-step,6,8);
+
+  if(p.action==='bubble'){
+    ctx.strokeStyle='rgba(128,216,255,0.8)';
+    ctx.lineWidth=2;
+    ctx.beginPath(); ellipsePath(p.w/2, p.h/2, p.w, p.h, ctx); ctx.stroke();
+  }
 
   ctx.restore();
 }
