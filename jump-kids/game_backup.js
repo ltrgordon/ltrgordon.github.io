@@ -1,4 +1,17 @@
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+// ======= Core constants & helpers =======
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
+=======
+import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs } from './entities.js';
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
 import { createSpecialMoves } from './special-moves.js';
 import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
 import { update as updatePhysics } from './physics.js';
@@ -6,6 +19,7 @@ import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rende
 
 const LEVEL_PATH = 'assets/levels/';
 
+<<<<<<< HEAD
 // Check if we're running from file:// protocol
 const isFileProtocol = window.location.protocol === 'file:';
 
@@ -27,6 +41,15 @@ try{
 }
 
 // Canvas and HUD setup ----------------------------------------------------
+>>>>>>> Stashed changes
+=======
+try{
+  const r = await fetch('assets/enemies.json', {cache:'no-store'});
+  if (r.ok){ const cfg = await r.json(); setEnemyConfigs(cfg); }
+}catch{}
+
+// Canvas and HUD setup ----------------------------------------------------
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 initRenderer(canvas, ctx);
@@ -107,10 +130,30 @@ function updateCharSelection(id, previewOnly=false){
   drawPortrait(id);
   if (charPreviewWrap){
     charPreviewWrap.classList.add('visible');
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+    // Also ensure the canvas is visible by setting opacity directly as fallback
+=======
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
+    if (charPreview) charPreview.style.opacity = '1';
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
     if (charPreview) {
       charPreview.style.opacity = '1';
       charPreview.style.display = 'block';
     }
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
   }
 }
 if (charGrid){
@@ -197,6 +240,22 @@ function buildLevelGrid(entries){
 async function startFromMenu(){
   unlockAudio();
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+  try{
+    const resp = await fetch(LEVEL_PATH + levelFile);
+    if (resp.ok){
+      const data = await resp.json();
+      setBackdrop(data.backdrop || 'hills');
+      const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+<<<<<<< HEAD
+      if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; }
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
   
   // If running from file protocol, use built-in level data
   if (isFileProtocol) {
@@ -207,6 +266,32 @@ async function startFromMenu(){
       setLevel(newLevel); 
       SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
       setSpecialMoves(SPECIAL_MOVES); 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+      if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
+    }
+  } else {
+    try{
+      const resp = await fetch(LEVEL_PATH + levelFile);
+      if (resp.ok){
+        const data = await resp.json();
+        setBackdrop(data.backdrop || 'hills');
+        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+        if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
+      }
+    }catch{
+      // Fallback to built-in level data
+      console.log('Failed to load level file, using built-in data');
+      setBackdrop('hills');
+      const newLevel = buildLevelFromArrays(BASE, EXT);
+      if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
+>>>>>>> Stashed changes
+    }
+=======
+=======
+>>>>>>> Stashed changes
     }
   } else {
     try{
@@ -224,6 +309,10 @@ async function startFromMenu(){
       const newLevel = buildLevelFromArrays(BASE, EXT);
       if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
   }
   
   resetGame();
@@ -269,6 +358,31 @@ requestAnimationFrame(loop);
 // Initial DOM readiness ---------------------------------------------------
 async function initMenu(){
   await discoverLevels();
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+  // Ensure we select a character and show portrait immediately
+=======
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
+  updateCharSelection(selectedChar || 'lucy', false);
+  try{
+    const resp = await fetch(LEVEL_PATH + 'level1.json');
+    if (resp.ok){
+      const data = await resp.json();
+      const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+      if (newLevel && newLevel.length){
+        setBackdrop(data.backdrop || 'hills');
+        setLevel(newLevel);
+        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+        setSpecialMoves(SPECIAL_MOVES);
+      }
+    }
+  }catch{}
+  if (menuEl) menuEl.classList.remove('hidden');
+<<<<<<< HEAD
+});
+=======
   
   // Show menu first to ensure canvas is properly initialized
   if (menuEl) menuEl.classList.remove('hidden');
@@ -286,6 +400,44 @@ async function initMenu(){
   }
   
   updateCharSelection(selectedChar || 'lucy', false);
+=======
+  
+  // Show menu first to ensure canvas is properly initialized
+  if (menuEl) menuEl.classList.remove('hidden');
+  
+  // Small delay to ensure DOM is ready for canvas operations
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Ensure character preview canvas is properly visible
+  if (charPreviewWrap) {
+    charPreviewWrap.classList.add('visible');
+  }
+  if (charPreview) {
+    charPreview.style.opacity = '1';
+    charPreview.style.display = 'block';
+  }
+  
+  updateCharSelection(selectedChar || 'lucy', false);
+>>>>>>> Stashed changes
+=======
+  
+  // Show menu first to ensure canvas is properly initialized
+  if (menuEl) menuEl.classList.remove('hidden');
+  
+  // Small delay to ensure DOM is ready for canvas operations
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Ensure character preview canvas is properly visible
+  if (charPreviewWrap) {
+    charPreviewWrap.classList.add('visible');
+  }
+  if (charPreview) {
+    charPreview.style.opacity = '1';
+    charPreview.style.display = 'block';
+  }
+  
+  updateCharSelection(selectedChar || 'lucy', false);
+>>>>>>> Stashed changes
   
   // Initialize level data - use built-in data if file protocol
   if (isFileProtocol) {
@@ -321,6 +473,8 @@ async function initMenu(){
       }
     }
   }
+=======
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")
 }
 if (document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', initMenu);
@@ -330,3 +484,7 @@ if (document.readyState === 'loading'){
 
 // Fit canvas to device pixel ratio
 addEventListener('resize', fitCanvas); fitCanvas();
+<<<<<<< HEAD
+>>>>>>> Stashed changes
+=======
+>>>>>>> parent of e60f3a1 (Revert "Merge branch 'pr16-edit'")

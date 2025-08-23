@@ -8,6 +8,9 @@ const ctx = canvas.getContext('2d');
 const paletteEl = document.getElementById('palette');
 const backdropSel = document.getElementById('backdropSelect');
 
+// Check if we're running from file:// protocol
+const isFileProtocol = window.location.protocol === 'file:';
+
 const tiles = [
   {ch:'_', label:'Erase', color:'#eef'},
   {ch:'#', label:'Ground', color:'#8b5a2b'},
@@ -100,7 +103,17 @@ document.getElementById('backBtn').onclick=()=>{ window.location.href='index.htm
 async function loadList(){
   const sel=document.getElementById('levelLoad');
   let entries=[];
-  try{ const r=await fetch('assets/levels/levels.json'); if(r.ok){ entries=await r.json(); } }catch{}
+  
+  if (isFileProtocol) {
+    // Default levels for file protocol
+    entries = [
+      {file: 'level1.json', name: '1-1'},
+      {file: 'level2.json', name: '1-2'}
+    ];
+  } else {
+    try{ const r=await fetch('assets/levels/levels.json'); if(r.ok){ entries=await r.json(); } }catch{}
+  }
+  
   sel.innerHTML='';
   entries.forEach(ent=>{ const opt=document.createElement('option'); opt.value=ent.file; opt.textContent=ent.name||ent.file; sel.appendChild(opt); });
 }
@@ -109,6 +122,13 @@ loadList();
 document.getElementById('loadBtn').onclick=async ()=>{
   const file=document.getElementById('levelLoad').value;
   if(!file) return;
+  
+  if (isFileProtocol) {
+    console.log('File protocol detected - level loading limited in editor');
+    alert('Level loading is limited when running from file system. Use a local server for full functionality.');
+    return;
+  }
+  
   try{ const r=await fetch('assets/levels/'+file); if(r.ok){ const data=await r.json(); loadLevel(data); backdropSel.value=data.backdrop||'hills'; } }catch{}
 };
 
