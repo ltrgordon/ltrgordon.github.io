@@ -49,8 +49,8 @@
   .char-name{ font-weight:900; font-size:22px; }
   /* removed .char-bio */
   .char-preview-wrap{ border-radius:16px; border:2px solid rgba(0,0,0,0.12); background:linear-gradient(180deg,#fff,#eef3f8); display:flex; align-items:center; justify-content:center; }
-  #charPreview{ width:100%; height:auto; display:block; opacity:0; transition: opacity .15s ease; }
-  /* Show portrait when visible class is present or on hover/focus */
+  #charPreview{ width:100%; height:auto; display:block; opacity:1; transition: opacity .15s ease; }
+  /* Ensure character preview is always visible in menu */
   .char-preview-wrap.visible #charPreview,
   #charGrid:hover ~ .char-preview-wrap #charPreview,
   #charGrid:focus-within ~ .char-preview-wrap #charPreview{ opacity:1; }

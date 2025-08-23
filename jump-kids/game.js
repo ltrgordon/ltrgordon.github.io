@@ -1,4 +1,36 @@
+<<<<<<< Updated upstream
 // ======= Core constants & helpers =======
+=======
+import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
+import { createSpecialMoves } from './special-moves.js';
+import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
+import { update as updatePhysics } from './physics.js';
+import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rendering.js';
+
+const LEVEL_PATH = 'assets/levels/';
+
+// Check if we're running from file:// protocol
+const isFileProtocol = window.location.protocol === 'file:';
+
+// Show file mode indicator if running from file system
+if (isFileProtocol) {
+  const fileModeIndicator = document.getElementById('fileMode');
+  if (fileModeIndicator) {
+    fileModeIndicator.style.display = 'block';
+  }
+}
+
+try{
+  const r = await fetch('assets/enemies.json', {cache:'no-store'});
+  if (r.ok){ const cfg = await r.json(); setEnemyConfigs(cfg); }
+}catch{
+  if (isFileProtocol) {
+    console.log('Running from file system - using default enemy config');
+  }
+}
+
+// Canvas and HUD setup ----------------------------------------------------
+>>>>>>> Stashed changes
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 // Menu elements
@@ -72,7 +104,9 @@ const COL = { ground:'#7c4a1f', grass:'#49a020', brick:'#b85a35', coin:'#f2c14e'
 
 // ===== Character portraits (menu) =====
 function drawPortrait(id){
-  if (!charPrevCtx || !charPreview) return;
+  if (!charPrevCtx || !charPreview) {
+    return;
+  }
   const W = charPreview.width, H = charPreview.height;
   charPrevCtx.clearRect(0,0,W,H);
   const cdef = CHARACTERS.find(c=>c.id===id) || CHARACTERS[0];
@@ -134,8 +168,15 @@ function updateCharSelection(id, previewOnly=false){
   // Always show portrait when a character is selected/hovered
   if (charPreviewWrap) {
     charPreviewWrap.classList.add('visible');
+<<<<<<< Updated upstream
     // Also ensure the canvas is visible by setting opacity directly as fallback
     if (charPreview) charPreview.style.opacity = '1';
+=======
+    if (charPreview) {
+      charPreview.style.opacity = '1';
+      charPreview.style.display = 'block';
+    }
+>>>>>>> Stashed changes
   }
 }
 if (charGrid){
@@ -376,6 +417,26 @@ let world = buildWorld();
 async function discoverLevels(){
   // Try to load a manifest first
   let entries = null;
+  
+  // If running from file:// protocol, use fallback data
+  if (isFileProtocol) {
+    console.log('Running from file system - using default levels');
+    const list = [
+      {file: 'level1.json', name: '1-1'},
+      {file: 'level2.json', name: '1-2'}
+    ];
+    levelSelect.innerHTML = '';
+    for (const ent of list){ 
+      const opt=document.createElement('option'); 
+      opt.value=ent.file; 
+      opt.textContent=ent.name; 
+      levelSelect.appendChild(opt); 
+    }
+    buildLevelGrid(list);
+    selectedLevelFile = 'level1.json';
+    return;
+  }
+  
   try{
     const r = await fetch('levels.json', {cache:'no-store'});
     if (r.ok){ entries = await r.json(); }
@@ -425,14 +486,44 @@ function buildLevelGrid(entries){
 async function startFromMenu(){
   unlockAudio();
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
+<<<<<<< Updated upstream
   try{
     const resp = await fetch(levelFile);
     if (resp.ok){
       const data = await resp.json();
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
       if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; }
+=======
+  
+  // If running from file protocol, use built-in level data
+  if (isFileProtocol) {
+    console.log('Using built-in level data');
+    setBackdrop('hills');
+    const newLevel = buildLevelFromArrays(BASE, EXT);
+    if (newLevel && newLevel.length){ 
+      setLevel(newLevel); 
+      SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
+      setSpecialMoves(SPECIAL_MOVES); 
     }
-  }catch{}
+  } else {
+    try{
+      const resp = await fetch(LEVEL_PATH + levelFile);
+      if (resp.ok){
+        const data = await resp.json();
+        setBackdrop(data.backdrop || 'hills');
+        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+        if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
+      }
+    }catch{
+      // Fallback to built-in level data
+      console.log('Failed to load level file, using built-in data');
+      setBackdrop('hills');
+      const newLevel = buildLevelFromArrays(BASE, EXT);
+      if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
+>>>>>>> Stashed changes
+    }
+  }
+  
   resetGame();
   world.player.charId = selectedChar;
   world.state = 'play';
@@ -1484,6 +1575,7 @@ function resetGame(){
 // Ensure everything is initialized when DOM is ready
 document.addEventListener('DOMContentLoaded', async ()=>{
   await discoverLevels();
+<<<<<<< Updated upstream
   // Ensure we select a character and show portrait immediately
   updateCharSelection(selectedChar || 'lucy', false);
   try{
@@ -1493,3 +1585,66 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // Show menu by default
   if (menuEl) menuEl.classList.remove('hidden');
 });
+=======
+  
+  // Show menu first to ensure canvas is properly initialized
+  if (menuEl) menuEl.classList.remove('hidden');
+  
+  // Small delay to ensure DOM is ready for canvas operations
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Ensure character preview canvas is properly visible
+  if (charPreviewWrap) {
+    charPreviewWrap.classList.add('visible');
+  }
+  if (charPreview) {
+    charPreview.style.opacity = '1';
+    charPreview.style.display = 'block';
+  }
+  
+  updateCharSelection(selectedChar || 'lucy', false);
+  
+  // Initialize level data - use built-in data if file protocol
+  if (isFileProtocol) {
+    console.log('Initializing with built-in level data');
+    setBackdrop('hills');
+    const newLevel = buildLevelFromArrays(BASE, EXT);
+    if (newLevel && newLevel.length){
+      setLevel(newLevel);
+      SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+      setSpecialMoves(SPECIAL_MOVES);
+    }
+  } else {
+    try{
+      const resp = await fetch(LEVEL_PATH + 'level1.json');
+      if (resp.ok){
+        const data = await resp.json();
+        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+        if (newLevel && newLevel.length){
+          setBackdrop(data.backdrop || 'hills');
+          setLevel(newLevel);
+          SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+          setSpecialMoves(SPECIAL_MOVES);
+        }
+      }
+    }catch{
+      // Fallback to built-in data
+      setBackdrop('hills');
+      const newLevel = buildLevelFromArrays(BASE, EXT);
+      if (newLevel && newLevel.length){
+        setLevel(newLevel);
+        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
+        setSpecialMoves(SPECIAL_MOVES);
+      }
+    }
+  }
+}
+if (document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initMenu);
+} else {
+  initMenu();
+}
+
+// Fit canvas to device pixel ratio
+addEventListener('resize', fitCanvas); fitCanvas();
+>>>>>>> Stashed changes
