@@ -556,6 +556,45 @@ export function draw(world){
     else drawGoomba(e.x - camX, e.y);
   }
   drawPlayer(world.player.x - camX, world.player.y, world.player);
+  
+  // Draw Abe's smash impact effect in world coordinates
+  if(world.player.smashImpact > 0 && world.player.charId === 'abe') {
+    const p = world.player;
+    const intensity = p.smashImpact / 0.3; // Normalize to 0-1
+    const radius = 80 * (1 - intensity); // Expanding circle
+    const centerX = p.x + p.w/2 - camX;
+    const centerY = p.y + p.h;
+    
+    ctx.save();
+    
+    // Draw shockwave rings
+    ctx.strokeStyle = `rgba(255, 100, 0, ${intensity * 0.8})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI*2);
+    ctx.stroke();
+    
+    ctx.strokeStyle = `rgba(255, 150, 50, ${intensity * 0.6})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 20, 0, Math.PI*2);
+    ctx.stroke();
+    
+    // Ground crack effects
+    ctx.strokeStyle = `rgba(139, 69, 19, ${intensity})`;
+    ctx.lineWidth = 3;
+    for(let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const len = 30 + Math.random() * 20;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(angle) * len, centerY + Math.sin(angle) * len * 0.3);
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+  }
+  
   if (world.goal) drawGoal(world.goal.x - camX, world.goal.y, world.goal.poleH);
   if (world.checkpoint) drawCheckpoint(world.checkpoint.x - camX, world.checkpoint.y, world.checkpoint.activated, world.checkpoint.poleH);
   if (world.state === 'win') drawVictoryOverlay(world);
