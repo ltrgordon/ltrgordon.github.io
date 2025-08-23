@@ -514,40 +514,36 @@ function drawPauseOverlay(){
 // Main draw ---------------------------------------------------------------
 export function draw(world){
   const camX = world.camX|0;
+  const camY = -80; // Vertical offset to show more of the bottom including ground
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackdrop(camX);
   
   
-  let tilesDrawn = 0;
-  let spikesFound = 0;
   for (let y=0;y<H;y++){
     for (let x=0; x<W; x++){
       const c = LEVEL[y][x];
-      const sx = x*TILE - camX, sy = (y-1)*TILE;
-      if (c==='#') { drawGround(sx,sy); tilesDrawn++; }
-      else if (c==='=') { drawBrick(sx,sy); tilesDrawn++; }
-      else if (c==='T') { drawTrapdoor(sx,sy); tilesDrawn++; }
-      else if (c==='L') { drawLadder(sx,sy); tilesDrawn++; }
+      const sx = x*TILE - camX, sy = (y-1)*TILE - camY;
+      if (c==='#') { drawGround(sx,sy); }
+      else if (c==='=') { drawBrick(sx,sy); }
+      else if (c==='T') { drawTrapdoor(sx,sy); }
+      else if (c==='L') { drawLadder(sx,sy); }
       else if (c==='^') { 
         drawSpikes(sx,sy); 
-        tilesDrawn++; 
-        spikesFound++;
       }
     }
   }
-  console.log('Tiles drawn:', tilesDrawn);
-  for (const m of world.platforms){ drawPlatform(m.x - camX, m.y, m.w); }
-  for (const b of world.blocks){ const bx = b.x - camX; const by = b.y - b.bounce*10; drawQBlock(bx,by); }
-  for (const ch of world.chests){ drawChest(ch.x - camX, ch.y); }
-  for (const burst of world.chestBursts){ for (const pc of burst.pieces){ drawChestPiece(pc.x - camX, pc.y, pc.w, pc.h, pc.color); } }
+  for (const m of world.platforms){ drawPlatform(m.x - camX, m.y - camY, m.w); }
+  for (const b of world.blocks){ const bx = b.x - camX; const by = b.y - b.bounce*10 - camY; drawQBlock(bx,by); }
+  for (const ch of world.chests){ drawChest(ch.x - camX, ch.y - camY); }
+  for (const burst of world.chestBursts){ for (const pc of burst.pieces){ drawChestPiece(pc.x - camX, pc.y - camY, pc.w, pc.h, pc.color); } }
   const t = performance.now()/1000;
-  for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2, c.r); }
-  for (const pc of world.popCoins){ drawCoin(pc.x - camX, pc.y, 7); }
+  for (const c of world.coins){ if (c.taken) continue; drawCoin(c.x - camX, c.y + Math.sin(t*6 + c.x*0.02)*2 - camY, c.r); }
+  for (const pc of world.popCoins){ drawCoin(pc.x - camX, pc.y - camY, 7); }
   for (const it of world.items){
-    if (it.type==='shamrock') drawShamrock(it.x - camX, it.y);
-    else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8, 7);
-    else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y);
-    else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y);
+    if (it.type==='shamrock') drawShamrock(it.x - camX, it.y - camY);
+    else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8 - camY, 7);
+    else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y - camY);
+    else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y - camY);
   }
   for (const e of world.enemies){
     if (e.remove) continue;
@@ -571,7 +567,7 @@ export function draw(world){
 export function fitCanvas(){
   const dpr=Math.min(2, devicePixelRatio||1);
   const cssW = canvas.clientWidth || canvas.offsetWidth || (canvas.width/dpr) || 960;
-  const cssH = canvas.clientHeight || canvas.offsetHeight || (canvas.height/dpr) || 540;
+  const cssH = canvas.clientHeight || canvas.offsetHeight || (canvas.height/dpr) || 800;
   canvas.width = Math.floor(cssW * dpr);
   canvas.height = Math.floor(cssH * dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
