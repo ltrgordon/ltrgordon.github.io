@@ -1,9 +1,0 @@
-{
-  "E": { "class": "Goomba", "params": { "speed": 65 } },
-  "H": { "class": "Hellmonk", "params": { "speed": 55, "chargeSpeed": 210, "jump": -520 } },
-  "Z": { "class": "Zakko", "params": { "speed": 30 } },
-  "O": { "class": "Ghost", "params": { "vx": -40 } },
-  "F": { "class": "FireEnemy", "params": { "vx": -80 } },
-  "S": { "class": "Bird", "params": { "vx": 80, "range": 80 } },
-  "X": { "class": "Skeleton", "params": { "speed": 50 } }
-}
