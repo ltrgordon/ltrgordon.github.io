@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 // ======= Core constants & helpers =======
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
@@ -173,9 +176,12 @@ function updateCharSelection(id, previewOnly=false){
     charPreviewWrap.classList.add('visible');
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Also ensure the canvas is visible by setting opacity directly as fallback
     if (charPreview) charPreview.style.opacity = '1';
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     if (charPreview) {
@@ -183,6 +189,9 @@ function updateCharSelection(id, previewOnly=false){
       charPreview.style.display = 'block';
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -497,6 +506,7 @@ async function startFromMenu(){
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   try{
     const resp = await fetch(levelFile);
     if (resp.ok){
@@ -504,6 +514,8 @@ async function startFromMenu(){
       const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
       if (newLevel && newLevel.length){ LEVEL = newLevel; H = LEVEL.length; W = LEVEL[0].length; }
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   
@@ -516,6 +528,7 @@ async function startFromMenu(){
       setLevel(newLevel); 
       SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
       setSpecialMoves(SPECIAL_MOVES); 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     }
   } else {
@@ -536,6 +549,8 @@ async function startFromMenu(){
 >>>>>>> Stashed changes
     }
 =======
+=======
+>>>>>>> Stashed changes
     }
   } else {
     try{
@@ -553,6 +568,9 @@ async function startFromMenu(){
       const newLevel = buildLevelFromArrays(BASE, EXT);
       if (newLevel && newLevel.length){ setLevel(newLevel); SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); setSpecialMoves(SPECIAL_MOVES); }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   }
   
@@ -1609,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await discoverLevels();
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   // Ensure we select a character and show portrait immediately
   updateCharSelection(selectedChar || 'lucy', false);
   try{
@@ -1636,6 +1655,25 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   }
   
   updateCharSelection(selectedChar || 'lucy', false);
+=======
+  
+  // Show menu first to ensure canvas is properly initialized
+  if (menuEl) menuEl.classList.remove('hidden');
+  
+  // Small delay to ensure DOM is ready for canvas operations
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Ensure character preview canvas is properly visible
+  if (charPreviewWrap) {
+    charPreviewWrap.classList.add('visible');
+  }
+  if (charPreview) {
+    charPreview.style.opacity = '1';
+    charPreview.style.display = 'block';
+  }
+  
+  updateCharSelection(selectedChar || 'lucy', false);
+>>>>>>> Stashed changes
 =======
   
   // Show menu first to ensure canvas is properly initialized
