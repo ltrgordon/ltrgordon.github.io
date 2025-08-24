@@ -9,59 +9,189 @@ html,body{
   display:flex;
 }
 #leftPanel,#rightPanel{
-  width:180px;
+  width:220px;
   background:#f8f8f8;
   padding:10px;
   box-sizing:border-box;
   border-right:1px solid #ccc;
+  overflow-y:auto;
 }
-#rightPanel{border-left:1px solid #ccc;border-right:none;display:flex;flex-direction:column;}
+#rightPanel{
+  border-left:1px solid #ccc;
+  border-right:none;
+  display:flex;
+  flex-direction:column;
+}
 #editorArea{
   flex:1;
   display:flex;
   justify-content:center;
   align-items:center;
   background:#d0e4ff;
+  overflow:auto;
 }
 #grid{
   background:#fff;
   border:2px solid #555;
   image-rendering:pixelated;
 }
+
+/* Layer controls */
+#layerControls{
+  margin-top:20px;
+  padding-top:15px;
+  border-top:1px solid #ddd;
+}
+#layerControls h3{
+  margin:0 0 10px 0;
+  font-size:14px;
+  font-weight:bold;
+}
+.layer-buttons{
+  display:flex;
+  gap:4px;
+  margin-bottom:8px;
+}
+.layer-btn{
+  flex:1;
+  padding:8px 4px;
+  border:1px solid #ccc;
+  background:#fff;
+  cursor:pointer;
+  font-size:12px;
+  border-radius:4px;
+}
+.layer-btn.active{
+  background:#4caf50;
+  color:#fff;
+  border-color:#4caf50;
+}
+.help-text{
+  font-size:11px;
+  color:#666;
+  margin:0;
+  font-style:italic;
+}
+
 .tabs{
   display:flex;
   flex-direction:column;
   gap:4px;
+  margin-bottom:15px;
 }
 .tab{
-  padding:6px;
+  padding:8px;
   background:#ddd;
   border:none;
   cursor:pointer;
   font-weight:bold;
+  border-radius:4px;
 }
-.tab.active{background:#bbb;}
+.tab.active{background:#4caf50; color:#fff;}
+
 #palette{
-  margin-top:10px;
   display:flex;
   flex-wrap:wrap;
   gap:6px;
   flex:1;
+  margin-bottom:15px;
+  max-height:400px;
+  overflow-y:auto;
 }
+
 .item{
-  width:40px;
-  height:40px;
-  border:1px solid #888;
+  width:45px;
+  height:55px;
+  border:2px solid #888;
   display:flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  font-size:24px;
+  font-size:18px;
+  font-weight:bold;
   user-select:none;
+  border-radius:4px;
+  transition:all 0.2s ease;
+  position:relative;
+  padding:2px;
+  box-sizing:border-box;
 }
-.item.selected{outline:3px solid #4caf50;}
+.item:hover{
+  transform:scale(1.05);
+  border-color:#4caf50;
+}
+.item.selected{
+  outline:3px solid #4caf50;
+  transform:scale(1.1);
+}
+
+/* Item label styling */
+.item-label {
+  font-size: 9px !important;
+  font-family: system-ui !important;
+  font-weight: normal !important;
+  color: #333 !important;
+  text-align: center !important;
+  margin-top: 2px !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  width: 100% !important;
+}
+
+/* Eraser tool styling */
+.item[title*="Eraser"] {
+  border-style: dashed !important;
+  font-family: system-ui !important;
+  font-size: 16px !important;
+}
+
+/* Canvas labels */
+.canvas-label {
+  position: absolute;
+  background: rgba(255,255,255,0.9);
+  color: #000;
+  font-size: 8px;
+  font-weight: bold;
+  padding: 1px 2px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
 #saveLevel{
-  margin-top:10px;
-  padding:8px;
+  padding:12px;
+  background:#4caf50;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  font-weight:bold;
+  cursor:pointer;
+  margin-bottom:15px;
 }
-#levelName{margin-top:8px;font-weight:bold;}
+#saveLevel:hover{
+  background:#45a049;
+}
+
+#levelName{
+  margin-top:10px;
+  font-weight:bold;
+  color:#333;
+}
+
+#helpText{
+  margin-top:15px;
+  padding-top:15px;
+  border-top:1px solid #ddd;
+}
+#helpText h4{
+  margin:0 0 8px 0;
+  font-size:14px;
+}
+#helpText p{
+  margin:4px 0;
+  font-size:12px;
+  color:#666;
+}
+

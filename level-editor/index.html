@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jump Kids Standalone Level Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="container">
+    <header>
+      <h1>Jump Kids Level Editor</h1>
+      <div class="header-controls">
+        <button id="newLevel">New Level</button>
+        <button id="loadLevel">Load Level</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none" />
+        <button id="saveLevel">Save Level</button>
+        <span id="levelName">Untitled Level</span>
+      </div>
+    </header>
+    
+    <div id="main">
+      <div id="leftPanel">
+        <div id="layerControls">
+          <h3>Layer Controls</h3>
+          <div class="layer-buttons">
+            <button id="baseLayerBtn" class="layer-btn active">Base Layer</button>
+            <button id="extLayerBtn" class="layer-btn">Ext Layer</button>
+          </div>
+          <p class="help-text">Press Tab to switch layers</p>
+        </div>
+        
+        <div id="dimensions">
+          <h3>Level Size</h3>
+          <label>Width: <input type="number" id="widthInput" value="96" min="20" max="200"></label>
+          <label>Height: <input type="number" id="heightInput" value="22" min="10" max="50"></label>
+          <button id="resizeLevel">Resize</button>
+        </div>
+        
+        <div id="backdrop">
+          <h3>Backdrop</h3>
+          <select id="backdropSelect">
+            <option value="hills">Hills</option>
+            <option value="cave">Cave</option>
+            <option value="space">Space</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="editorArea">
+        <div id="canvasContainer">
+          <canvas id="grid"></canvas>
+        </div>
+      </div>
+      
+      <div id="rightPanel">
+        <div class="tabs">
+          <button class="tab active" data-tab="tiles">Tiles & Platforms</button>
+          <button class="tab" data-tab="collectibles">Collectibles</button>
+          <button class="tab" data-tab="enemies">Enemies</button>
+          <button class="tab" data-tab="goals">Goals & Spawn</button>
+        </div>
+        
+        <div id="palette"></div>
+        
+        <div id="helpText">
+          <h4>Quick Help</h4>
+          <p><strong>Click</strong> to place tiles</p>
+          <p><strong>Right-click</strong> to erase</p>
+          <p><strong>Tab</strong> to switch layers</p>
+          <p><strong>Base Layer:</strong> Main level geometry</p>
+          <p><strong>Ext Layer:</strong> Extended level content</p>
+          
+          <h4>Tile Legend</h4>
+          <div class="legend">
+            <div><span class="symbol">#</span> Ground Block</div>
+            <div><span class="symbol">=</span> Platform</div>
+            <div><span class="symbol">C</span> Coin</div>
+            <div><span class="symbol">R</span> Shamrock</div>
+            <div><span class="symbol">P</span> Player Spawn</div>
+            <div><span class="symbol">G</span> Goal Flag</div>
+            <div><span class="symbol">K</span> Checkpoint</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="editor.js"></script>
+</body>
+</html>
