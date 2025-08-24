@@ -201,6 +201,27 @@ function drawMushroom(x,y){
   }
   ctx.restore();
 }
+
+function drawTrampoline(x,y){
+  ctx.save();
+  ctx.fillStyle = '#8e24aa';
+  ctx.fillRect(x,y+6,32,6);
+  ctx.fillStyle = '#ba68c8';
+  ctx.fillRect(x+4,y,24,6);
+  ctx.restore();
+}
+
+function drawGiantSunflower(x,y){
+  ctx.save();
+  ctx.translate(x+16,y+16);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(-3,0,6,16);
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath(); ellipsePath(0,-8,16,16); ctx.fill();
+  ctx.fillStyle = '#ff9800';
+  ctx.beginPath(); ellipsePath(0,-8,8,8); ctx.fill();
+  ctx.restore();
+}
 function drawPlatform(x,y,w){
   ctx.save(); ctx.fillStyle='#888'; ctx.fillRect(x,y,w,8); ctx.restore();
 }
@@ -486,6 +507,21 @@ function drawBird(x,y){
   ctx.restore();
 }
 
+function drawKangaroo(x,y,e){
+  const t = performance.now()/1000;
+  const bob = Math.sin(t*6 + x*0.05)*2;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.fillStyle = '#d2b48c';
+  ctx.fillRect(4,6,16,20);
+  ctx.fillRect(2,20,8,6);
+  ctx.fillRect(14,20,8,6);
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(-2,10,6,8);
+  ctx.fillRect(18,10,6,8);
+  ctx.restore();
+}
+
 function drawSunflower(x,y){
   const t = performance.now()/1000;
   const sway = Math.sin(t*2 + x*0.1)*2;
@@ -654,6 +690,8 @@ export function draw(world){
     else if (it.type==='coin') drawCoin(it.x - camX + 8, it.y + 8 - camY, 7);
     else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y - camY);
     else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y - camY);
+    else if (it.type==='trampoline') drawTrampoline(it.x - camX, it.y - camY);
+    else if (it.type==='giantSunflower') drawGiantSunflower(it.x - camX, it.y - camY);
   }
   for (const e of world.enemies){
     if (e.remove) continue;
@@ -663,6 +701,7 @@ export function draw(world){
     else if (e instanceof FireEnemy) drawFireEnemy(e.x - camX, e.y);
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
     else if (e instanceof Butterfly) drawButterfly(e.x - camX, e.y);
+    else if (e instanceof Kangaroo) drawKangaroo(e.x - camX, e.y, e);
     else if (e instanceof Sunflower) drawSunflower(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
     else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
