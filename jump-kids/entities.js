@@ -173,23 +173,6 @@ export class Butterfly extends Entity{
   }
 }
 
-// Kangaroo enemy: jumps toward the player with boxing gloves
-export class Kangaroo extends Entity{
-  constructor(x,y){
-    super(x,y,26,28);
-    this.jumpVel = -620;
-    this.jumpSpeed = 160;
-    this.cooldown = 0;
-  }
-}
-
-// Trampoline enemy: stationary bounce pad
-export class Trampoline extends Entity{
-  constructor(x,y){
-    super(x,y,32,12);
-  }
-}
-
 // Skeleton enemy: crumbles when stomped, then reforms
 export class Skeleton extends Entity{
   constructor(x,y){
@@ -235,15 +218,13 @@ export let ENEMY_CONFIGS = {
   'Y': { class: 'GiantMonkey' },
   'W': { class: 'Sunflower' },
   'D': { class: 'Butterfly' },
-  'J': { class: 'Kangaroo' },
-  'Q': { class: 'Trampoline' },
 };
 
 export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, Kangaroo, Trampoline };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){

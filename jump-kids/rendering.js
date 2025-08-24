@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, Kangaroo, Trampoline } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -518,36 +518,6 @@ function drawButterfly(x,y){
   ctx.restore();
 }
 
-function drawKangaroo(x,y){
-  const t = performance.now()/1000;
-  const bob = Math.sin(t*6 + x*0.1)*2;
-  ctx.save();
-  ctx.translate(x, y + bob);
-  ctx.fillStyle = '#8b4513'; // brown fur
-  ctx.fillRect(4,0,18,20); // body
-  ctx.fillRect(0,8,4,14); // tail
-  ctx.fillRect(22,8,4,14); // front
-  ctx.fillStyle = '#ff0000'; // gloves
-  ctx.fillRect(-4,10,8,8);
-  ctx.fillRect(22,10,8,8);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(8,4,3,3); ctx.fillRect(14,4,3,3);
-  ctx.restore();
-}
-
-function drawTrampoline(x,y){
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.fillStyle = '#555';
-  ctx.fillRect(0,8,32,4); // base
-  ctx.fillStyle = '#1e88e5';
-  ctx.fillRect(0,0,32,8); // surface
-  ctx.strokeStyle = '#b71c1c';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0,0,32,8);
-  ctx.restore();
-}
-
 function drawSkeleton(x,y,e){
   const t = performance.now()/1000;
   const bob = Math.sin(t*4 + x*0.05)*2;
@@ -694,8 +664,6 @@ export function draw(world){
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
     else if (e instanceof Butterfly) drawButterfly(e.x - camX, e.y);
     else if (e instanceof Sunflower) drawSunflower(e.x - camX, e.y);
-    else if (e instanceof Kangaroo) drawKangaroo(e.x - camX, e.y);
-    else if (e instanceof Trampoline) drawTrampoline(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
     else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
     else if (e instanceof Banana) drawBanana(e.x - camX, e.y);

@@ -51,27 +51,17 @@
       "jump": -420
     }
   },
-    "W": {
-      "class": "Sunflower",
-      "params": {
-        "speed": 40
-      }
-    },
-    "D": {
-      "class": "Butterfly",
-      "params": {
-        "vx": 40,
-        "range": 40
-      }
-    },
-    "J": {
-      "class": "Kangaroo",
-      "params": {
-        "jumpSpeed": 160,
-        "jumpVel": -620
-      }
-    },
-    "Q": {
-      "class": "Trampoline"
+  "W": {
+    "class": "Sunflower",
+    "params": {
+      "speed": 40
+    }
+  },
+  "D": {
+    "class": "Butterfly",
+    "params": {
+      "vx": 40,
+      "range": 40
     }
   }
+}
