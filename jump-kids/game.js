@@ -29,6 +29,8 @@ try{
 // Global variables that will be initialized when DOM is ready
 let canvas, ctx, HUD;
 let menuEl, levelSelect, levelGrid, charGrid, charPreview, charPrevCtx, charSelect, startBtn, editorBtn, charPreviewWrap;
+let pauseMenuEl; // new: pause menu element
+let menuSource = null; // 'pause_char' | 'pause_level' | null
 let selectedLevelFile = 'level1.json';
 let selectedChar = 'lucy';
 
@@ -102,7 +104,14 @@ function setupCharacterEventListeners(){
     const togglePreview = (show)=>{ if (charPreviewWrap) charPreviewWrap.classList.toggle('visible', !!show); };
     charGrid.addEventListener('mouseover', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
     charGrid.addEventListener('focusin', (e)=>{ const btn = e.target.closest('.char-card'); if (btn){ updateCharSelection(btn.dataset.char, true); } });
-    charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) updateCharSelection(btn.dataset.char, false); });
+    charGrid.addEventListener('click', (e)=>{ const btn = e.target.closest('.char-card'); if (btn) {
+      updateCharSelection(btn.dataset.char, false);
+      // If user opened character select from pause menu, apply and restart immediately
+      if (menuSource === 'pause_char'){
+        menuSource = null;
+        startFromMenu();
+      }
+    } });
     charGrid.addEventListener('mouseout', (e)=>{ if (!charGrid.contains(e.relatedTarget)) togglePreview(false); });
     charGrid.addEventListener('focusout', ()=>{ const anyFocused = !!charGrid.querySelector('.char-card:focus'); if (!anyFocused) togglePreview(false); });
   }
@@ -169,6 +178,11 @@ function buildLevelGrid(entries){
       selectedLevelFile = ent.file;
       const opt = [...levelSelect.options].find(o=>o.value===ent.file); if (opt) levelSelect.value = opt.value;
       playBeep(600,0.06,0.06);
+      // If user came from pause -> level select, start the selected level immediately
+      if (menuSource === 'pause_level'){
+        menuSource = null;
+        startFromMenu();
+      }
     });
     levelGrid.appendChild(tile);
   });
@@ -251,7 +265,11 @@ function loop(ts){
   if (!last) last=ts;
   const dt = Math.min(1/60, (ts-last)/1000);
   last = ts;
-  if (!menuEl || menuEl.classList.contains('hidden')){
+
+  const isMainMenuOpen = !!(menuEl && !menuEl.classList.contains('hidden'));
+  const isPauseMenuOpen = !!(pauseMenuEl && !pauseMenuEl.classList.contains('hidden'));
+
+  if (!isMainMenuOpen && !isPauseMenuOpen){
     if (world) {
       updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);
     }
@@ -306,65 +324,113 @@ async function initMenu(){
     return;
   }
 
-  // Show file mode indicator if running from file system
-  if (isFileProtocol) {
-    const fileModeIndicator = document.getElementById('fileMode');
-    if (fileModeIndicator) {
-      fileModeIndicator.style.display = 'block';
-    }
-  }
+  // Create pause menu overlay dynamically
+  pauseMenuEl = document.createElement('div');
+  pauseMenuEl.id = 'pauseMenu';
+  pauseMenuEl.setAttribute('role','dialog');
+  pauseMenuEl.setAttribute('aria-modal','true');
+  pauseMenuEl.className = 'hidden';
+  pauseMenuEl.style.position = 'fixed';
+  pauseMenuEl.style.top = '0';
+  pauseMenuEl.style.left = '0';
+  pauseMenuEl.style.right = '0';
+  pauseMenuEl.style.bottom = '0';
+  pauseMenuEl.style.display = 'none'; // start hidden (none instead of flex)
+  pauseMenuEl.style.alignItems = 'center';
+  pauseMenuEl.style.justifyContent = 'center';
+  pauseMenuEl.style.zIndex = '1000';
 
-  // Set up event listeners
-  setupCharacterEventListeners();
-  setupButtonEventListeners();
+  const card = document.createElement('div');
+  card.className = 'menu-card';
+  card.style.minWidth = '320px';
+  card.style.textAlign = 'center';
 
-  await discoverLevels();
-  
-  // Initialize level data FIRST - use built-in data if file protocol
-  if (isFileProtocol) {
-    console.log('Initializing with built-in level data');
-    setBackdrop('hills');
-    const newLevel = buildLevelFromArrays(BASE, EXT);
-    if (newLevel && newLevel.length){
-      setLevel(newLevel);
-    }
-  } else {
-    try{
-      const resp = await fetch(LEVEL_PATH + 'level1.json');
-      if (resp.ok){
-        const data = await resp.json();
-        const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
-        if (newLevel && newLevel.length){
-          setBackdrop(data.backdrop || 'hills');
-          setLevel(newLevel);
-        }
+  const title = document.createElement('h2');
+  title.className = 'menu-title arcade';
+  title.textContent = 'Paused';
+  card.appendChild(title);
+
+  const btnList = document.createElement('div');
+  btnList.style.display = 'grid';
+  btnList.style.rowGap = '10px';
+  btnList.style.marginTop = '10px';
+
+  const makeBtn = (id, text)=>{
+    const b = document.createElement('button'); b.id = id; b.className = 'menu-start'; b.textContent = text; b.style.margin = '6px auto'; b.style.minWidth = '200px'; return b;
+  };
+
+  const returnGameBtn = makeBtn('pause_return', 'Return to Game');
+  const charSelectBtn = makeBtn('pause_char', 'Character Select');
+  const levelSelectBtn = makeBtn('pause_level', 'Level Select');
+  const mainMenuBtn = makeBtn('pause_main', 'Return to Main Menu');
+
+  btnList.appendChild(returnGameBtn);
+  btnList.appendChild(charSelectBtn);
+  btnList.appendChild(levelSelectBtn);
+  btnList.appendChild(mainMenuBtn);
+  card.appendChild(btnList);
+  pauseMenuEl.appendChild(card);
+  document.body.appendChild(pauseMenuEl);
+
+  // Pause menu button behavior
+  const openPauseMenu = ()=>{
+    // Only allow pause if currently playing a level and main menu is closed
+    if (!world || !menuEl || !pauseMenuEl) return;
+    if (!menuEl.classList.contains('hidden')) return; // main menu open
+    if (world.state !== 'play') return; // only when playing
+
+    pauseMenuEl.style.display = 'flex';
+    pauseMenuEl.classList.remove('hidden');
+    if (HUD && HUD.msg) HUD.msg.textContent = 'Paused';
+    try{ world.state = 'pause'; }catch{}
+  };
+  const closePauseMenu = ()=>{
+    if (!pauseMenuEl) return;
+    pauseMenuEl.style.display = 'none';
+    pauseMenuEl.classList.add('hidden');
+    if (HUD && HUD.msg) HUD.msg.textContent = 'Reach the flag to finish the demo level';
+    try{ world.state = 'play'; }catch{}
+  };
+
+  returnGameBtn.addEventListener('click', ()=>{ closePauseMenu(); playBeep(800,0.06,0.06); });
+  charSelectBtn.addEventListener('click', ()=>{ 
+    // Open main menu focused on character selection and auto-restart on select
+    menuSource = 'pause_char';
+    if (menuEl) menuEl.classList.remove('hidden');
+    if (pauseMenuEl) { pauseMenuEl.style.display = 'none'; pauseMenuEl.classList.add('hidden'); }
+    playBeep(700,0.06,0.06);
+  });
+  levelSelectBtn.addEventListener('click', ()=>{
+    // Open main menu focused on level selection; selecting a level will auto-start
+    menuSource = 'pause_level';
+    if (menuEl) menuEl.classList.remove('hidden');
+    if (pauseMenuEl) { pauseMenuEl.style.display = 'none'; pauseMenuEl.classList.add('hidden'); }
+    playBeep(700,0.06,0.06);
+  });
+  mainMenuBtn.addEventListener('click', ()=>{
+    menuSource = null;
+    if (menuEl) menuEl.classList.remove('hidden');
+    if (pauseMenuEl) { pauseMenuEl.style.display = 'none'; pauseMenuEl.classList.add('hidden'); }
+    playBeep(650,0.06,0.06);
+  });
+
+  // Escape key toggles pause menu (only when playing a level and main menu closed)
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'Escape'){
+      if (!pauseMenuEl || !menuEl) return;
+      // If main menu is open, ignore Esc here
+      if (!menuEl.classList.contains('hidden')) return;
+      // Only allow pausing when the world exists and is in 'play'
+      if (!world || world.state !== 'play') return;
+
+      if (pauseMenuEl.style.display === 'none' || pauseMenuEl.classList.contains('hidden')){
+        openPauseMenu();
+      } else {
+        closePauseMenu();
       }
-    }catch{
-      // Fallback to built-in data
-      setBackdrop('hills');
-      const newLevel = buildLevelFromArrays(BASE, EXT);
-      if (newLevel && newLevel.length){
-        setLevel(newLevel);
-      }
     }
-  }
+  });
 
-  // NOW initialize world and input system (after level is loaded)
-  SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-  world = buildWorld();
-  console.log('Initial world created:', world ? 'success' : 'failed');
-  console.log('World player:', world ? world.player : 'no world');
-  console.log('World enemies count:', world ? world.enemies.length : 'no world');
-  inputSetWorld(world);
-  setSpecialMoves(SPECIAL_MOVES);
-  initInput();
-
-  HUD.coins.textContent = world.player.coins;
-  HUD.lives.textContent = world.player.lives;
-  
-  // Show menu
-  if (menuEl) menuEl.classList.remove('hidden');
-  
   // Ensure character preview canvas is properly visible
   if (charPreviewWrap) {
     charPreviewWrap.classList.add('visible');
