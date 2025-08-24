@@ -185,17 +185,6 @@ export class Bird extends Entity{
   }
 }
 
-// Kangaroo enemy: leaps toward the player, needs two stomps
-export class Kangaroo extends Entity{
-  constructor(x,y){
-    super(x,y,24,30);
-    this.vx = 0;
-    this.jumpT = 0;
-    this.speed = 80;
-    this.hp = 2;
-  }
-}
-
 // Sunflower enemy: bouncy plant that launches players upward
 export class Sunflower extends Entity{
   constructor(x,y){
@@ -262,14 +251,13 @@ export let ENEMY_CONFIGS = {
   'Y': { class: 'GiantMonkey' },
   'W': { class: 'Sunflower' },
   'D': { class: 'Butterfly' },
-  'Q': { class: 'Kangaroo' },
 };
 
 export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, Kangaroo };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){
@@ -321,8 +309,6 @@ export function buildWorld(){
       if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
       if (c==='N') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'rainbow',remove:false,static:true});
       if (c==='U') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'mushroom',remove:false,static:true});
-      if (c==='J') world.items.push({x:x*TILE,y:(y-1)*TILE+24,w:TILE,h:8,vx:0,vy:0,grounded:true,type:'trampoline',remove:false,static:true});
-      if (c==='V') world.items.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,vx:0,vy:0,grounded:true,type:'giantSunflower',remove:false,static:true});
       if (c==='M') world.platforms.push({x:x*TILE,y:(y-1)*TILE,w:TILE*2,h:8,dir:1,speed:40,range:64,baseX:x*TILE});
       if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
       if (c==='B') world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});

@@ -20,15 +20,12 @@ const tiles = [
   {ch:'R', label:'Shamrock', color:'#00c853'},
   {ch:'N', label:'Rainbow', color:'#00bcd4'},
   {ch:'U', label:'Mega', color:'#d500f9'},
-  {ch:'J', label:'Trampoline', color:'#8e24aa'},
-  {ch:'V', label:'Giant Sunflower', color:'#ffeb3b'},
   {ch:'E', label:'Goomba', color:'#c0392b'},
   {ch:'H', label:'Hellmonk', color:'#ff9800'},
   {ch:'F', label:'Fire', color:'#e64a19'},
   {ch:'X', label:'Skeleton', color:'#b0bec5'},
   {ch:'W', label:'Sunflower', color:'#ffeb3b'},
   {ch:'D', label:'Butterfly', color:'#ff80ab'},
-  {ch:'Q', label:'Kangaroo', color:'#d2b48c'},
   {ch:'K', label:'Checkpoint', color:'#fff'},
   {ch:'G', label:'Goal', color:'#2e7d32'}
 ];

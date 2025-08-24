@@ -31,7 +31,6 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
   - Ghost: drifts through the lower spooky path.
   - Fireball: rolling flame enemy that patrols the underground.
   - Skeleton: collapses into bones when stomped, then reassembles.
-  - Kangaroo: tan boxer that hops toward players and takes two jumps to defeat.
 - Swooping bird: guards the high moving platforms and dives at nearby players.
 - Flags:
   - Checkpoint (black‑and‑white checkered): touching it updates the respawn point.
@@ -71,8 +70,6 @@ Legend (selected):
 - `G`: goal flag (the rightmost `G` becomes the end goal)
 - `P`: player spawn (column)
 - `R`: shamrock power‑up
-- `J`: trampoline launcher
-- `V`: giant sunflower bounce pad
 - `N`: rainbow power‑up (invincibility)
 - `U`: mega mushroom power‑up (giant invincible form, no jumping)
 - `O`: ghost enemy
@@ -80,7 +77,6 @@ Legend (selected):
 - `S`: bird enemy
 - `M`: moving platform (two tiles wide)
 - `X`: skeleton enemy that crumbles and reforms
-- `Q`: kangaroo enemy that hops toward players
 - `T`: trapdoor
 - `L`: ladder
 - `^`: spike hazard
