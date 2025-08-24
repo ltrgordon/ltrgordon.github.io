@@ -15,42 +15,12 @@ export function setHUD(h){ hudRef = h; }
 // --- Audio handling ------------------------------------------------------
 let audioReady = false;
 let audioCtx = null;
-// Safe SFX container with lazy fallback if files are missing
-const SFX = { coin: null };
-
-function tryLoadSfx(){
-  // Try a few likely paths; if all fail, we'll fall back to a beep
-  const candidates = [
-    'assets/audio/collect.wav',
-    './assets/audio/collect.wav',
-    'assets/sounds/collect.wav',
-    '../assets/audio/collect.wav',
-    '../assets/sounds/collect.wav'
-  ];
-  let i = 0;
-  const audio = new Audio();
-  audio.volume = 0.45;
-  const advance = ()=>{
-    if (i >= candidates.length){ SFX.coin = null; return; }
-    audio.src = candidates[i++];
-    // Trigger load; errors will try next candidate
-    try { audio.load(); } catch {}
-  };
-  audio.addEventListener('canplaythrough', ()=>{ SFX.coin = audio; }, { once:true });
-  audio.addEventListener('error', ()=>{ advance(); });
-  advance();
-}
+const SFX = { coin: new Audio('../assets/sounds/collect.wav') };
+SFX.coin.volume = 0.45;
 
 export function unlockAudio(){
   if (audioReady) return; audioReady = true;
-  try { 
-    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    if (audioCtx && audioCtx.state === 'suspended'){
-      const p = audioCtx.resume(); if (p && typeof p.catch==='function') p.catch(()=>{});
-    }
-  } catch {}
-  // Kick off SFX loading once we have a user gesture
-  tryLoadSfx();
+  try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch {}
 }
 
 export function getAudioContext(){ return audioCtx; }
@@ -64,25 +34,7 @@ export function playBeep(freq=600, dur=0.08, vol=0.08){
   o.start(); o.stop(audioCtx.currentTime + dur);
 }
 
-function safePlay(audio){
-  if (!audio) return;
-  try{
-    audio.currentTime = 0;
-    const p = audio.play();
-    if (p && typeof p.catch === 'function') p.catch(()=>{});
-  }catch{}
-}
-
-export function playCoin(){
-  if (!audioReady) return;
-  if (SFX.coin){
-    safePlay(SFX.coin);
-  } else {
-    // Fallback to a quick two-beep chime if the asset is missing
-    playBeep(1000,0.06,0.08);
-    setTimeout(()=>playBeep(1400,0.06,0.06), 70);
-  }
-}
+export function playCoin(){ if (!audioReady) return; try{ SFX.coin.currentTime=0; SFX.coin.play(); }catch{} }
 export function playShamrock(){
   if (!audioReady) return;
   playBeep(520,0.1,0.1);

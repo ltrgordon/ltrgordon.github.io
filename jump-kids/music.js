@@ -10,29 +10,22 @@ const MELODY=[
 ];
 
 export function initMusic(audioCtx){
-  ctx = audioCtx || null;
-  if (!ctx) { master = null; return; }
-  try{
-    master = ctx.createGain();
-    master.gain.value = 0.05;
-    master.connect(ctx.destination);
-  }catch{
-    master = null;
-  }
+  ctx = audioCtx;
+  if (!ctx) return;
+  master = ctx.createGain();
+  master.gain.value = 0.05;
+  master.connect(ctx.destination);
 }
 
 function playNote(note, start, type, pitch){
-  if (!ctx || !master) return;
-  try{
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = type;
-    o.frequency.value = note.freq * pitch;
-    g.gain.value = 0.08;
-    o.connect(g); g.connect(master);
-    o.start(start);
-    o.stop(start + note.dur);
-  }catch{}
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = note.freq * pitch;
+  g.gain.value = 0.08;
+  o.connect(g); g.connect(master);
+  o.start(start);
+  o.stop(start + note.dur);
 }
 
 export function playMusic(level=1){
@@ -41,15 +34,15 @@ export function playMusic(level=1){
   const waves=['sine','square','triangle','sawtooth'];
   const wave = waves[(level-1)%waves.length];
   const pitch = 1 + ((level-1)%4)*0.02;
-  let t = ctx.currentTime || 0;
+  let t = ctx.currentTime;
   for (const n of MELODY){
     playNote(n, t, wave, pitch);
     t += n.dur;
   }
-  try{ timers.push(setTimeout(()=>playMusic(level), Math.max(0, (t-(ctx.currentTime||0))*1000))); }catch{}
+  timers.push(setTimeout(()=>playMusic(level), (t-ctx.currentTime)*1000));
 }
 
 export function stopMusic(){
-  timers.forEach(id=>{ try{ clearTimeout(id); }catch{} });
+  timers.forEach(clearTimeout);
   timers=[];
 }
