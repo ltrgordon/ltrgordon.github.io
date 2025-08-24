@@ -1,6 +1,6 @@
 import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
 import { createSpecialMoves } from './special-moves.js';
-import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
+import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep, consumeReturnToMenu } from './input.js';
 import { update as updatePhysics } from './physics.js';
 import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rendering.js';
 
@@ -245,12 +245,30 @@ function resetGame(){
   if (world && world.player) world.player.charId = selectedChar;
 }
 
+// Return to main menu -----------------------------------------------------
+function returnToMainMenu(){
+  if (world) {
+    world.state = 'menu';
+  }
+  HUD.msg.textContent = 'Select a level and character to play';
+  if (menuEl) {
+    menuEl.classList.remove('hidden');
+  }
+  playBeep(520,0.08,0.08);
+}
+
 // Main loop ---------------------------------------------------------------
 let last=0;
 function loop(ts){
   if (!last) last=ts;
   const dt = Math.min(1/60, (ts-last)/1000);
   last = ts;
+  
+  // Check for return to menu request
+  if (consumeReturnToMenu()) {
+    returnToMainMenu();
+  }
+  
   if (!menuEl || menuEl.classList.contains('hidden')){
     if (world) {
       updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);

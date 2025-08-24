@@ -4,6 +4,7 @@ import { JUMP_BUFFER } from './config.js';
 export const keys = {left:false,right:false,jump:false,dash:false,up:false,down:false};
 
 let restartRequested = false;
+let returnToMenuRequested = false;
 let worldRef = null;
 let specialMoves = null;
 let hudRef = null;
@@ -70,13 +71,18 @@ export function initInput(){
     if (k==='p' && worldRef && hudRef){
       if (worldRef.state==='play'){
         worldRef.state='pause';
-        hudRef.msg.textContent='Paused — press P to resume';
+        hudRef.msg.textContent='Paused — press P to resume, ESC for menu';
         playBeep(440,0.06,0.06);
       } else if (worldRef.state==='pause'){
         worldRef.state='play';
         hudRef.msg.textContent='';
         playBeep(520,0.06,0.06);
       }
+    }
+    if (k==='escape' && worldRef && worldRef.state==='pause'){
+      // Request return to main menu
+      returnToMenuRequested = true;
+      playBeep(380,0.08,0.08);
     }
     if (k==='r'){ restartRequested = true; }
   });
@@ -112,3 +118,6 @@ function bindButton(id, name){
 
 // Exposed helper for physics to consume restart requests
 export function consumeRestart(){ const r = restartRequested; restartRequested = false; return r; }
+
+// Exposed helper for game to consume return to menu requests
+export function consumeReturnToMenu(){ const r = returnToMenuRequested; returnToMenuRequested = false; return r; }
