@@ -387,8 +387,8 @@ async function initMenu(){
   updateCharSelection(selectedChar || 'lucy', false);
 }
 
-// Initialize game and then fit canvas to device pixel ratio
-initMenu().then(() => {
-  addEventListener('resize', fitCanvas);
-  fitCanvas();
-});
+// Initialize immediately
+initMenu();
+
+// Fit canvas to device pixel ratio
+addEventListener('resize', fitCanvas); fitCanvas();
