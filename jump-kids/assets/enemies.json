@@ -63,11 +63,5 @@
       "vx": 40,
       "range": 40
     }
-  },
-  "Q": {
-    "class": "Kangaroo",
-    "params": {
-      "speed": 80
-    }
   }
 }

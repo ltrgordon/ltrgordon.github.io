@@ -1,5 +1,5 @@
 import { TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME } from './config.js';
-import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, Kangaroo, respawnAllEnemies } from './entities.js';
+import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, respawnAllEnemies } from './entities.js';
 import { consumeRestart, playBeep, playCoin, playShamrock } from './input.js';
 
 // Basic geometry helpers --------------------------------------------------
@@ -310,17 +310,11 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
     }
     if (it.type==='coin') it.vx*=0.98;
     if (rectOverlap(p.x,p.y,p.w,p.h,it.x,it.y,it.w,it.h)){
-      if (it.type==='shamrock'){ growPlayer(p, HUD); playShamrock(); it.remove = true; }
-      else if (it.type==='rainbow'){ p.rainbow = 15; HUD.msg.textContent='Invincible!'; it.remove = true; } // Reduced from 30 to 15 seconds
-      else if (it.type==='mushroom'){ activateMushroom(p); HUD.msg.textContent='Mega!'; playShamrock(); it.remove = true; }
-      else if (it.type==='coin'){ p.coins++; HUD.coins.textContent=p.coins; playCoin(); it.remove = true; }
-      else if (it.type==='trampoline'){
-        const fromAbove = (p.vy>0) && (p.bottom - it.y < 18);
-        if (fromAbove){ p.vy = -JUMP_VEL*1.25*3; playBeep(800,0.1,0.1); }
-      } else if (it.type==='giantSunflower'){
-        const fromAbove = (p.vy>0) && (p.bottom - it.y < 18);
-        if (fromAbove){ p.vy = -4.5*JUMP_VEL; playBeep(600,0.1,0.1); }
-      }
+      if (it.type==='shamrock'){ growPlayer(p, HUD); playShamrock(); }
+      else if (it.type==='rainbow'){ p.rainbow = 15; HUD.msg.textContent='Invincible!'; } // Reduced from 30 to 15 seconds
+      else if (it.type==='mushroom'){ activateMushroom(p); HUD.msg.textContent='Mega!'; playShamrock(); }
+      else if (it.type==='coin'){ p.coins++; HUD.coins.textContent=p.coins; playCoin(); }
+      it.remove = true;
     }
   }
   world.items = world.items.filter(it => !it.remove);
@@ -580,28 +574,6 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         if (fromAbove){ p.vy = -0.55*JUMP_VEL; e.state='crumbled'; e.h=6; e.reformT=0; }
         else damagePlayer(p, world, HUD);
       }
-    } else if (e instanceof Kangaroo){
-      e.jumpT = (e.jumpT || 0) - dt;
-      if (e.grounded && e.jumpT<=0){
-        const dir = p.x < e.x ? -1 : 1;
-        e.vx = dir * e.speed;
-        e.vy = -0.9*JUMP_VEL;
-        e.jumpT = 1;
-      }
-      moveWithCollisions(e, e.vx*dt, 0, true);
-      moveWithCollisions(e, 0, e.vy*dt, true);
-      const aheadTx = Math.floor(((e.vx>0? e.right+1: e.left-1))/TILE);
-      const footTy = Math.floor((e.bottom+1)/TILE)+1;
-      if (!isSolid(tileAt(aheadTx, footTy)) && isSolid(tileAt(Math.floor(e.x/TILE), footTy))) e.vx *= -1;
-      if (!e.remove && aabb(p,e)){
-        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
-        if (handleSpecialCollision(p,e,specialMoves)) continue;
-        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if (fromAbove){
-          e.hp--; p.vy=-0.55*JUMP_VEL;
-          if (e.hp<=0) e.remove=true;
-        } else damagePlayer(p, world, HUD);
-      }
     } else if (e instanceof Sunflower){
       moveWithCollisions(e, e.vx*dt, 0, true);
       moveWithCollisions(e, 0, e.vy*dt, true);
@@ -613,7 +585,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         if (handleSpecialCollision(p,e,specialMoves)) continue;
 
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if (fromAbove){ p.vy = -4.5*JUMP_VEL; playBeep(600,0.08,0.05); }
+        if (fromAbove){ p.vy = -1.5*JUMP_VEL; playBeep(600,0.08,0.05); }
         else damagePlayer(p, world, HUD);
       }
     } else {
