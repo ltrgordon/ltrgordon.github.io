@@ -23,8 +23,6 @@ export function unlockAudio(){
   try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch {}
 }
 
-export function getAudioContext(){ return audioCtx; }
-
 export function playBeep(freq=600, dur=0.08, vol=0.08){
   if (!audioReady || !audioCtx) return;
   const o = audioCtx.createOscillator();

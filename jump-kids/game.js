@@ -1,7 +1,6 @@
 import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
 import { createSpecialMoves } from './special-moves.js';
-import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep, getAudioContext } from './input.js';
-import { initMusic, playMusic, stopMusic } from './music.js';
+import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
 import { update as updatePhysics } from './physics.js';
 import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rendering.js';
 
@@ -176,11 +175,7 @@ function buildLevelGrid(entries){
 }
 async function startFromMenu(){
   unlockAudio();
-  stopMusic();
-  initMusic(getAudioContext());
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
-  const levelNum = parseInt(levelFile.match(/\d+/)?.[0] || '1', 10);
-  playMusic(levelNum);
   
   // Try to load from JSON first, fallback to built-in data if that fails
   try{
