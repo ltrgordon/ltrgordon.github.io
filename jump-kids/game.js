@@ -247,13 +247,7 @@ function resetGame(){
   HUD.coins.textContent = 0;
   HUD.lives.textContent = 3;
   HUD.msg.textContent = 'Ready!';
-  if (world && world.player) {
-    world.player.charId = selectedChar;
-    // Ensure clean state for new game
-    world.player.invisible = 0;
-    world.player.action = null;
-    world.player.lockControls = false;
-  }
+  if (world && world.player) world.player.charId = selectedChar;
 }
 
 // Main loop ---------------------------------------------------------------
