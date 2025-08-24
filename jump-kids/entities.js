@@ -132,7 +132,7 @@ export class Player extends Entity{
     this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
-    this.rainbow=0; this.onLadder=false; this.mega=0;
+    this.rainbow=0; this.onLadder=false; this.mega=0; this.charId='lucy';
   }
   respawn(){
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
