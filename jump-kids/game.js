@@ -228,7 +228,7 @@ function setupButtonEventListeners(){
     startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
   }
   if (editorBtn){
-    const openEditor = ()=>{ window.location.href = 'editor.html'; };
+    const openEditor = ()=>{ window.location.href = 'level-editor/index.html'; };
     editorBtn.addEventListener('click', openEditor);
     editorBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); openEditor(); });
   }
