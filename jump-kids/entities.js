@@ -296,8 +296,6 @@ function findInMap(symbol){
 }
 
 export function buildWorld(){
-  // Safety: ensure a valid spawn exists on the current LEVEL just before building
-  try { addStartPlatform(LEVEL); } catch {}
   const spawn = findInMap('P');
   // Create player and snap to ground so they stand on the platform
   const player = new Player(spawn.x*TILE, (spawn.y-1)*TILE);
@@ -365,18 +363,6 @@ export function buildWorld(){
   }
   // Add fire enemies to pit areas
   addFireEnemiesToPits(world);
-
-  // Guarantee at least one visible enemy so the world never looks empty
-  try{
-    if (!world.enemies.length){
-      const tx = Math.min(W-2, Math.max(2, spawn.x + 6));
-      const gx = tx*TILE;
-      const gy = groundTopAt(tx, Math.max(0, spawn.y)) - 22;
-      world.enemies.push(new Goomba(gx, gy));
-      world.initialEnemies.push({ class:'Goomba', x:gx, y:gy, params:null, groundAdjusted:true });
-    }
-  }catch{}
-
   return world;
 }
 

@@ -183,13 +183,26 @@ async function startFromMenu(){
   playMusic(levelNum);
   
   // Try to load from JSON first, fallback to built-in data if that fails
-  let built=null;
   try{
     const resp = await fetch(LEVEL_PATH + levelFile + '?v=' + Date.now());
     if (resp.ok){
       const data = await resp.json();
+      console.log('Loaded level data from JSON:', data);
+      console.log('Base array has spikes?', data.base ? data.base.some(row => row.includes('^')) : 'no base data');
+      console.log('Ext array has spikes?', data.ext ? data.ext.some(row => row.includes('^')) : 'no ext data');
       setBackdrop(data.backdrop || 'hills');
-      built = buildLevelFromArrays(data.base||[], data.ext||[]);
+      const newLevel = buildLevelFromArrays(data.base||[], data.ext||[]);
+      console.log('Built level has spikes?', newLevel ? newLevel.some(row => row.includes('^')) : 'no level built');
+      if (newLevel && newLevel.length){ 
+        setLevel(newLevel); 
+        console.log('Level set successfully, checking LEVEL global...');
+        // Add a small delay to let the level set properly
+        setTimeout(() => {
+          console.log('LEVEL global has spikes?', LEVEL ? LEVEL.some(row => row.includes('^')) : 'no LEVEL global');
+        }, 100);
+        SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
+        setSpecialMoves(SPECIAL_MOVES); 
+      }
     } else {
       throw new Error('Failed to fetch level file');
     }
@@ -197,31 +210,19 @@ async function startFromMenu(){
     // Fallback to built-in level data
     console.log('Failed to load level file:', error, 'using built-in data');
     setBackdrop('hills');
-    built = buildLevelFromArrays(BASE, EXT);
+    const newLevel = buildLevelFromArrays(BASE, EXT);
+    if (newLevel && newLevel.length){ 
+      setLevel(newLevel); 
+      SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt}); 
+      setSpecialMoves(SPECIAL_MOVES); 
+    }
   }
-
-  if (built && built.length){
-    setLevel(built);
-    // Allow bindings to update across modules before rebuilding world
-    await Promise.resolve();
-  }
-
-  // Rebuild world with the new LEVEL and wire up systems
-  SPECIAL_MOVES = createSpecialMoves({W,H,tileAt,isSolid,groundTopAt});
-  setSpecialMoves(SPECIAL_MOVES);
+  
   resetGame();
-
-  // Defensive: if something went wrong and no player exists, rebuild once more
-  if (!world || !world.player){
-    world = buildWorld();
-    inputSetWorld(world);
-  }
-
-  // Ensure chosen character and state
-  if (world && world.player) {
-    world.player.charId = selectedChar;
-    world.state = 'play';
-  }
+  console.log('Game reset complete, world:', world ? 'exists' : 'undefined');
+  console.log('World state:', world ? world.state : 'no world');
+  world.player.charId = selectedChar;
+  world.state = 'play';
   HUD.msg.textContent = 'Reach the flag to finish the demo level';
   menuEl.classList.add('hidden');
   playBeep(700,0.08,0.08);
