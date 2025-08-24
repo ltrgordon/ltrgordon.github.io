@@ -34,7 +34,7 @@ If you want to run the game by opening `index.html` directly from Finder/File Ex
 - **Movement**: Arrow keys (← →) or WASD
 - **Jump**: Spacebar or Z
 - **Dash**: D key
-- **Special Moves**: S (S1), F (S2)
+- **Special Moves**: S (S1), F (S2), E (S3)
 - **Pause**: P
 - **Restart**: R (after game over) or Jump button
 

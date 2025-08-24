@@ -21,6 +21,15 @@ export function createSpecialMoves(utils){
       p.cartTime = 0.4;
       p.cartRot = 0;
     },
+    s3(p){
+      if(p.action) return;
+      p.action = 'backflip';
+      p.lockControls = true;
+      p.vy = -JUMP_VEL;
+      p.vx = -200 * p.facing;
+      p.grounded = false;
+      p.flip = 0;
+    },
     update(p,dt){
       if(p.action==='flip'){
         p.flip += dt * Math.PI * 2;
@@ -29,6 +38,9 @@ export function createSpecialMoves(utils){
         p.cartTime -= dt;
         p.cartRot += dt * Math.PI * 4;
         if(p.cartTime<=0){ p.action=null; p.lockControls=false; p.cartRot=0; }
+      } else if(p.action==='backflip'){
+        p.flip += dt * Math.PI * 2;
+        if(p.grounded){ p.action=null; p.lockControls=false; }
       }
     },
     onEnemyCollide(p,e){
@@ -36,6 +48,13 @@ export function createSpecialMoves(utils){
         e.x += p.facing*40;
         e.vx = p.facing*200;
         return true;
+      }
+      if(p.action==='backflip'){
+        const dir = Math.sign((e.x+e.w/2) - (p.x+p.w/2));
+        if(dir === -p.facing){
+          e.remove = true;
+          return true;
+        }
       }
       return false;
     }
@@ -52,21 +71,37 @@ export function createSpecialMoves(utils){
       p.lockControls = true;
       p.spinRotation = 0;
     },
+    s3(p){
+      if(!p.grounded || p.action) return;
+      p.action = 'legSweep';
+      p.lockControls = true;
+      p.sweepTime = 0.35;
+      p.sweepRot = 0;
+      p.vx = 0;
+    },
     update(p,dt){
       if(p.invisible>0) p.invisible = Math.max(0, p.invisible - dt);
       if(p.action==='spinJump'){
         p.spinRotation += dt * Math.PI * 4; // Fast spinning
-        if(p.grounded) { 
-          p.action=null; 
-          p.lockControls=false; 
+        if(p.grounded) {
+          p.action=null;
+          p.lockControls=false;
           p.spinRotation = 0;
         }
+      } else if(p.action==='legSweep'){
+        p.sweepTime -= dt;
+        p.sweepRot += dt * Math.PI * 6;
+        if(p.sweepTime<=0){ p.action=null; p.lockControls=false; p.sweepRot=0; }
       }
     },
     onEnemyCollide(p,e){
       if(p.action==='spinJump'){
         e.remove = true; // Defeat enemy on spinning contact
         return true; // Joey takes no damage
+      }
+      if(p.action==='legSweep'){
+        const dir = Math.sign((e.x+e.w/2) - (p.x+p.w/2));
+        if(dir === p.facing){ e.remove=true; return true; }
       }
       return false;
     }
@@ -87,7 +122,13 @@ export function createSpecialMoves(utils){
       p.vx = 400 * p.facing; // Fast forward charge
       p.punchTime = 0.5; // Duration of run
     },
+    s3(p){
+      if(p.grounded || p.doubleJumped) return;
+      p.vy = -JUMP_VEL * 1.2;
+      p.doubleJumped = true;
+    },
     update(p,dt,world){
+      if(p.grounded) p.doubleJumped = false;
       if(p.action==='smash'){
         // When Abe reaches peak of jump, make him slam down fast
         if(p.vy > 0 && !p.smashDown) {

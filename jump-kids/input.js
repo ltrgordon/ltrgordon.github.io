@@ -56,6 +56,7 @@ function triggerSpecial(which){
   }
   if (which==='s1' && ability.s1) ability.s1(p, worldRef);
   if (which==='s2' && ability.s2) ability.s2(p, worldRef);
+  if (which==='s3' && ability.s3) ability.s3(p, worldRef);
 }
 
 export function initInput(){
@@ -68,6 +69,7 @@ export function initInput(){
     if (k==='arrowdown') setKey('down',true);
     if (k==='s') triggerSpecial('s1');
     if (k==='f') triggerSpecial('s2');
+    if (k==='e') triggerSpecial('s3');
     if (k==='p' && worldRef && hudRef){
       if (worldRef.state==='play'){
         worldRef.state='pause';
