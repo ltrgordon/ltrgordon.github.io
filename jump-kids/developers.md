@@ -16,11 +16,11 @@ Levels are ASCII grids defined by `BASE` and `EXT` arrays in `entities.js`. Each
 - `C` coin
 - `E` Goomba enemy
 - `H` Hellmonk enemy
- - `K` checkpoint flag
- - `G` goal flag (rightmost becomes the end goal)
- - `P` player spawn column (a start platform is automatically added to the top-left and used as the initial spawn)
- - `T` trapdoor, `L` ladder, `^` spikes
- `assets/levels/level1.json` uses the same format and can be swapped in from the menu.
+- `K` checkpoint flag
+- `G` goal flag (rightmost becomes the end goal)
+- `P` player spawn column
+- `T` trapdoor, `L` ladder, `^` spikes
+`assets/levels/level1.json` uses the same format and can be swapped in from the menu.
 
 When the player descends beyond roughly 12 tiles, the renderer automatically replaces the hills with a dark cave backdrop.
 

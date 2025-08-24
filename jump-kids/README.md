@@ -45,7 +45,6 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Ladders connecting upper, underground, and cavern paths.
 - Rolling hills span the surface while the lower routes reveal a spooky underground cave backdrop.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
-- Start platform in the top-left so players safely spawn away from nearby enemies and return there unless a checkpoint is hit.
 
 ## Characters & Special Moves
 - **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path.

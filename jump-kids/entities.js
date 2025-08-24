@@ -53,44 +53,12 @@ export const EXT = [
 "##L###########################################################################################################"
 ];
 
-// Inject a safe start platform at the top-left of the map
-function addStartPlatform(level){
-  const platformRow = 3;      // height for platform
-  const startCol = 0;         // left edge
-  const width = 4;            // platform width in tiles
-
-  // Clear out any existing tiles in the area
-  for (let y = 0; y <= platformRow; y++){
-    if (!level[y]) continue;
-    const row = level[y].split('');
-    for (let x = 0; x < width; x++) row[startCol + x] = '_';
-    level[y] = row.join('');
-  }
-
-  // Add the platform tiles
-  if (level[platformRow]){
-    const row = level[platformRow].split('');
-    for (let x = 0; x < width; x++) row[startCol + x] = '=';
-    level[platformRow] = row.join('');
-  }
-
-  // Place the spawn marker one tile above the platform
-  const spawnRow = platformRow - 1;
-  if (level[spawnRow]){
-    const row = level[spawnRow].split('');
-    row[startCol + Math.floor(width/2)] = 'P';
-    level[spawnRow] = row.join('');
-  }
-}
-
 // Build a unified level array from base and extension segments
 export function buildLevelFromArrays(base, ext){
   const rows = base.slice();
   const extLocal = ext ? ext.slice() : [];
   while (extLocal.length < rows.length) extLocal.push((extLocal[0]||'').padEnd((rows[0]||'').length||96, '_'));
-  const merged = rows.map((row,i)=> row + (extLocal[i]||''));
-  addStartPlatform(merged);
-  return merged;
+  return rows.map((row,i)=> row + (extLocal[i]||''));
 }
 
 export let LEVEL = buildLevelFromArrays(BASE, EXT);
@@ -99,7 +67,6 @@ export let W = LEVEL[0].length;
 
 // Allow game.js to swap in a new level dynamically
 export function setLevel(newLevel){
-  addStartPlatform(newLevel);
   LEVEL = newLevel;
   H = LEVEL.length;
   W = LEVEL[0].length;
