@@ -1,5 +1,5 @@
 import { TILE, GRAVITY, MOVE_ACC, MOVE_MAX, FRICTION, JUMP_VEL, CAM_MARGIN_X, EPSY, COYOTE_TIME } from './config.js';
-import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, respawnAllEnemies } from './entities.js';
+import { LEVEL, H, W, tileAt, isSolid, groundTopAt, surfaceTopAt, Player, Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly, Kangaroo, Trampoline, respawnAllEnemies } from './entities.js';
 import { consumeRestart, playBeep, playCoin, playShamrock } from './input.js';
 
 // Basic geometry helpers --------------------------------------------------
@@ -587,6 +587,31 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
         if (fromAbove){ p.vy = -1.5*JUMP_VEL; playBeep(600,0.08,0.05); }
         else damagePlayer(p, world, HUD);
+      }
+    } else if (e instanceof Kangaroo){
+      if (e.cooldown>0) e.cooldown -= dt;
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      if (e.grounded && e.cooldown<=0){
+        const dx = (p.x + p.w/2) - (e.x + e.w/2);
+        e.vx = Math.sign(dx||1) * e.jumpSpeed;
+        e.vy = e.jumpVel;
+        e.cooldown = 1.2;
+      }
+      if (!e.remove && aabb(p,e)){
+        if (p.rainbow>0){ e.remove=true; p.vy=-0.55*JUMP_VEL; continue; }
+        if (handleSpecialCollision(p,e,specialMoves)) continue;
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){ p.vy = -0.6*JUMP_VEL; e.remove=true; }
+        else damagePlayer(p, world, HUD);
+      }
+    } else if (e instanceof Trampoline){
+      if (!e.remove && aabb(p,e)){
+        const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+        if (fromAbove){
+          p.y = e.top - p.h;
+          p.vy = -3.75*JUMP_VEL;
+        }
       }
     } else {
       // Default enemy handling (Goombas, Snakes, and other basic enemies)
