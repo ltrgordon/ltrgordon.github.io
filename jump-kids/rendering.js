@@ -244,7 +244,11 @@ function drawPlayer(x,y,p){
     }
   }
   const id = p.charId || 'lucy';
-  if (id==='joey' && p.invisible>0) ctx.globalAlpha = 0.3;
+  
+  // Only Joey should have invisibility effect
+  if (id === 'joey' && p.invisible > 0) {
+    ctx.globalAlpha = 0.3; // Joey becomes semi-transparent when invisible
+  }
 
   const t = performance.now()/200;
   const step = Math.sin(t*10 + p.x*0.1)*2;
