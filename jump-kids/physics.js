@@ -616,6 +616,19 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
         
+        // Red Trampoline: launches player 3x higher
+        if (e.constructor.name === 'RedTrampoline') {
+          const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
+          if (fromAbove) {
+            p.vy = e.bounceForce || -720; // 3x normal jump force
+            playBeep(800, 0.12, 0.08); // High pitched bounce sound
+            continue;
+          } else if (p.invuln <= 0) {
+            damagePlayer(p, world, HUD);
+          }
+          continue;
+        }
+        
         // Leo's special ability: immunity to enemies
         if (p.charId === 'leo') {
           // Enemies bounce back from Leo

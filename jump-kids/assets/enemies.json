@@ -51,6 +51,12 @@
       "jump": -420
     }
   },
+  "M": {
+    "class": "Monkey",
+    "params": {
+      "speed": 70
+    }
+  },
   "W": {
     "class": "Sunflower",
     "params": {
@@ -62,6 +68,12 @@
     "params": {
       "vx": 40,
       "range": 40
+    }
+  },
+  "T": {
+    "class": "RedTrampoline",
+    "params": {
+      "bounceForce": -720
     }
   }
 }

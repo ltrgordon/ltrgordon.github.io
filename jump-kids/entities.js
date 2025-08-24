@@ -161,6 +161,17 @@ export class Sunflower extends Entity{
   }
 }
 
+// Red Trampoline: stationary enemy that launches player 3x higher
+export class RedTrampoline extends Entity{
+  constructor(x,y,bounceForce=-720){
+    super(x,y,24,32);
+    this.speed = 0; // Stationary
+    this.vx = 0;
+    this.bounceForce = bounceForce;
+    this.isTrampoline = true;
+  }
+}
+
 // Butterfly enemy: flutters high in the sky
 export class Butterfly extends Entity{
   constructor(x,y){
@@ -182,6 +193,16 @@ export class Skeleton extends Entity{
     this.state = 'walk';
     this.reformT = 0;
     this.baseH = 30;
+  }
+}
+
+// Regular monkey enemy: smaller, faster than giant monkey
+export class Monkey extends Entity{
+  constructor(x,y){
+    super(x,y,20,24);
+    this.speed = 70;
+    this.vx = -this.speed;
+    this.jumpCD = 0;
   }
 }
 
@@ -224,7 +245,7 @@ export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Monkey, GiantMonkey, Banana, Sunflower, Butterfly, RedTrampoline };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){

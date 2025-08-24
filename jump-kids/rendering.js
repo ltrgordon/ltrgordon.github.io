@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Monkey, GiantMonkey, Banana, Sunflower, Butterfly, RedTrampoline } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -501,6 +501,28 @@ function drawSunflower(x,y){
   ctx.restore();
 }
 
+function drawRedTrampoline(x,y){
+  const t = performance.now()/1000;
+  const bounce = Math.abs(Math.sin(t*3 + x*0.1))*2; // Gentle bounce animation
+  ctx.save();
+  ctx.translate(x+12, y+32-bounce);
+  // stem - darker green
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(-2,-32,4,32);
+  // outer petals - bright red
+  ctx.fillStyle = '#d32f2f';
+  ctx.beginPath(); ellipsePath(0,-40,14,14,ctx); ctx.fill();
+  // inner center - darker red
+  ctx.fillStyle = '#b71c1c';
+  ctx.beginPath(); ellipsePath(0,-40,7,7,ctx); ctx.fill();
+  // Add some sparkle effect to indicate it's special
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillRect(-1,-42,2,2);
+  ctx.fillRect(4,-44,1,1);
+  ctx.fillRect(-5,-38,1,1);
+  ctx.restore();
+}
+
 function drawButterfly(x,y){
   const t = performance.now()/1000;
   const flap = Math.sin(t*10 + x*0.1)*6;
@@ -552,6 +574,27 @@ function drawGiantMonkey(x,y,e){
   ctx.fillStyle='#8b5a2b';
   ctx.fillRect(-4,14,8,16); ctx.fillRect(28,14,8,16);
   ctx.fillRect(8,36,8,12); ctx.fillRect(16,36,8,12);
+  ctx.restore();
+}
+
+function drawMonkey(x,y){
+  const t = performance.now()/1000;
+  const bob = Math.sin(t*6 + x*0.1)*1.5;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // Body - smaller than giant monkey
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(2,8,16,16);
+  // Head
+  ctx.fillStyle='#c89f7a';
+  ctx.fillRect(4,0,12,10);
+  // Eyes
+  ctx.fillStyle='#000';
+  ctx.fillRect(7,3,2,2); ctx.fillRect(11,3,2,2);
+  // Arms and legs - smaller
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(-2,10,4,10); ctx.fillRect(18,10,4,10);
+  ctx.fillRect(4,24,4,8); ctx.fillRect(12,24,4,8);
   ctx.restore();
 }
 
@@ -664,7 +707,9 @@ export function draw(world){
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
     else if (e instanceof Butterfly) drawButterfly(e.x - camX, e.y);
     else if (e instanceof Sunflower) drawSunflower(e.x - camX, e.y);
+    else if (e instanceof RedTrampoline) drawRedTrampoline(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
+    else if (e instanceof Monkey) drawMonkey(e.x - camX, e.y);
     else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
     else if (e instanceof Banana) drawBanana(e.x - camX, e.y);
     else drawGoomba(e.x - camX, e.y);
