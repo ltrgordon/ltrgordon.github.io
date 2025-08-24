@@ -76,25 +76,10 @@ function addStartPlatform(level){
 
   // Place the spawn marker one tile above the platform
   const spawnRow = platformRow - 1;
-  const spawnCol = startCol + Math.floor(width/2);
   if (level[spawnRow]){
     const row = level[spawnRow].split('');
-    row[spawnCol] = 'P';
+    row[startCol + Math.floor(width/2)] = 'P';
     level[spawnRow] = row.join('');
-  }
-
-  // Remove any other spawn markers to ensure consistent top-left spawn
-  for (let y = 0; y < level.length; y++){
-    if (!level[y]) continue;
-    if (y === spawnRow){
-      const chars = level[y].split('');
-      for (let x = 0; x < chars.length; x++){
-        if (chars[x] === 'P' && x !== spawnCol) chars[x] = '_';
-      }
-      level[y] = chars.join('');
-    } else {
-      level[y] = level[y].replace(/P/g, '_');
-    }
   }
 }
 
@@ -297,14 +282,8 @@ function findInMap(symbol){
 
 export function buildWorld(){
   const spawn = findInMap('P');
-  // Create player and snap to ground so they stand on the platform
-  const player = new Player(spawn.x*TILE, (spawn.y-1)*TILE);
-  player.x = spawn.x*TILE;
-  player.y = (groundTopAt(spawn.x, spawn.y) ?? player.y) - player.h;
-  player.spawnX = player.x; player.spawnY = player.y;
-
   const world = {
-    player,
+    player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
     enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
     goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0,
     initialEnemies: [] // Track initial enemy configurations for respawning
@@ -327,6 +306,7 @@ export function buildWorld(){
             ent.y = groundTopAt(x,y) - ent.h;
           }
           world.enemies.push(ent);
+          
           // Store initial enemy configuration for respawning
           world.initialEnemies.push({
             class: cfg.class,
@@ -361,8 +341,10 @@ export function buildWorld(){
       }
     }
   }
+  
   // Add fire enemies to pit areas
   addFireEnemiesToPits(world);
+  
   return world;
 }
 
