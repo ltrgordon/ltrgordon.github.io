@@ -4,5 +4,6 @@
   { "file": "level3.json", "name": "1-3" },
   { "file": "level4.json", "name": "1-4" },
   { "file": "level5.json", "name": "1-5" },
-  { "file": "level6.json", "name": "1-6" }
+  { "file": "level6.json", "name": "1-6" },
+  { "file": "level7.json", "name": "1-7" }
 ]
