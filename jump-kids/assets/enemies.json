@@ -70,7 +70,7 @@
       "range": 40
     }
   },
-  "T": {
+  "J": {
     "class": "RedTrampoline",
     "params": {
       "bounceForce": -720
