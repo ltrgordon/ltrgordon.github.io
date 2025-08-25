@@ -74,11 +74,12 @@ Legend (selected):
 - `O`: ghost enemy
 - `F`: fire enemy
 - `S`: bird enemy
-- `M`: moving platform (two tiles wide)
+- `V`: moving platform (two tiles wide)
 - `X`: skeleton enemy that crumbles and reforms
 - `T`: trapdoor
 - `L`: ladder
 - `^`: spike hazard
+- `J`: red trampoline enemy
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
@@ -99,7 +100,7 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 See `developers.md` for a deeper tour of the loop, level format, and common extension points.
 
 ## Customization Tips
-- Use the start‑menu level editor to create new stages or tweak existing ones. Pick a backdrop, then click tiles to place ground (`#`), platforms (`=`), moving platforms (`M`), power‑ups (`R`, `N`, `U`), enemies (`E`, `H`, `F`, `X`), checkpoints (`K`), goal flags (`G`), and coins (`C`). Save downloads a JSON file compatible with `assets/levels/levels.json`.
+- Use the start‑menu level editor to create new stages or tweak existing ones. Pick a backdrop, then click tiles to place ground (`#`), platforms (`=`), moving platforms (`V`), power‑ups (`R`, `N`, `U`), enemies (`E`, `H`, `F`, `X`), checkpoints (`K`), goal flags (`G`), and coins (`C`). Save downloads a JSON file compatible with `assets/levels/levels.json`.
 - Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `assets/levels/level1.json`. Keep arrays the same height and update `assets/levels/levels.json` to list new level files.
 - Add enemies: place `E`, `H`, etc. where you want; tweak behaviors in `assets/enemies.json` or add new symbols there.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.

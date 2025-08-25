@@ -19,7 +19,7 @@ const tileTypes = [
   {id:'T', name:'Trapdoor', color:'#8B4513', symbol:'T'},
   {id:'L', name:'Ladder', color:'#d9a066', symbol:'L'},
   {id:'^', name:'Spikes', color:'#666', symbol:'^'},
-  {id:'M', name:'Moving Platform', color:'#888', symbol:'M'}
+  {id:'V', name:'Moving Platform', color:'#888', symbol:'V'}
 ];
 
 const collectibleTypes = [
@@ -40,7 +40,7 @@ const enemyTypes = [
   {id:'M', name:'Monkey', color:'#4caf50', symbol:'M'},
   {id:'W', name:'Sunflower', color:'#ffeb3b', symbol:'W'},
   {id:'D', name:'Butterfly', color:'#ff80ab', symbol:'D'},
-  {id:'T', name:'Red Trampoline', color:'#f44336', symbol:'T'}
+  {id:'J', name:'Red Trampoline', color:'#f44336', symbol:'J'}
 ];
 
 const goalTypes = [
@@ -87,7 +87,7 @@ function draw(){
           // Draw label for enemies and features (non-tile items)
           if (enemyTypes.some(e => e.id === symbol) || goalTypes.some(g => g.id === symbol) || 
               collectibleTypes.some(c => c.id === symbol) || 
-              ['T', 'L', '^', 'M'].includes(symbol)) {
+              ['T', 'L', '^', 'V'].includes(symbol)) {
             ctx.font = 'bold 8px system-ui';
             ctx.fillStyle = 'rgba(255,255,255,0.9)';
             ctx.fillRect(x*tileSize + 1, y*tileSize + 1, tileSize - 2, 12);
@@ -214,7 +214,7 @@ function buildPalette(tab){
   if(tab==='base'){
     list = [...tileTypes, ...collectibleTypes];
   } else if(tab==='features'){
-    list = tileTypes.filter(t => ['T', 'L', '^', 'M'].includes(t.id));
+    list = tileTypes.filter(t => ['T', 'L', '^', 'V'].includes(t.id));
   } else if(tab==='enemies'){
     list = enemyTypes;
   } else if(tab==='goals'){
@@ -359,11 +359,11 @@ saveBtn.addEventListener('click', async ()=>{
           accept: {'application/json': ['.json']},
         }],
       });
-      
+
       const writable = await fileHandle.createWritable();
       await writable.write(jsonContent);
       await writable.close();
-      
+
       alert('Level saved successfully!');
       return;
     } catch (err) {
@@ -373,8 +373,25 @@ saveBtn.addEventListener('click', async ()=>{
         return; // User cancelled
       }
     }
+  } else if ('showDirectoryPicker' in window) {
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(jsonContent);
+      await writable.close();
+
+      alert('Level saved successfully!');
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('Directory save failed:', err);
+      } else {
+        return; // User cancelled
+      }
+    }
   }
-  
+
   // Fallback to download method
   const blob = new Blob([jsonContent], {type:'application/json'});
   const a = document.createElement('a');
