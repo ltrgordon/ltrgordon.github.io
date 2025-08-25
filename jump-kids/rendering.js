@@ -74,6 +74,35 @@ function drawFlowers(camX){
   ctx.restore();
 }
 
+
+function drawValentine(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  const t = performance.now()/1000;
+  // hearts in the sky
+  ctx.save();
+  for(let i=0;i<8;i++){
+    const x = ((i*160 + t*30) - camX*0.2) % (w+200) - 100;
+    const y = 60 + (i%3)*40;
+    ctx.fillStyle = '#ff69b4';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x-10, y-15, x-40, y+5, x, y+25);
+    ctx.bezierCurveTo(x+40, y+5, x+10, y-15, x, y);
+    ctx.fill();
+  }
+  ctx.restore();
+  // roses along the ground
+  ctx.save();
+  for(let i=0;i<6;i++){
+    const x = -camX*0.3 + i*200;
+    ctx.fillStyle = '#228b22';
+    ctx.fillRect(x+38,160,8,180);
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath(); ellipsePath(x+42,160,24,24,ctx); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -94,6 +123,8 @@ function drawBackdrop(camX){
   } else if (backdrop === 'flowers'){
     drawClouds(camX);
     drawFlowers(camX);
+  } else if (backdrop === 'valentine'){
+    drawValentine(camX);
   }
 }
 
