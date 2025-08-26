@@ -58,6 +58,7 @@
   .go{ background: radial-gradient(circle at 30% 30%, #34d399, #059669); color:#053b2d;}
   .brake{ background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444); color:#5b0a0a;}
   .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
+  .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
   .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
   .lbl{ display:block; font-size:12px; font-weight:700; opacity:.8; margin-top:4px;}
   #startOverlay, #crashOverlay{
@@ -90,7 +91,7 @@
 <body>
 <canvas id="game" aria-label="Abe's Monster Truck Game"></canvas>
 
-<div id="title">🚙 Abe’s Monster Truck – Tiny Racer</div>
+<div id="title">Abe’s Monster Truck – Tiny Racer</div>
 
 <div id="hud">
   <div>🏁 <span id="distance">0</span> m</div>
@@ -106,7 +107,10 @@
     <button class="btn jump" id="btnJump">⤴️<div class="lbl">JUMP</div></button>
   </div>
   <div style="text-align:center">
-    <button class="btn go" id="btnGo">GO<div class="lbl">VROOM!</div></button>
+    <button class="btn go" id="btnGo">GO<div class="lbl">ACCELERATE</div></button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn horn" id="btnHorn">📢<div class="lbl">HORN</div></button>
   </div>
   <div style="text-align:center">
     <button class="btn reset" id="btnReset">↻</button>
@@ -115,18 +119,18 @@
 
 <div id="startOverlay" role="dialog" aria-modal="true">
   <div class="card">
-    <h1>Hi Abe! 🟢🏎️</h1>
-    <p>Tap <b>GO</b> or press <b>→</b> to start your big green monster truck.</p>
-    <p>Tap <b>JUMP</b> or press <b>Space</b> to hop over bumps. Try crashing into boxes for confetti! 🎉</p>
-    <button id="btnStart" class="big">Let’s Race!</button>
+    <h1>Welcome!</h1>
+    <p>Tap <b>GO</b> or press <b>→</b> to start the monster truck.</p>
+    <p>Tap <b>JUMP</b> or press <b>Space</b> to clear bumps. Colliding with crates releases confetti.</p>
+    <button id="btnStart" class="big">Start Race</button>
   </div>
 </div>
 
 <div id="crashOverlay" style="display:none" role="dialog" aria-modal="true">
   <div class="card">
-    <h1 style="color:#b91c1c;">CRASH! 💥</h1>
-    <p>That was a silly smash. Want to try again?</p>
-    <button id="btnPlayAgain" class="big">Play Again</button>
+    <h1 style="color:#b91c1c;">Crash!</h1>
+    <p>The truck took a hit. Try again?</p>
+    <button id="btnPlayAgain" class="big">Restart</button>
   </div>
 </div>
 
@@ -180,6 +184,7 @@
     if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',true); }
     if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',true); }
     if(e.key===' ' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
+    if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
     if(e.key==='r'){ resetGame(); }
   });
   document.addEventListener('keyup', (e)=>{
@@ -199,6 +204,7 @@
   bindHold(document.getElementById('btnGo'), 'go');
   bindHold(document.getElementById('btnBrake'), 'brake');
   document.getElementById('btnJump').addEventListener('pointerdown', (e)=>{ e.preventDefault(); input.jump=true; ensureAudio(); });
+  document.getElementById('btnHorn').addEventListener('pointerdown', (e)=>{ e.preventDefault(); ensureAudio(); playHorn(); });
   document.getElementById('btnReset').addEventListener('click', resetGame);
 
   const startOverlay = document.getElementById('startOverlay');
@@ -257,7 +263,7 @@
 
   // ===== Truck =====
   const truck = {
-    baseX: 220,  // screen x (not world x)
+    baseX: innerWidth/2,  // center horizontally
     y: 0,        // axle Y (screen coords)
     vy: 0,
     onGround: false,
@@ -267,6 +273,7 @@
     angle: 0,
     spin: 0,
   };
+  addEventListener('resize', ()=>{ truck.baseX = innerWidth/2; });
 
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
@@ -322,6 +329,16 @@
     const g = audioCtx.createGain(); g.gain.value=0.25;
     src.connect(g).connect(audioCtx.destination);
     src.start();
+  }
+  function playHorn(){
+    if(!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type='square'; o.frequency.value=300;
+    g.gain.value=0.08;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime+0.3);
   }
 
   // ===== Game Control =====
@@ -399,6 +416,7 @@
         const sx = s.x - world.scrollX;
         if(Math.abs(sx - truck.baseX) < 40 && Math.abs(s.y - (truck.y - truck.bodyH)) < 50){
           s.taken = true; world.stars++; playBeep();
+          world.speed = Math.min(world.speed + 80, world.maxSpeed);
           // tiny sparkle
           for(let i=0;i<12;i++){
             puffs.push({x:sx, y:s.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.2)*200, life:0, ttl:0.5+Math.random()*0.4, color:'#ffd54a', size:3+Math.random()*3});
