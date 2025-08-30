@@ -1,6 +1,11 @@
 # ltrgordon.github.io
 
-This repository contains the source for a static personal site. The `beamer` directory hosts a browser game that simulates a pong-style battle with light refraction through a lens.
+This repository contains the source for a static personal site featuring several classic-inspired mini-games:
+
+- Jump Kids — dash, jump, and clear the level.
+- Beamer — a pong-style battle with light refraction through a lens.
+- Jump Abe — race Abe's monster truck.
+- Peg Game — the classic triangular peg-jumping puzzle.
 
 ## Development
 
