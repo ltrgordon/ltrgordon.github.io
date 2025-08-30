@@ -34,6 +34,15 @@
     display:flex; gap:16px; align-items:center;
     backdrop-filter: blur(4px);
   }
+  #timerHud{
+    position:fixed; right:12px; top:12px;
+    background: var(--ui-bg);
+    border-radius:14px;
+    padding:8px 12px;
+    box-shadow: 0 4px 12px #00000022;
+    font-weight:700;
+    backdrop-filter: blur(4px);
+  }
   #title{
     position:fixed; top:10px; left:50%; transform:translateX(-50%);
     font-weight:900; letter-spacing:1px;
@@ -61,7 +70,7 @@
   .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
   .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
   .lbl{ display:block; font-size:12px; font-weight:700; opacity:.8; margin-top:4px;}
-  #startOverlay, #crashOverlay{
+  #startOverlay, #crashOverlay, #winOverlay{
     position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     background: linear-gradient(180deg,#00000022,#00000055);
     z-index:10; color:white; text-align:center; padding:20px;
@@ -99,6 +108,7 @@
     <div>🌀 <span id="speed">0</span> m/s</div>
     <div>❤️ <span id="health">10</span></div>
   </div>
+  <div id="timerHud">⏳ <span id="time">60</span>s</div>
 
 <div id="controls" aria-label="On-screen controls">
   <div style="text-align:center">
@@ -131,8 +141,17 @@
 <div id="crashOverlay" style="display:none" role="dialog" aria-modal="true">
   <div class="card">
     <h1 style="color:#b91c1c;">Game Over!</h1>
-    <p>The truck is wrecked. Try again?</p>
+    <p>Time's up. Try again?</p>
     <button id="btnPlayAgain" class="big">Restart</button>
+  </div>
+</div>
+
+<div id="winOverlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="card">
+    <h1 style="color:#15803d;">You Win!</h1>
+    <p>Stars collected: <span id="finalStars">0</span></p>
+    <p>Time: <span id="finalTime">0</span>s</p>
+    <button id="btnWinAgain" class="big">Play Again</button>
   </div>
 </div>
 
@@ -173,6 +192,8 @@
     speed: 0,
     damage: 0,
     maxDamage: 10,
+    timeLeft: 60,
+    timeElapsed: 0,
     playing: false,
     crashed: false,
     shake: 0
@@ -215,8 +236,13 @@
 
   const startOverlay = document.getElementById('startOverlay');
   const crashOverlay = document.getElementById('crashOverlay');
+  const winOverlay = document.getElementById('winOverlay');
+  const timerEl = document.getElementById('time');
+  const finalStarsEl = document.getElementById('finalStars');
+  const finalTimeEl = document.getElementById('finalTime');
   document.getElementById('btnStart').addEventListener('click', ()=>{ ensureAudio(); startGameIfNeeded(); });
   document.getElementById('btnPlayAgain').addEventListener('click', ()=>{ crashOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
+  document.getElementById('btnWinAgain').addEventListener('click', ()=>{ winOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
 
   function startGameIfNeeded(){
     if(!world.playing){
@@ -246,6 +272,7 @@
   const obstacles = []; // {x, yTop, w, h, hue}
   const stars = [];     // collectibles {x,y, r, taken}
   const hearts = [];    // health pickups {x,y, r, taken}
+  const hourglasses = []; // time pickups {x,y,r,taken}
   const ramps = [];     // dirt ramps {x, baseY, w, h, used}
   let lastSpawnX = 0;
   let lastRampX = 0;
@@ -269,19 +296,32 @@
         const hy = gy - h - (100 + rnd()*120);
         hearts.push({x:lastSpawnX + w*0.5, y: hy, r: 16, taken:false});
       }
+      // Occasionally spawn a hourglass
+      if(rnd() < 0.1){
+        const gy2 = gy - h - (60 + rnd()*140);
+        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:16, taken:false});
+      }
     }
     while(lastRampX < rightEdge){
       lastRampX += 900 + rnd()*800;
       const gy = groundY(lastRampX);
       const w = 140 + rnd()*80;
       const h = 80 + rnd()*40;
-      ramps.push({x:lastRampX, baseY:gy, w, h, used:false});
+      const ramp = {x:lastRampX, baseY:gy, w, h, used:false};
+      ramps.push(ramp);
+      for(let i=obstacles.length-1;i>=0;i--){
+        const o = obstacles[i];
+        if(o.x < ramp.x + ramp.w && o.x + o.w > ramp.x - 120){
+          obstacles.splice(i,1);
+        }
+      }
     }
     // Cull old
     const minX = world.scrollX - 300;
     while(obstacles.length && obstacles[0].x + obstacles[0].w < minX) obstacles.shift();
     while(stars.length && stars[0].x + 40 < minX) stars.shift();
     while(hearts.length && hearts[0].x + 40 < minX) hearts.shift();
+    while(hourglasses.length && hourglasses[0].x + 40 < minX) hourglasses.shift();
     while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
   }
 
@@ -369,8 +409,8 @@
 
   // ===== Game Control =====
   function resetGame(){
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0; world.damage=0;
-    obstacles.length = 0; stars.length=0; hearts.length=0; ramps.length=0; puffs.length=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0; world.damage=0; world.timeLeft=60; world.timeElapsed=0;
+    obstacles.length = 0; stars.length=0; hearts.length=0; hourglasses.length=0; ramps.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -378,6 +418,7 @@
     truck.y = groundY(truck.baseX) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
     spawnAhead();
     crashOverlay.style.display='none';
+    winOverlay.style.display='none';
   }
   resetGame();
 
@@ -399,6 +440,13 @@
 
     // Physics only if playing & not crashed
     if(world.playing && !world.crashed){
+      world.timeLeft -= dt;
+      world.timeElapsed += dt;
+      if(world.timeLeft <= 0){
+        world.timeLeft = 0;
+        finishGame(false);
+        return;
+      }
       // Input to speed
       if(input.go) world.speed += world.accel * dt;
       else         world.speed -= world.friction * dt;
@@ -480,6 +528,18 @@
         }
       }
 
+      // Collect hourglasses
+      for(const g of hourglasses){
+        if(g.taken) continue;
+        const gx = g.x - world.scrollX;
+        if(Math.abs(gx - truck.baseX) < 50 && Math.abs(g.y - (truck.y - truck.bodyH)) < 60){
+          g.taken = true; world.timeLeft += 5; playBeep();
+          for(let i=0;i<10;i++){
+            puffs.push({x:gx, y:g.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#fde047', size:3+Math.random()*3});
+          }
+        }
+      }
+
       // Obstacle collisions (simple AABB with truck front)
       for(const o of obstacles){
         const ox = o.x - world.scrollX;
@@ -511,6 +571,7 @@
     document.getElementById('stars').textContent    = world.stars;
     document.getElementById('speed').textContent    = Math.floor(world.speed);
     document.getElementById('health').textContent   = world.maxDamage - world.damage;
+    timerEl.textContent = Math.ceil(world.timeLeft);
 
     // Render
     draw();
@@ -529,19 +590,25 @@
     playCrash();
     console.log('Crate hit, damage:', world.damage);
     if(world.damage >= world.maxDamage){
-      doCrash(cx, cy);
+      finishGame(true, cx, cy);
     }
   }
 
-  function doCrash(cx, cy){
+  function finishGame(win, cx, cy){
     if(world.crashed) return;
     world.crashed = true;
     world.speed = 0;
     world.shake = 14;
     spawnConfetti(truck.baseX, truck.y - truck.bodyH/2);
-    spawnConfetti(cx, cy);
+    if(cx !== undefined && cy !== undefined) spawnConfetti(cx, cy);
     playCrash();
-    setTimeout(()=>{ crashOverlay.style.display='flex'; }, 550);
+    if(win){
+      finalStarsEl.textContent = world.stars;
+      finalTimeEl.textContent = Math.floor(world.timeElapsed);
+      setTimeout(()=>{ winOverlay.style.display='flex'; }, 550);
+    }else{
+      setTimeout(()=>{ crashOverlay.style.display='flex'; }, 550);
+    }
   }
 
   // ===== Drawing =====
@@ -590,6 +657,13 @@
       if(h.taken) continue;
       const x = h.x - world.scrollX;
       drawHeart(x, h.y, h.r);
+    }
+
+    // Hourglasses
+    for(const g of hourglasses){
+      if(g.taken) continue;
+      const x = g.x - world.scrollX;
+      drawHourglass(x, g.y, g.r);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -759,6 +833,27 @@
     ctx.bezierCurveTo(0,20, 12,16, 12,6);
     ctx.bezierCurveTo(12,-4, 0,-4, 0,6);
     ctx.fill();
+    ctx.restore();
+  }
+
+  function drawHourglass(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.fillStyle = '#fde68a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-r, -r);
+    ctx.lineTo(r, -r);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-r, r);
+    ctx.lineTo(r, r);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
     ctx.restore();
   }
 
