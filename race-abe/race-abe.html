@@ -97,6 +97,7 @@
   <div>🏁 <span id="distance">0</span> m</div>
   <div>⭐ <span id="stars">0</span></div>
   <div>🌀 <span id="speed">0</span> m/s</div>
+  <div>❤️ <span id="health">3</span></div>
 </div>
 
 <div id="controls" aria-label="On-screen controls">
@@ -122,14 +123,15 @@
     <h1>Welcome!</h1>
     <p>Tap <b>GO</b> or press <b>→</b> to start the monster truck.</p>
     <p>Tap <b>JUMP</b> or press <b>Space</b> to clear bumps. Colliding with crates releases confetti.</p>
+    <p>Grab hearts to repair the truck after crashes.</p>
     <button id="btnStart" class="big">Start Race</button>
   </div>
 </div>
 
 <div id="crashOverlay" style="display:none" role="dialog" aria-modal="true">
   <div class="card">
-    <h1 style="color:#b91c1c;">Crash!</h1>
-    <p>The truck took a hit. Try again?</p>
+    <h1 style="color:#b91c1c;">Game Over!</h1>
+    <p>The truck is wrecked. Try again?</p>
     <button id="btnPlayAgain" class="big">Restart</button>
   </div>
 </div>
@@ -169,6 +171,8 @@
     distance: 0,
     stars: 0,
     speed: 0,
+    damage: 0,
+    maxDamage: 3,
     playing: false,
     crashed: false,
     shake: 0
@@ -241,6 +245,7 @@
   // ===== Entities: Obstacles & Stars =====
   const obstacles = []; // {x, yTop, w, h, hue}
   const stars = [];     // collectibles {x,y, r, taken}
+  const hearts = [];    // health pickups {x,y, r, taken}
   let lastSpawnX = 0;
   function spawnAhead(){
     const rightEdge = world.scrollX + canvas.width/DPR + 1200;
@@ -254,13 +259,19 @@
       // Place star above it ~ sometimes
       if(rnd() < 0.8){
         const sy = gy - h - (60 + rnd()*60);
-        stars.push({x:lastSpawnX + w*0.5, y: sy, r: 12, taken:false});
+        stars.push({x:lastSpawnX + w*0.5, y: sy, r: 20, taken:false});
+      }
+      // Occasionally spawn a heart
+      if(rnd() < 0.15){
+        const hy = gy - h - (40 + rnd()*40);
+        hearts.push({x:lastSpawnX + w*0.5, y: hy, r: 16, taken:false});
       }
     }
     // Cull old
     const minX = world.scrollX - 300;
     while(obstacles.length && obstacles[0].x + obstacles[0].w < minX) obstacles.shift();
     while(stars.length && stars[0].x + 40 < minX) stars.shift();
+    while(hearts.length && hearts[0].x + 40 < minX) hearts.shift();
   }
 
   // ===== Truck =====
@@ -347,8 +358,8 @@
 
   // ===== Game Control =====
   function resetGame(){
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0;
-    obstacles.length = 0; stars.length=0; puffs.length=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0; world.damage=0;
+    obstacles.length = 0; stars.length=0; hearts.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -421,12 +432,26 @@
       for(const s of stars){
         if(s.taken) continue;
         const sx = s.x - world.scrollX;
-        if(Math.abs(sx - truck.baseX) < 40 && Math.abs(s.y - (truck.y - truck.bodyH)) < 50){
+        if(Math.abs(sx - truck.baseX) < 50 && Math.abs(s.y - (truck.y - truck.bodyH)) < 60){
           s.taken = true; world.stars++; playBeep();
+          console.log('Star collected!', world.stars);
           world.speed = Math.min(world.speed + 80, world.maxSpeed);
           // tiny sparkle
           for(let i=0;i<12;i++){
             puffs.push({x:sx, y:s.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.2)*200, life:0, ttl:0.5+Math.random()*0.4, color:'#ffd54a', size:3+Math.random()*3});
+          }
+        }
+      }
+
+      // Collect hearts
+      for(const h of hearts){
+        if(h.taken) continue;
+        const hx = h.x - world.scrollX;
+        if(Math.abs(hx - truck.baseX) < 50 && Math.abs(h.y - (truck.y - truck.bodyH)) < 60){
+          h.taken = true; if(world.damage>0) world.damage--; playBeep();
+          console.log('Heart collected, damage:', world.damage);
+          for(let i=0;i<10;i++){
+            puffs.push({x:hx, y:h.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#f472b6', size:3+Math.random()*3});
           }
         }
       }
@@ -443,7 +468,7 @@
         const overlapX = !(truckFront < ox || truckBack > ox + o.w);
         const overlapY = !(truckTop > o.yTop + o.h || truckBottom < o.yTop);
         if(overlapX && overlapY){
-          doCrash(ox + o.w*0.5, o.yTop);
+          hitObstacle(o, ox + o.w*0.5, o.yTop + o.h*0.5);
           break;
         }
       }
@@ -461,6 +486,7 @@
     document.getElementById('distance').textContent = Math.floor(world.distance);
     document.getElementById('stars').textContent    = world.stars;
     document.getElementById('speed').textContent    = Math.floor(world.speed);
+    document.getElementById('health').textContent   = world.maxDamage - world.damage;
 
     // Render
     draw();
@@ -470,6 +496,19 @@
   requestAnimationFrame(loop);
 
   // ===== Crash =====
+  function hitObstacle(o, cx, cy){
+    const idx = obstacles.indexOf(o);
+    if(idx >= 0) obstacles.splice(idx,1);
+    spawnConfetti(cx, cy);
+    world.damage++;
+    world.shake = 10;
+    playCrash();
+    console.log('Crate hit, damage:', world.damage);
+    if(world.damage >= world.maxDamage){
+      doCrash(cx, cy);
+    }
+  }
+
   function doCrash(cx, cy){
     if(world.crashed) return;
     world.crashed = true;
@@ -514,6 +553,13 @@
       if(s.taken) continue;
       const x = s.x - world.scrollX;
       drawStar(x, s.y, s.r);
+    }
+
+    // Hearts
+    for(const h of hearts){
+      if(h.taken) continue;
+      const x = h.x - world.scrollX;
+      drawHeart(x, h.y, h.r);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -655,6 +701,21 @@
     ctx.restore();
   }
 
+  function drawHeart(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(r/16, r/16);
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.moveTo(0,6);
+    ctx.bezierCurveTo(0,-4, -12,-4, -12,6);
+    ctx.bezierCurveTo(-12,16, 0,20, 0,30);
+    ctx.bezierCurveTo(0,20, 12,16, 12,6);
+    ctx.bezierCurveTo(12,-4, 0,-4, 0,6);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawTruck(){
     const x = truck.baseX;
     const axleY = truck.y;
@@ -733,6 +794,13 @@
         vx: -60 - Math.random()*60, vy: -10 - Math.random()*30,
         life:0, ttl:0.8, color:'#9ca3afaa', size: 8+Math.random()*8
       });
+    }
+
+    if(world.damage>0){
+      ctx.globalAlpha = Math.min(0.7, world.damage/world.maxDamage*0.7);
+      ctx.fillStyle = '#b91c1c';
+      roundRect(ctx, -bw/2, -bh, bw, bh, 14, true, false);
+      ctx.globalAlpha = 1;
     }
 
     ctx.restore();
