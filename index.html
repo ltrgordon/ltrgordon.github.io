@@ -114,6 +114,16 @@
           <span class="cta">Play <span class="arr">→</span></span>
         </div>
       </a>
+      <a class="card" href="./peg-solitaire.html" aria-label="Play Peg Solitaire">
+        <div class="art">
+          <canvas id="art-ps" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Peg Solitaire+</div>
+          <div class="desc">Triangle, English, or European boards.</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
     </main>
     <footer>Use keyboard or touch — have fun!</footer>
   </div>
@@ -170,7 +180,16 @@
       const pts=[[W/2,110],[W/2-40,160],[W/2+40,160],[W/2-80,210],[W/2,210],[W/2+80,210]];
       pts.forEach(([px,py])=>{x.beginPath(); x.arc(px,py,10,0,Math.PI*2); x.fill();});
     }
-    drawJK(); drawBM(); drawJA(); drawPG();
+    function drawPS(){
+      const c=document.getElementById('art-ps'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f5f5f4'); g.addColorStop(1,'#e7e5e4'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='#a16207';
+      x.fillRect(W/2-60,H/2-60,120,120);
+      x.fillStyle='#f59e0b';
+      for(let r=-1;r<=1;r++) for(let c2=-1;c2<=1;c2++) if(r===0||c2===0){ x.beginPath(); x.arc(W/2+c2*30,H/2+r*30,10,0,Math.PI*2); x.fill(); }
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS();
   </script>
 </body>
 </html>
