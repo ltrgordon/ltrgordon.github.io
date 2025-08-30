@@ -157,7 +157,9 @@
   const world = {
     t:0,
     scrollX:0,            // how far the world has moved left
-    groundBase: () => canvas.height / 1.8,
+    // Keep the truck and terrain around the vertical middle of the screen so
+    // upcoming jumps are visible.
+    groundBase: () => canvas.height / 2,
     gravity: 2300,        // px/s^2
     maxSpeed: 900,        // px/s
     accel: 1400,          // px/s^2
@@ -263,7 +265,9 @@
 
   // ===== Truck =====
   const truck = {
-    baseX: innerWidth/2,  // center horizontally
+    // Use canvas dimensions (which include devicePixelRatio) so the truck is
+    // truly centered on screen.
+    baseX: canvas.width/2,  // center horizontally
     y: 0,        // axle Y (screen coords)
     vy: 0,
     onGround: false,
@@ -273,7 +277,7 @@
     angle: 0,
     spin: 0,
   };
-  addEventListener('resize', ()=>{ truck.baseX = innerWidth/2; });
+  addEventListener('resize', ()=>{ truck.baseX = canvas.width/2; });
 
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
@@ -344,8 +348,11 @@
   // ===== Game Control =====
   function resetGame(){
     world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0;
-    obstacles.length = 0; stars.length=0; puffs.length=0; lastSpawnX=0;
-    truck.y = groundY(0) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
+    obstacles.length = 0; stars.length=0; puffs.length=0;
+    // Start spawning obstacles ahead of the truck's world position so the
+    // player has time to react to upcoming jumps.
+    lastSpawnX = truck.baseX;
+    truck.y = groundY(truck.baseX) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
     spawnAhead();
     crashOverlay.style.display='none';
   }
