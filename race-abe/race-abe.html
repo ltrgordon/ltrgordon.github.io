@@ -142,6 +142,10 @@
     DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width  = Math.floor(innerWidth * DPR);
     canvas.height = Math.floor(innerHeight * DPR);
+    // keep truck centered in CSS pixels
+    if (typeof truck !== 'undefined') {
+      truck.baseX = canvas.width / DPR / 2;
+    }
   }
   resize(); addEventListener('resize', resize);
 
@@ -153,7 +157,7 @@
   const world = {
     t:0,
     scrollX:0,            // how far the world has moved left
-    groundBase: () => canvas.height / 1.8,
+    groundBase: () => canvas.height / DPR / 1.8,
     gravity: 2300,        // px/s^2
     maxSpeed: 900,        // px/s
     accel: 1400,          // px/s^2
@@ -257,7 +261,7 @@
 
   // ===== Truck =====
   const truck = {
-    baseX: 220,  // screen x (not world x)
+    baseX: 0,  // screen x (not world x); set in resize()
     y: 0,        // axle Y (screen coords)
     vy: 0,
     onGround: false,
@@ -267,6 +271,9 @@
     angle: 0,
     spin: 0,
   };
+
+  // initial sizing after truck is defined
+  resize();
 
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
@@ -328,7 +335,7 @@
   function resetGame(){
     world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0;
     obstacles.length = 0; stars.length=0; puffs.length=0; lastSpawnX=0;
-    truck.y = groundY(0) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
+    truck.y = groundY(truck.baseX) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
     spawnAhead();
     crashOverlay.style.display='none';
   }
