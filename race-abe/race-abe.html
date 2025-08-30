@@ -159,7 +159,7 @@
     scrollX:0,            // how far the world has moved left
     // Keep the truck and terrain around the vertical middle of the screen so
     // upcoming jumps are visible.
-    groundBase: () => canvas.height / 2,
+    groundBase: () => canvas.height / DPR / 2,
     gravity: 2300,        // px/s^2
     maxSpeed: 900,        // px/s
     accel: 1400,          // px/s^2
@@ -265,9 +265,9 @@
 
   // ===== Truck =====
   const truck = {
-    // Use canvas dimensions (which include devicePixelRatio) so the truck is
+    // Use CSS pixel dimensions (divide by devicePixelRatio) so the truck is
     // truly centered on screen.
-    baseX: canvas.width/2,  // center horizontally
+    baseX: canvas.width / DPR / 2,  // center horizontally
     y: 0,        // axle Y (screen coords)
     vy: 0,
     onGround: false,
@@ -277,7 +277,7 @@
     angle: 0,
     spin: 0,
   };
-  addEventListener('resize', ()=>{ truck.baseX = canvas.width/2; });
+  addEventListener('resize', ()=>{ truck.baseX = canvas.width / DPR / 2; });
 
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
