@@ -277,6 +277,20 @@
   let hintOn = false;
   let currentBoard = 'triangle';
   const bestScores = {};
+  const demoSequences = {
+    triangle: [{from:1,over:2,to:4},{from:4,over:2,to:1}],
+    english: [
+      {from:5,over:10,to:17},{from:8,over:9,to:10},{from:1,over:4,to:9},{from:3,over:2,to:1},
+      {from:10,over:9,to:8},{from:7,over:8,to:9},{from:11,over:6,to:3},{from:13,over:12,to:11},
+      {from:16,over:9,to:4},{from:1,over:4,to:9},{from:14,over:15,to:16},{from:16,over:9,to:4},
+      {from:18,over:17,to:16},{from:20,over:19,to:18},{from:18,over:11,to:6},{from:3,over:6,to:11},
+      {from:23,over:16,to:9},{from:4,over:9,to:16},{from:21,over:22,to:23},{from:24,over:23,to:22},
+      {from:30,over:25,to:18},{from:27,over:26,to:25},{from:31,over:28,to:23},{from:16,over:23,to:28},
+      {from:33,over:32,to:31},{from:31,over:28,to:23},{from:22,over:23,to:24},{from:24,over:25,to:26},
+      {from:11,over:18,to:25},{from:26,over:25,to:24},{from:29,over:24,to:17}
+    ],
+    european: null // TODO
+  };
 
   function buildTriangle(){
     const N = 5; // rows
@@ -360,7 +374,7 @@
       }
     }
     if(layout.shape==='cross'){
-      const x0=offset, y0=offset; const s7=7*s;
+      const x0=offset - s/2, y0=offset - s/2;
       const path=`M${x0+2*s},${y0} L${x0+5*s},${y0} L${x0+5*s},${y0+2*s} L${x0+7*s},${y0+2*s} L${x0+7*s},${y0+5*s} L${x0+5*s},${y0+5*s} L${x0+5*s},${y0+7*s} L${x0+2*s},${y0+7*s} L${x0+2*s},${y0+5*s} L${x0},${y0+5*s} L${x0},${y0+2*s} L${x0+2*s},${y0+2*s} Z`;
       const shp=document.createElementNS('http://www.w3.org/2000/svg','path');
       shp.setAttribute('d',path);
@@ -509,8 +523,12 @@
 
   function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),1400); }
 
-  function demo(){ if(currentBoard!=='triangle'){ toast('Demo not available for this board'); return; } const seq=[{from:1,over:2,to:4},{from:4,over:2,to:1}]; /* placeholder simple demo */
-    demoPlay(seq); }
+  function demo(){
+    const seq = demoSequences[currentBoard];
+    if(!seq){ toast('Demo not available for this board'); return; }
+    resetGame();
+    setTimeout(() => demoPlay(seq), 300);
+  }
 
   function demoPlay(seq){ let i=0; function step(){ if(i>=seq.length){ return; } doMove(seq[i++]); setTimeout(step,400); } step(); }
 
