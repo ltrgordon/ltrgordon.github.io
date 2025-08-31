@@ -113,7 +113,7 @@
       gap: 10px;
     }
     .controls .full{ grid-column: 1 / -1; }
-    button, select{
+    button, select, input[type="color"]{
       -webkit-appearance:none; appearance:none;
       border: none;
       padding: 12px 14px;
@@ -227,6 +227,7 @@
 
           <button id="btnRandomStart" class="accent">Random Start</button>
           <button id="btnDemo" class="accent full">👀 Watch a Classic Win</button>
+          <input type="color" id="pegColor" class="full" value="#77a7ff" aria-label="Choose peg color" />
         </div>
 
         <div class="panel help">
@@ -264,6 +265,14 @@
   const btnChooseStart = document.getElementById('btnChooseStart');
   const btnRandomStart = document.getElementById('btnRandomStart');
   const btnDemo = document.getElementById('btnDemo');
+  const colorInput = document.getElementById('pegColor');
+
+  colorInput.value = pegColor;
+  colorInput.addEventListener('input', (e) => {
+    pegColor = e.target.value;
+    if (pegGradStop) pegGradStop.setAttribute('stop-color', pegColor);
+    renderPegs();
+  });
 
   let HOLES = 0;
   let MOVES = [];
@@ -275,6 +284,8 @@
   let history = [];
   let choosingStart = false;
   let hintOn = false;
+  let pegColor = '#77a7ff';
+  let pegGradStop = null;
   let currentBoard = 'triangle';
   const bestScores = {};
   const demoSequences = {
@@ -399,7 +410,7 @@
     defs.innerHTML=`
       <radialGradient id="pegGrad" cx="35%" cy="30%">
         <stop offset="0%" stop-color="#ffffff"/>
-        <stop offset="100%" stop-color="#77a7ff"/>
+        <stop id="pegGradStop" offset="100%" stop-color="${pegColor}"/>
       </radialGradient>
       <radialGradient id="pegGradSel" cx="30%" cy="30%">
         <stop offset="0%" stop-color="#ffffff"/>
@@ -417,6 +428,7 @@
         <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="rgba(0,0,0,.25)"/>
       </filter>`;
     boardSvg.appendChild(defs);
+    pegGradStop = defs.querySelector('#pegGradStop');
 
     if(type==='triangle') buildTriangle();
     else if(type==='english') buildGridBoard({start:[2,2,0,0,0,2,2], end:[4,4,6,6,6,4,4], shape:'cross'});
@@ -498,7 +510,10 @@
 
   function undo(){ const mv=history.pop(); if(!mv){ toast('Nothing to undo'); return;} pieces[mv.from]=true; pieces[mv.over]=true; pieces[mv.to]=false; selected=null; renderAll(); updateStats(); }
 
-  function resetGame(){ init(defaultStart()); }
+  function resetGame(){
+    document.getElementById('winModal').classList.remove('show');
+    init(defaultStart());
+  }
 
   function chooseStart(){ choosingStart=true; toast('Tap any peg to remove as starting hole.'); }
 
@@ -506,7 +521,36 @@
 
   function renderPegs(){ const gPegs=boardSvg.querySelector('g:last-child'); gPegs.innerHTML=''; for(let i=1;i<=HOLES;i++) if(pieces[i]) makePeg(i, i===selected); }
 
-  function renderHints(){ const gHints=boardSvg.querySelector('g'); gHints.innerHTML=''; if(!hintOn||selected==null) return; const vm=validMovesFrom(selected); for(const m of vm){ const {x,y}=pos[m.to]; const dot=document.createElementNS('http://www.w3.org/2000/svg','circle'); dot.setAttribute('cx',x); dot.setAttribute('cy',y); dot.setAttribute('r',6); dot.setAttribute('class','hint-dot'); gHints.appendChild(dot); } }
+  function renderHints(){
+    const gHints = boardSvg.querySelector('g');
+    gHints.innerHTML = '';
+    if (!hintOn) return;
+    for (let i = 1; i <= HOLES; i++) {
+      if (!pieces[i]) continue;
+      const moves = validMovesFrom(i);
+      if (moves.length) {
+        const { x, y } = pos[i];
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', x);
+        ring.setAttribute('cy', y);
+        ring.setAttribute('r', 8.5);
+        ring.setAttribute('class', 'hint-dot');
+        gHints.appendChild(ring);
+      }
+    }
+    if (selected != null) {
+      const vm = validMovesFrom(selected);
+      for (const m of vm) {
+        const { x, y } = pos[m.to];
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', 6);
+        dot.setAttribute('class', 'hint-dot');
+        gHints.appendChild(dot);
+      }
+    }
+  }
 
   function renderLines(){ const gLines=boardSvg.querySelectorAll('g')[1]; gLines.innerHTML=''; }
 
@@ -514,7 +558,29 @@
 
   function updateStats(){ pegsLeftEl.textContent=pegsRemaining(); movesMadeEl.textContent=history.length; const best=bestScores[currentBoard]; if(best==null || pegsRemaining()<best){ bestScores[currentBoard]=pegsRemaining(); } bestScoreEl.textContent=bestScores[currentBoard]??'—'; }
 
-  function checkWin(){ if(pegsRemaining()===1 && !anyMovesExist()){ bestScores[currentBoard]=1; showWin(); } else if(!anyMovesExist()){ toast(`No moves. Pegs left: ${pegsRemaining()}`); } }
+  function logHighScore(pegs){
+    const name = prompt('High score! Enter your name:');
+    if(!name) return;
+    const scores = JSON.parse(localStorage.getItem('pegHighScores') || '[]');
+    scores.push({board: currentBoard, name, score: pegs, date: Date.now()});
+    localStorage.setItem('pegHighScores', JSON.stringify(scores));
+  }
+
+  function checkWin(){
+    const left = pegsRemaining();
+    if(!anyMovesExist()){
+      if ((currentBoard === 'triangle' && left === 1) ||
+          ((currentBoard === 'english' || currentBoard === 'european') && left <= 5)) {
+        logHighScore(left);
+      }
+      if(left === 1){
+        bestScores[currentBoard] = 1;
+        showWin();
+      } else {
+        toast(`No moves. Pegs left: ${left}`);
+      }
+    }
+  }
 
   function toggleHint(){ hintOn=!hintOn; btnHint.textContent = `Hints: ${hintOn?'On':'Off'}`; btnHint.setAttribute('aria-pressed', hintOn); renderHints(); }
 

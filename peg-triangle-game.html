@@ -122,7 +122,7 @@
       gap: 10px;
     }
     .controls .full{ grid-column: 1 / -1; }
-    button{
+    button, input[type="color"]{
       -webkit-appearance:none; appearance:none;
       border: none;
       padding: 12px 14px;
@@ -248,6 +248,7 @@
 
           <button id="btnRandomStart" class="accent">Random Start</button>
           <button id="btnDemo" class="accent full">👀 Watch a Classic Win</button>
+          <input type="color" id="pegColor" class="full" value="#77a7ff" aria-label="Choose peg color" />
         </div>
 
         <div class="panel help">
@@ -278,6 +279,8 @@
   const N = 5;           // rows
   const HOLES = 15;      // 1..15 numbering
   const boardSvg = document.getElementById('board');
+  let pegColor = '#77a7ff';
+  let pegGradStop = null;
 
   // Map index (1..15) <-> (r,c) with rows 1..5 and columns 1..r
   const idxToRC = {};
@@ -351,7 +354,7 @@
   defs.innerHTML = `
     <radialGradient id="pegGrad" cx="35%" cy="30%">
       <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#77a7ff"/>
+      <stop id="pegGradStop" offset="100%" stop-color="${pegColor}"/>
     </radialGradient>
     <radialGradient id="pegGradSel" cx="30%" cy="30%">
       <stop offset="0%" stop-color="#ffffff"/>
@@ -370,6 +373,7 @@
     </filter>
   `;
   boardSvg.appendChild(defs);
+  pegGradStop = defs.querySelector('#pegGradStop');
 
   // Groups
   const gHints = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -543,6 +547,7 @@
   }
 
   function resetGame(){
+    hideWin();
     const best = getBest();
     init(best?.start ?? 1);
   }
@@ -651,10 +656,19 @@
       : 'No moves remain';
   }
 
+  function logHighScore(pegs){
+    const name = prompt('High score! Enter your name:');
+    if(!name) return;
+    const scores = JSON.parse(localStorage.getItem('pegHighScores') || '[]');
+    scores.push({board: 'triangle', name, score: pegs, date: Date.now()});
+    localStorage.setItem('pegHighScores', JSON.stringify(scores));
+  }
+
   function checkEnd(){
     const left = pegsRemaining();
     if (left === 1){
       saveBest(left);
+      logHighScore(left);
       win();
     }else if (!anyMovesExist()){
       saveBest(left);
@@ -681,6 +695,13 @@
   document.getElementById('btnReset').addEventListener('click', resetGame);
   document.getElementById('btnChooseStart').addEventListener('click', setStartMode);
   document.getElementById('btnRandomStart').addEventListener('click', randomStart);
+  const colorInput = document.getElementById('pegColor');
+  colorInput.value = pegColor;
+  colorInput.addEventListener('input', (e) => {
+    pegColor = e.target.value;
+    if (pegGradStop) pegGradStop.setAttribute('stop-color', pegColor);
+    renderPegs();
+  });
 
   // Keyboard helpers
   boardSvg.addEventListener('keydown', (e) => {
