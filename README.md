@@ -5,7 +5,8 @@ This repository contains the source for a static personal site featuring several
 - Jump Kids — dash, jump, and clear the level.
 - Beamer — a pong-style battle with light refraction through a lens.
 - Jump Abe — race Abe's monster truck.
-- Peg Game — the classic triangular peg-jumping puzzle.
+- Peg Solitaire+ — triangle, English, and European boards with hints, color selection, and high-score tracking.
+- Peg Game — the classic triangular peg-jumping puzzle with named high scores.
 
 ## Development
 
