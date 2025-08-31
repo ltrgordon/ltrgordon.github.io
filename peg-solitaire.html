@@ -252,6 +252,9 @@
 
 <script>
 (() => {
+  let pegColor = '#77a7ff';
+  let pegGradStop = null;
+
   const boardSvg = document.getElementById('board');
   const boardTypeSel = document.getElementById('boardType');
 
@@ -284,8 +287,6 @@
   let history = [];
   let choosingStart = false;
   let hintOn = false;
-  let pegColor = '#77a7ff';
-  let pegGradStop = null;
   let currentBoard = 'triangle';
   const bestScores = {};
   const demoSequences = {
