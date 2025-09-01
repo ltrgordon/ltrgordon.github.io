@@ -162,8 +162,9 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   }
   if (p.invuln>0) p.invuln = Math.max(0, p.invuln - dt);
 
-  const acc = MOVE_ACC * (keys.dash ? 1.5 : 1);
-  const max = MOVE_MAX * (keys.dash ? 1.5 : 1);
+  const speedMul = (keys.dash ? 1.5 : 1) * (p.berserk>0 ? 2 : 1);
+  const acc = MOVE_ACC * speedMul;
+  const max = MOVE_MAX * speedMul;
   if (!p.lockControls){
     if (keys.left) p.vx = Math.max(-max, p.vx - acc*dt);
     if (keys.right) p.vx = Math.min( max, p.vx + acc*dt);
@@ -192,6 +193,11 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
       p.vy = -jv;
       p.grounded = false;
+      p.jumpBuffer = 0;
+      playBeep(700,0.05,0.07);
+    } else if (!p.lockControls && p.charId==='abe' && p.jumpBuffer>0 && !p.grounded && p.coyote<=0 && !p.doubleJumped && p.mega<=0){
+      p.vy = -JUMP_VEL*1.2;
+      p.doubleJumped = true;
       p.jumpBuffer = 0;
       playBeep(700,0.05,0.07);
     }
@@ -333,9 +339,33 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
     playBeep(520,0.07,0.08);
   }
 
+  for (const pr of world.projectiles){
+    if (pr.gravity) pr.vy += GRAVITY*dt;
+    const hitX = moveWithCollisions(pr, pr.vx*dt, 0, true);
+    moveWithCollisions(pr, 0, pr.vy*dt, true);
+    for (const e of world.enemies){
+      if (e.remove) continue;
+      if (rectOverlap(pr.x,pr.y,pr.w,pr.h, e.x,e.y,e.w,e.h)){
+        if ('hp' in e){ e.hp--; if (e.hp<=0) e.remove=true; }
+        else e.remove=true;
+        pr.remove = true;
+        break;
+      }
+    }
+    if (hitX || pr.grounded || pr.x<0 || pr.x>W*TILE || pr.y>H*TILE) pr.remove=true;
+  }
+  world.projectiles = world.projectiles.filter(pr=>!pr.remove);
+
   for (const e of world.enemies){
     if (e.remove) continue;
     if (!(e instanceof Ghost) && !(e instanceof Bird) && !(e instanceof Butterfly)) e.vy += GRAVITY*dt;
+    if (e.dazed>0){
+      e.dazed -= dt;
+      moveWithCollisions(e, e.vx*dt, 0, true);
+      moveWithCollisions(e, 0, e.vy*dt, true);
+      if (e.grounded) e.vx *= 0.8;
+      continue;
+    }
     if (e instanceof GiantMonkey){
       if (e.throwCD>0) e.throwCD -= dt;
       const dx = (p.x + p.w/2) - (e.x + e.w/2);

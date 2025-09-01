@@ -11,7 +11,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump, D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2 and E for S3.
+- Keyboard: Left/Right to move, Space or Z to jump (Abe can double jump by pressing twice), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -47,10 +47,10 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
-- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path; S3 backflip attack defeating foes behind her.
-- **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes; S3 forward leg sweep that defeats enemies ahead.
-- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front; S3 midair double jump for extra height.
-- **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
+- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path; S3 backflip attack defeating foes behind her; S4 rainbow projectile.
+- **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes; S3 spinning dash forward that defeats enemies in his path; S4 shuriken projectile.
+- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front; S3 berserk mode doubling run speed and knocking back/dazing enemies; S4 water balloon projectile.
+- **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling; S4 diaper projectile.
 
 ## Tile/Map Encoding
 The level is an ASCII grid split across two arrays in `game.js`:
