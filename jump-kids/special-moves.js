@@ -30,6 +30,10 @@ export function createSpecialMoves(utils){
       p.grounded = false;
       p.flip = 0;
     },
+    s4(p,world){
+      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*300, vy:0, gravity:false, type:'rainbow', grounded:false};
+      world.projectiles.push(proj);
+    },
     update(p,dt){
       if(p.action==='flip'){
         p.flip += dt * Math.PI * 2;
@@ -72,12 +76,16 @@ export function createSpecialMoves(utils){
       p.spinRotation = 0;
     },
     s3(p){
-      if(!p.grounded || p.action) return;
-      p.action = 'legSweep';
+      if(p.action) return;
+      p.action = 'spinDash';
       p.lockControls = true;
-      p.sweepTime = 0.35;
-      p.sweepRot = 0;
-      p.vx = 0;
+      p.vx = 400 * p.facing;
+      p.spinRotation = 0;
+      p.spinTime = 0.5;
+    },
+    s4(p,world){
+      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*320, vy:0, gravity:false, type:'shuriken', grounded:false};
+      world.projectiles.push(proj);
     },
     update(p,dt){
       if(p.invisible>0) p.invisible = Math.max(0, p.invisible - dt);
@@ -88,20 +96,16 @@ export function createSpecialMoves(utils){
           p.lockControls=false;
           p.spinRotation = 0;
         }
-      } else if(p.action==='legSweep'){
-        p.sweepTime -= dt;
-        p.sweepRot += dt * Math.PI * 6;
-        if(p.sweepTime<=0){ p.action=null; p.lockControls=false; p.sweepRot=0; }
+      } else if(p.action==='spinDash'){
+        p.spinTime -= dt;
+        p.spinRotation += dt * Math.PI * 8;
+        if(p.spinTime<=0){ p.action=null; p.lockControls=false; p.spinRotation=0; p.vx*=0.3; }
       }
     },
     onEnemyCollide(p,e){
-      if(p.action==='spinJump'){
-        e.remove = true; // Defeat enemy on spinning contact
-        return true; // Joey takes no damage
-      }
-      if(p.action==='legSweep'){
-        const dir = Math.sign((e.x+e.w/2) - (p.x+p.w/2));
-        if(dir === p.facing){ e.remove=true; return true; }
+      if(p.action==='spinJump' || p.action==='spinDash'){
+        e.remove = true;
+        return true;
       }
       return false;
     }
@@ -123,12 +127,15 @@ export function createSpecialMoves(utils){
       p.punchTime = 0.5; // Duration of run
     },
     s3(p){
-      if(p.grounded || p.doubleJumped) return;
-      p.vy = -JUMP_VEL * 1.2;
-      p.doubleJumped = true;
+      p.berserk = 5;
+    },
+    s4(p,world){
+      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*200, vy:-200, gravity:true, type:'balloon', grounded:false};
+      world.projectiles.push(proj);
     },
     update(p,dt,world){
       if(p.grounded) p.doubleJumped = false;
+      if(p.berserk>0) p.berserk = Math.max(0, p.berserk - dt);
       if(p.action==='smash'){
         // When Abe reaches peak of jump, make him slam down fast
         if(p.vy > 0 && !p.smashDown) {
@@ -173,6 +180,14 @@ export function createSpecialMoves(utils){
       }
     },
     onEnemyCollide(p,e){
+      if(p.berserk>0){
+        const direction = Math.sign(e.x - p.x) || p.facing;
+        e.x += direction * 80;
+        e.vx = direction * 300;
+        e.vy = -120;
+        e.dazed = 1.5;
+        return true;
+      }
       if(p.action==='punchRun'){
         const direction = Math.sign(e.x - p.x) || p.facing;
         e.x += direction * 80; // Strong knockback
@@ -184,6 +199,10 @@ export function createSpecialMoves(utils){
     }
   },
   leo: {
+    s4(p,world){
+      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*200, vy:-200, gravity:true, type:'diaper', grounded:false};
+      world.projectiles.push(proj);
+    },
     update(p,dt,world,keys){
       if(p.action==='bubble'){
         p.vx = 0;

@@ -99,12 +99,12 @@ export class Player extends Entity{
     this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
-    this.rainbow=0; this.onLadder=false; this.mega=0; this.doubleJumped=false;
+    this.rainbow=0; this.onLadder=false; this.mega=0; this.doubleJumped=false; this.berserk=0;
   }
   respawn(){
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
     this.invuln=1.2; this.big=false; this.w=20; this.h=28;
-    this.action=null; this.lockControls=false; this.invisible=0; this.doubleJumped=false;
+    this.action=null; this.lockControls=false; this.invisible=0; this.doubleJumped=false; this.berserk=0;
   }
 }
 
@@ -260,7 +260,7 @@ export function buildWorld(){
   const spawn = findInMap('P');
   const world = {
     player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
-    enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
+    enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[], projectiles:[],
     goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0,
     initialEnemies: [] // Track initial enemy configurations for respawning
   };

@@ -232,6 +232,28 @@ function drawMushroom(x,y){
   }
   ctx.restore();
 }
+function drawProjectile(x,y,type){
+  ctx.save();
+  if(type==='rainbow'){
+    const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
+    for(let i=0;i<colors.length;i++){
+      ctx.fillStyle=colors[i];
+      ctx.fillRect(x+i%3, y+i/3|0,1,1);
+    }
+  } else if(type==='shuriken'){
+    ctx.fillStyle='#888';
+    ctx.fillRect(x+3,y,2,8);
+    ctx.fillRect(x,y+3,8,2);
+  } else if(type==='balloon'){
+    ctx.fillStyle='#4fc3f7';
+    ctx.beginPath(); ellipsePath(x+4,y+4,4,4,ctx); ctx.fill();
+  } else if(type==='diaper'){
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ellipsePath(x+4,y+4,4,3,ctx); ctx.fill();
+    ctx.strokeStyle='#ccc'; ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawPlatform(x,y,w){
   ctx.save(); ctx.fillStyle='#888'; ctx.fillRect(x,y,w,8); ctx.restore();
 }
@@ -242,8 +264,8 @@ function drawPlayer(x,y,p){
   ctx.translate(x + p.w/2, y + p.h);
   if (p.facing<0) ctx.scale(-1,1);
   ctx.translate(0, -p.h/2);
-  if (p.action==='flip') ctx.rotate(p.flip||0);
-  if (p.action==='spinJump') ctx.rotate(p.spinRotation||0);
+  if (p.action==='flip' || p.action==='backflip') ctx.rotate(p.flip||0);
+  if (p.action==='spinJump' || p.action==='spinDash') ctx.rotate(p.spinRotation||0);
   if (p.action==='cartwheel') ctx.rotate(p.cartRot||0);
   ctx.translate(-p.w/2, -p.h/2);
   if (p.rainbow>0){
@@ -269,6 +291,7 @@ function drawPlayer(x,y,p){
       break;
     case 'abe':
       suit='#a7e0ff'; accent='#e63946'; head='#e76f51';
+      if(p.berserk>0){ suit='#ff4d4d'; accent='#880000'; }
       break;
     case 'leo':
       suit='#ffffff'; accent='#ffd166'; head=skin;
@@ -729,6 +752,7 @@ export function draw(world){
     else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y - camY);
     else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y - camY);
   }
+  for (const pr of world.projectiles){ drawProjectile(pr.x - camX, pr.y - camY, pr.type); }
   for (const e of world.enemies){
     if (e.remove) continue;
     if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
