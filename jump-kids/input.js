@@ -49,15 +49,28 @@ function bufferJump(){
 function triggerSpecial(which){
   if (!worldRef || !worldRef.player || !specialMoves) return;
   const p = worldRef.player;
+  if (p.cooldowns && p.cooldowns[which]>0) return;
   const ability = specialMoves[p.charId];
   if (!ability) return;
   if (p.charId==='leo' && p.action==='bubble'){
     p.action=null; p.lockControls=false; p.bubbleHold=0; return;
   }
-  if (which==='s1' && ability.s1) ability.s1(p, worldRef);
-  if (which==='s2' && ability.s2) ability.s2(p, worldRef);
-  if (which==='s3' && ability.s3) ability.s3(p, worldRef);
-  if (which==='s4' && ability.s4) ability.s4(p, worldRef);
+  let res = false;
+  if (which==='s1' && ability.s1) res = ability.s1(p, worldRef);
+  if (which==='s2' && ability.s2) res = ability.s2(p, worldRef);
+  if (which==='s3' && ability.s3) res = ability.s3(p, worldRef);
+  if (which==='s4' && ability.s4) res = ability.s4(p, worldRef);
+  if (res){
+    p.cooldowns[which] = p.cooldownDurations[which];
+    if (hudRef && hudRef.cooldowns){
+      const el = hudRef.cooldowns.querySelector('.hourglass.'+which);
+      if (el){
+        el.style.display='block';
+        const fill = el.querySelector('.fill');
+        if (fill) fill.style.height='100%';
+      }
+    }
+  }
 }
 
 export function initInput(){
