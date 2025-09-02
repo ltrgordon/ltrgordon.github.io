@@ -195,8 +195,9 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       p.grounded = false;
       p.jumpBuffer = 0;
       playBeep(700,0.05,0.07);
-    } else if (!p.lockControls && p.charId==='abe' && p.jumpBuffer>0 && !p.grounded && p.coyote<=0 && !p.doubleJumped && p.mega<=0){
-      p.vy = -JUMP_VEL*1.2;
+    } else if (!p.lockControls && p.jumpBuffer>0 && !p.grounded && p.coyote<=0 && !p.doubleJumped && p.mega<=0){
+      const jv = (p.charId==='leo' ? JUMP_VEL*0.5 : JUMP_VEL) * (keys.dash ? 1.25 : 1);
+      p.vy = -jv*1.2;
       p.doubleJumped = true;
       p.jumpBuffer = 0;
       playBeep(700,0.05,0.07);

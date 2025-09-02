@@ -11,7 +11,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump (Abe can double jump by pressing twice), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
+- Keyboard: Left/Right to move, Space or Z to jump (press twice to double jump), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -43,7 +43,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Deep cavern section beneath the underground path filled with extra enemies, moving platforms, and frequent spike pits.
 - Spike pits bridged by small moving platforms.
 - Ladders connecting upper, underground, and cavern paths.
-- Rolling hills span the surface while the lower routes reveal a spooky underground cave backdrop.
+- Rolling hills, fiery volcanoes and looming castles span the surface while the lower routes reveal a spooky underground cave backdrop.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves

@@ -103,6 +103,36 @@ function drawValentine(camX){
   ctx.restore();
 }
 
+function drawVolcano(camX){
+  ctx.save();
+  for(let i=0;i<3;i++){
+    const x = -camX*0.2 + i*400;
+    ctx.fillStyle = '#8d6e63';
+    ctx.beginPath();
+    ctx.moveTo(x,280);
+    ctx.lineTo(x+200,120);
+    ctx.lineTo(x+400,280);
+    ctx.fill();
+    ctx.fillStyle = '#f44336';
+    ctx.fillRect(x+190,120,20,40);
+  }
+  ctx.restore();
+}
+
+function drawCastle(camX){
+  ctx.save();
+  for(let i=0;i<4;i++){
+    const x = -camX*0.25 + i*220;
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(x,160,80,180);
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(x,160,80,20);
+    ctx.fillStyle = '#78909c';
+    for(let j=0;j<3;j++) ctx.fillRect(x+18+j*18,200,10,20);
+  }
+  ctx.restore();
+}
+
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -125,6 +155,12 @@ function drawBackdrop(camX){
     drawFlowers(camX);
   } else if (backdrop === 'valentine'){
     drawValentine(camX);
+  } else if (backdrop === 'volcano'){
+    drawClouds(camX);
+    drawVolcano(camX);
+  } else if (backdrop === 'castle'){
+    drawClouds(camX);
+    drawCastle(camX);
   }
 }
 

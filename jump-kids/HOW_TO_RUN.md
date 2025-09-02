@@ -32,7 +32,7 @@ If you want to run the game by opening `index.html` directly from Finder/File Ex
 
 ## Game Controls
 - **Movement**: Arrow keys (← →) or WASD
-- **Jump**: Spacebar or Z (press twice to double jump as Abe)
+- **Jump**: Spacebar or Z (press twice to double jump)
 - **Dash**: D key
 - **Special Moves**: S (S1), F (S2), E (S3), C (S4)
 - **Pause**: P
