@@ -30,13 +30,5 @@
   {
     "file": "level8.json",
     "name": "1-8"
-  },
-  {
-    "file": "level9.json",
-    "name": "1-9"
-  },
-  {
-    "file": "level10.json",
-    "name": "1-10"
   }
 ]
