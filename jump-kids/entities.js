@@ -1,4 +1,4 @@
-import { TILE } from './config.js';
+import { TILE, JUMP_VEL } from './config.js';
 import { Entity } from './entity.js';
 
 // Built-in level data used as fallback when JSON fails to load
@@ -100,11 +100,14 @@ export class Player extends Entity{
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
     this.rainbow=0; this.onLadder=false; this.mega=0; this.doubleJumped=false; this.berserk=0;
+    this.cooldowns={s1:0,s2:0,s3:0,s4:0};
+    this.cooldownDurations={s1:45,s2:20,s3:30,s4:15};
   }
   respawn(){
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
     this.invuln=1.2; this.big=false; this.w=20; this.h=28;
     this.action=null; this.lockControls=false; this.invisible=0; this.doubleJumped=false; this.berserk=0;
+    this.cooldowns={s1:0,s2:0,s3:0,s4:0};
   }
 }
 
@@ -163,7 +166,7 @@ export class Sunflower extends Entity{
 
 // Red Trampoline: stationary enemy that launches player 3x higher
 export class RedTrampoline extends Entity{
-  constructor(x,y,bounceForce=-720){
+  constructor(x,y,bounceForce=-3*JUMP_VEL){
     super(x,y,24,32);
     this.speed = 0; // Stationary
     this.vx = 0;
