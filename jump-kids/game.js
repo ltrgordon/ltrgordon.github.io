@@ -304,7 +304,7 @@ async function initMenu(){
   ctx = canvas.getContext('2d');
   initRenderer(canvas, ctx);
   setBackdrop('hills');
-  HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg'), cooldowns:document.getElementById('cooldowns') };
+  HUD = { coins:document.getElementById('coins'), lives:document.getElementById('lives'), world:document.getElementById('world'), msg:document.getElementById('msg') };
   setHUD(HUD);
 
   // Menu elements

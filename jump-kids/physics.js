@@ -162,26 +162,6 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   }
   if (p.invuln>0) p.invuln = Math.max(0, p.invuln - dt);
 
-  for (const k in p.cooldowns){
-    if (p.cooldowns[k] > 0){
-      p.cooldowns[k] = Math.max(0, p.cooldowns[k] - dt);
-    }
-    const hud = HUD && HUD.cooldowns;
-    if (hud){
-      const el = hud.querySelector('.hourglass.'+k);
-      if (el){
-        if (p.cooldowns[k] > 0){
-          el.style.display = 'block';
-          const ratio = p.cooldowns[k] / p.cooldownDurations[k];
-          const fill = el.querySelector('.fill');
-          if (fill) fill.style.height = (ratio*100)+'%';
-        } else {
-          el.style.display = 'none';
-        }
-      }
-    }
-  }
-
   const speedMul = (keys.dash ? 1.5 : 1) * (p.berserk>0 ? 2 : 1);
   const acc = MOVE_ACC * speedMul;
   const max = MOVE_MAX * speedMul;
@@ -215,7 +195,7 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
       p.grounded = false;
       p.jumpBuffer = 0;
       playBeep(700,0.05,0.07);
-    } else if (!p.lockControls && p.jumpBuffer>0 && !p.grounded && p.coyote<=0 && !p.doubleJumped && p.mega<=0){
+    } else if (!p.lockControls && p.charId==='abe' && p.jumpBuffer>0 && !p.grounded && p.coyote<=0 && !p.doubleJumped && p.mega<=0){
       p.vy = -JUMP_VEL*1.2;
       p.doubleJumped = true;
       p.jumpBuffer = 0;
@@ -227,7 +207,6 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
   const prevVy = p.vy;
   const prevBottom = p.bottom;
   moveWithCollisions(p, 0, p.vy*dt);
-  if (p.grounded) p.doubleJumped = false;
   const belowTy = Math.floor((p.bottom+1)/TILE);
   const centerTx2 = Math.floor((p.x + p.w/2)/TILE);
   if (tileAt(centerTx2, belowTy)==='T'){
@@ -636,7 +615,8 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         if (handleSpecialCollision(p,e,specialMoves)) continue;
 
         const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
-        if (fromAbove){ p.vy = -2*JUMP_VEL; playBeep(600,0.08,0.05); }
+        if (fromAbove){ p.vy = -1.5*JUMP_VEL; playBeep(600,0.08,0.05); }
+        else damagePlayer(p, world, HUD);
       }
     } else {
       // Default enemy handling (Goombas, Snakes, and other basic enemies)
@@ -666,12 +646,15 @@ export function update(world, keys, HUD, dt, resetGame, specialMoves){
         }
         if (handleSpecialCollision(p,e,specialMoves)) continue;
         
-        // Red Trampoline: launches player high without damage
+        // Red Trampoline: launches player 3x higher
         if (e.constructor.name === 'RedTrampoline') {
           const fromAbove = (p.vy>0) && (p.bottom - e.top < 18);
           if (fromAbove) {
-            p.vy = e.bounceForce || -3*JUMP_VEL;
-            playBeep(800, 0.12, 0.08);
+            p.vy = e.bounceForce || -720; // 3x normal jump force
+            playBeep(800, 0.12, 0.08); // High pitched bounce sound
+            continue;
+          } else if (p.invuln <= 0) {
+            damagePlayer(p, world, HUD);
           }
           continue;
         }

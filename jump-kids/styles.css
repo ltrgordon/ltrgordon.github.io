@@ -90,16 +90,3 @@
 
   .sr-only{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
 
-  /* Special cooldown hourglasses */
-  .cooldowns{ position:fixed; top:10px; right:10px; display:flex; gap:6px; z-index:120; }
-  .hourglass{ width:20px; height:28px; border:2px solid #fff; position:relative; display:none; }
-  .hourglass, .hourglass .fill{
-    clip-path:polygon(0 0,100% 0,70% 50%,100% 100%,0 100%,30% 50%);
-  }
-  .hourglass .fill{ position:absolute; left:0; bottom:0; width:100%; height:100%; }
-  .hourglass.s1{ color:#f44336; }
-  .hourglass.s2{ color:#ffa500; }
-  .hourglass.s3{ color:#2196f3; }
-  .hourglass.s4{ color:#4caf50; }
-  .hourglass .fill{ background: currentColor; }
-

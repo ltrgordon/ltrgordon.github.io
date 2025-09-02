@@ -11,7 +11,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump (press twice for a double jump), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
+- Keyboard: Left/Right to move, Space or Z to jump (Abe can double jump by pressing twice), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -25,7 +25,6 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Shamrock power‑ups: scattered through the level, they make the player bigger and able to take one extra hit; grabbing another while already big awards 5 coins.
 - Rainbow power‑ups: rare pickups that grant 30 seconds of invincibility.
 - Mega mushroom power‑ups: briefly grow huge and invincible for 15 seconds but disable jumping.
-- Sunflowers and red trampolines launch the player extra high and never cause damage.
 - Enemies:
   - Goomba: walks back and forth, turns at edges; stomp to defeat.
   - Hellmonk: monkey with a bright yellow helmet. If you stomp it, you bounce (it doesn’t die). When close, it jumps in surprise, then rushes the player.
@@ -48,8 +47,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
-All specials have cooldown timers shown by colored hourglasses (S1 45 s, S2 20 s, S3 30 s, S4 15 s).
-- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path; S3 backflip attack defeating foes behind her; S4 pink heart projectile.
+- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path; S3 backflip attack defeating foes behind her; S4 rainbow projectile.
 - **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes; S3 spinning dash forward that defeats enemies in his path; S4 shuriken projectile.
 - **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front; S3 berserk mode doubling run speed and knocking back/dazing enemies; S4 water balloon projectile.
 - **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling; S4 diaper projectile.
