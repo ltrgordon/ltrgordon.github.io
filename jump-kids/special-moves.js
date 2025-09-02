@@ -7,32 +7,36 @@ export function createSpecialMoves(utils){
   return {
   lucy: {
     s1(p){
-      if(!p.grounded) return;
+      if(!p.grounded) return false;
       p.vy = -JUMP_VEL*1.5;
       p.grounded = false;
       p.action = 'flip';
       p.flip = 0;
+      return true;
     },
     s2(p){
-      if(p.action) return;
+      if(p.action) return false;
       p.action = 'cartwheel';
       p.lockControls = true;
       p.vx = 300 * p.facing;
       p.cartTime = 0.4;
       p.cartRot = 0;
+      return true;
     },
     s3(p){
-      if(p.action) return;
+      if(p.action) return false;
       p.action = 'backflip';
       p.lockControls = true;
       p.vy = -JUMP_VEL;
       p.vx = -200 * p.facing;
       p.grounded = false;
       p.flip = 0;
+      return true;
     },
     s4(p,world){
-      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*300, vy:0, gravity:false, type:'rainbow', grounded:false};
+      const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*300, vy:0, gravity:false, type:'heart', grounded:false};
       world.projectiles.push(proj);
+      return true;
     },
     update(p,dt){
       if(p.action==='flip'){
@@ -66,26 +70,30 @@ export function createSpecialMoves(utils){
   joey: {
     s1(p){
       p.invisible = 5; // Reduced from 10 to 5 seconds
+      return true;
     },
     s2(p){
-      if(!p.grounded) return; // Must be grounded to start high jump
+      if(!p.grounded) return false; // Must be grounded to start high jump
       p.vy = -JUMP_VEL * 1.5; // Same height as Lucy's S1
       p.grounded = false;
       p.action = 'spinJump';
       p.lockControls = true;
       p.spinRotation = 0;
+      return true;
     },
     s3(p){
-      if(p.action) return;
+      if(p.action) return false;
       p.action = 'spinDash';
       p.lockControls = true;
       p.vx = 400 * p.facing;
       p.spinRotation = 0;
       p.spinTime = 0.5;
+      return true;
     },
     s4(p,world){
       const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*320, vy:0, gravity:false, type:'shuriken', grounded:false};
       world.projectiles.push(proj);
+      return true;
     },
     update(p,dt){
       if(p.invisible>0) p.invisible = Math.max(0, p.invisible - dt);
@@ -112,26 +120,30 @@ export function createSpecialMoves(utils){
   },
   abe: {
     s1(p,world){
-      if(!p.grounded) return;
+      if(!p.grounded) return false;
       p.vy = -JUMP_VEL * 1.3; // Higher jump for dramatic effect
       p.grounded = false;
       p.action = 'smash';
       p.lockControls = true;
       p.smashDown = false;
+      return true;
     },
     s2(p){
-      if(p.action) return;
+      if(p.action) return false;
       p.action = 'punchRun';
       p.lockControls = true;
       p.vx = 400 * p.facing; // Fast forward charge
       p.punchTime = 0.5; // Duration of run
+      return true;
     },
     s3(p){
       p.berserk = 5;
+      return true;
     },
     s4(p,world){
       const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*200, vy:-200, gravity:true, type:'balloon', grounded:false};
       world.projectiles.push(proj);
+      return true;
     },
     update(p,dt,world){
       if(p.grounded) p.doubleJumped = false;
@@ -202,6 +214,7 @@ export function createSpecialMoves(utils){
     s4(p,world){
       const proj={x:p.x+p.w/2 + p.facing*10, y:p.y+p.h/2, w:8,h:8, vx:p.facing*200, vy:-200, gravity:true, type:'diaper', grounded:false};
       world.projectiles.push(proj);
+      return true;
     },
     update(p,dt,world,keys){
       if(p.action==='bubble'){

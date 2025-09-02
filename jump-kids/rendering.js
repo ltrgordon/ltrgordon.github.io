@@ -240,6 +240,15 @@ function drawProjectile(x,y,type){
       ctx.fillStyle=colors[i];
       ctx.fillRect(x+i%3, y+i/3|0,1,1);
     }
+  } else if(type==='heart'){
+    ctx.fillStyle='#ff69b4';
+    ctx.beginPath();
+    ctx.moveTo(x+4,y+6);
+    ctx.arc(x+2,y+4,2,Math.PI,0);
+    ctx.arc(x+6,y+4,2,Math.PI,0);
+    ctx.lineTo(x+4,y+8);
+    ctx.closePath();
+    ctx.fill();
   } else if(type==='shuriken'){
     ctx.fillStyle='#888';
     ctx.fillRect(x+3,y,2,8);
