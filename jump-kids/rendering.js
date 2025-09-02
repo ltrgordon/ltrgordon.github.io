@@ -125,6 +125,11 @@ function drawBackdrop(camX){
     drawFlowers(camX);
   } else if (backdrop === 'valentine'){
     drawValentine(camX);
+  } else if (backdrop === 'volcano'){
+    drawVolcano(camX);
+  } else if (backdrop === 'castle'){
+    drawCastle(camX);
+    drawValentine(camX);
   }
 }
 
@@ -240,15 +245,6 @@ function drawProjectile(x,y,type){
       ctx.fillStyle=colors[i];
       ctx.fillRect(x+i%3, y+i/3|0,1,1);
     }
-  } else if(type==='heart'){
-    ctx.fillStyle='#ff69b4';
-    ctx.beginPath();
-    ctx.moveTo(x+4,y+6);
-    ctx.arc(x+2,y+4,2,Math.PI,0);
-    ctx.arc(x+6,y+4,2,Math.PI,0);
-    ctx.lineTo(x+4,y+8);
-    ctx.closePath();
-    ctx.fill();
   } else if(type==='shuriken'){
     ctx.fillStyle='#888';
     ctx.fillRect(x+3,y,2,8);
@@ -832,4 +828,101 @@ export function fitCanvas(){
   canvas.width = Math.floor(cssW * dpr);
   canvas.height = Math.floor(cssH * dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+
+// --- Extra backdrop renderers ---
+function drawValentine(camX){
+  // existing valentine branch drew hearts inline; keep it backward-compatible
+  drawFlowers(camX); // soft fallback
+}
+
+function drawVolcano(camX){
+  // dark sky with ash
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#3b2f2f');
+  grad.addColorStop(1, '#5c3b3b');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ash clouds
+  ctx.save();
+  ctx.fillStyle = '#776e65aa';
+  for(let i=0;i<10;i++){
+    const x = ((i*200 + performance.now()*0.03) - camX*0.2) % (canvas.width+300) - 150;
+    const y = 40 + (i%4)*30;
+    ellipsePath(x,y,40,16,ctx);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // volcano silhouettes and lava
+  ctx.save();
+  ctx.fillStyle = '#2b1d1d';
+  for(let i=0;i<4;i++){
+    const bx = (i*320 - camX*0.4) % (canvas.width+340) - 170;
+    const by = canvas.height-90;
+    ctx.beginPath();
+    ctx.moveTo(bx-80, by+90);
+    ctx.lineTo(bx, by-30);
+    ctx.lineTo(bx+80, by+90);
+    ctx.closePath();
+    ctx.fill();
+
+    // lava glow
+    const lg = ctx.createLinearGradient(bx-6, by-20, bx+6, by+20);
+    lg.addColorStop(0, '#ffdf00aa');
+    lg.addColorStop(1, '#ff450088');
+    ctx.fillStyle = lg;
+    ctx.fillRect(bx-6, by-30, 12, 30);
+  }
+  ctx.restore();
+
+  // ground lava strip
+  ctx.save();
+  const lavaY = canvas.height - 28;
+  const g2 = ctx.createLinearGradient(0, lavaY-8, 0, lavaY+28);
+  g2.addColorStop(0,'#ff7f50'); g2.addColorStop(1,'#b22222');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, lavaY, canvas.width, 28);
+  ctx.restore();
+}
+
+function drawCastle(camX){
+  // stone sky
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#d7dbe0');
+  grad.addColorStop(1, '#b2b7bd');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // distant towers
+  ctx.save();
+  ctx.fillStyle = '#8a8f99';
+  for(let i=0;i<6;i++){
+    const x = ((i*260 - camX*0.25) % (canvas.width+300)) - 60;
+    const y = canvas.height - 120 - (i%2)*20;
+    ctx.fillRect(x, y, 40, 120);
+    // battlements
+    for(let k=0;k<5;k++){ ctx.fillRect(x+k*8, y-8, 6, 8); }
+  }
+  ctx.restore();
+
+  // banners & torches near camera
+  ctx.save();
+  for(let i=0;i<8;i++){
+    const x = ((i*140 - camX*0.6) % (canvas.width+200)) - 30;
+    const y = canvas.height - 80 - (i%3)*10;
+    // banner pole
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x, y-30, 4, 40);
+    // banner
+    ctx.fillStyle = '#a00';
+    ctx.fillRect(x+4, y-20, 18, 14);
+    // torch flame
+    const flick = Math.sin(performance.now()*0.01 + i)*3 + 6;
+    ctx.fillStyle = '#ffaa00aa';
+    ellipsePath(x-8, y, 4, flick, ctx);
+  }
+  ctx.restore();
 }
