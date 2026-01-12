@@ -1,0 +1,1337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Mastermind — Mobile</title>
+  <meta name="theme-color" content="#0b0f19" />
+  <style>
+    :root{
+      --bg:#0b0f19;
+      --panel:#121a2a;
+      --panel2:#0f1626;
+      --stroke:rgba(255,255,255,.10);
+      --stroke2:rgba(255,255,255,.16);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.68);
+      --muted2:rgba(255,255,255,.52);
+      --good:#38d996;
+      --warn:#ffcc66;
+      --bad:#ff5c7a;
+      --accent:#7aa7ff;
+      --glow: 0 0 0 rgba(122,167,255,0);
+      --shadow: 0 14px 40px rgba(0,0,0,.40);
+      --r:18px;
+      --peg:40px;
+      --pegSm:16px;
+      --gap:10px;
+      --tap:44px;
+    }
+    @media (min-width: 420px){
+      :root{ --peg:44px; }
+    }
+    @media (min-width: 720px){
+      :root{ --peg:48px; }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 80% -10%, rgba(122,167,255,.25), transparent 55%),
+        radial-gradient(900px 600px at 10% 0%, rgba(56,217,150,.16), transparent 50%),
+        radial-gradient(700px 500px at 40% 120%, rgba(255,92,122,.12), transparent 55%),
+        var(--bg);
+      padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+      overflow-x:hidden;
+    }
+    .app{
+      max-width: 980px;
+      margin: 0 auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 12px;
+      border:1px solid var(--stroke);
+      background: rgba(18,26,42,.72);
+      backdrop-filter: blur(10px);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+    }
+    .title{
+      display:flex; flex-direction:column; gap:2px;
+      min-width:0;
+    }
+    .title h1{
+      font-size: 16px;
+      margin:0;
+      letter-spacing:.4px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .subtitle{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .headerBtns{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    button{
+      appearance:none;
+      border:1px solid var(--stroke);
+      background: rgba(15,22,38,.8);
+      color:var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-weight: 650;
+      letter-spacing:.2px;
+      min-height: var(--tap);
+      cursor:pointer;
+      transition: transform .08s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:active{ transform: scale(.98); }
+    button.primary{
+      border-color: rgba(122,167,255,.35);
+      box-shadow: 0 0 0 4px rgba(122,167,255,.08);
+    }
+    button.good{
+      border-color: rgba(56,217,150,.35);
+      box-shadow: 0 0 0 4px rgba(56,217,150,.08);
+    }
+    button.danger{
+      border-color: rgba(255,92,122,.35);
+      box-shadow: 0 0 0 4px rgba(255,92,122,.08);
+    }
+    button.ghost{
+      background: rgba(15,22,38,.35);
+    }
+    button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    @media (min-width: 880px){
+      .grid{ grid-template-columns: 1.25fr .75fr; }
+    }
+
+    .panel{
+      border:1px solid var(--stroke);
+      background: rgba(18,26,42,.62);
+      backdrop-filter: blur(10px);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panelHeader{
+      padding: 12px 12px 10px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .panelHeader h2{
+      font-size: 13px;
+      margin:0;
+      color: var(--muted);
+      font-weight:700;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+    }
+    .panelBody{ padding: 12px; }
+
+    .boardTop{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .secretRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 12px;
+      border:1px solid var(--stroke);
+      border-radius: 16px;
+      background: rgba(15,22,38,.55);
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    }
+    .secretLeft{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .secretLabel{
+      font-size:12px;
+      color: var(--muted);
+    }
+    .status{
+      font-size:13px;
+      font-weight: 750;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .status .small{
+      display:block;
+      font-size:12px;
+      font-weight:600;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    .secretPegs{
+      display:flex;
+      gap: var(--gap);
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap:nowrap;
+    }
+
+    .peg{
+      width: var(--peg);
+      height: var(--peg);
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      box-shadow:
+        inset 0 2px 10px rgba(255,255,255,.08),
+        inset 0 -10px 18px rgba(0,0,0,.30),
+        0 10px 22px rgba(0,0,0,.30);
+      position:relative;
+      overflow:hidden;
+      flex: 0 0 auto;
+    }
+    .peg::after{
+      content:"";
+      position:absolute;
+      inset: 7% 45% 55% 10%;
+      background: rgba(255,255,255,.22);
+      border-radius:999px;
+      filter: blur(.4px);
+      transform: rotate(-18deg);
+    }
+    .peg.hidden{
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,.10), transparent 45%),
+        rgba(255,255,255,.06);
+    }
+    .peg.revealed{
+      border-color: rgba(255,255,255,.20);
+    }
+    .peg.locked{
+      outline: 2px solid rgba(122,167,255,.25);
+      box-shadow:
+        0 0 0 4px rgba(122,167,255,.12),
+        0 18px 40px rgba(0,0,0,.35);
+    }
+
+    /* guess composer */
+    .composer{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .currentGuessRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 12px;
+      border:1px solid var(--stroke);
+      border-radius: 16px;
+      background: rgba(15,22,38,.55);
+    }
+    .currentGuess{
+      display:flex;
+      gap: var(--gap);
+      align-items:center;
+      flex-wrap:nowrap;
+    }
+    .currentGuess .peg{
+      cursor:pointer;
+      transition: transform .08s ease, outline .2s ease;
+      touch-action: manipulation;
+    }
+    .currentGuess .peg:active{ transform: scale(.97); }
+    .currentGuess .peg.sel{
+      outline: 2px solid rgba(122,167,255,.35);
+      box-shadow: 0 0 0 4px rgba(122,167,255,.12);
+    }
+    .composerBtns{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    /* palette */
+    .palette{
+      display:grid;
+      grid-template-columns: repeat(7, minmax(0,1fr));
+      gap: 10px;
+      padding: 10px;
+      border:1px solid var(--stroke);
+      border-radius: 16px;
+      background: rgba(15,22,38,.45);
+      touch-action: manipulation;
+    }
+    @media (max-width: 370px){
+      .palette{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+    }
+    .swatch{
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: inset 0 2px 10px rgba(255,255,255,.10), 0 10px 20px rgba(0,0,0,.25);
+      cursor:pointer;
+      position:relative;
+      overflow:hidden;
+      transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+    }
+    .swatch:active{ transform: scale(.98); }
+    .swatch::after{
+      content:"";
+      position:absolute;
+      inset: 0;
+      background: radial-gradient(circle at 25% 15%, rgba(255,255,255,.22), transparent 45%);
+      pointer-events:none;
+    }
+
+    /* history */
+    .history{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      max-height: min(56vh, 520px);
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .history::-webkit-scrollbar{ width: 10px; }
+    .history::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.10);
+      border-radius: 999px;
+      border: 2px solid rgba(0,0,0,.0);
+      background-clip: padding-box;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 10px;
+      border:1px solid var(--stroke);
+      border-radius: 16px;
+      background: rgba(15,22,38,.48);
+    }
+    .rowLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .guessPegs{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex-wrap:nowrap;
+    }
+    .guessPegs .peg{
+      width: calc(var(--peg) * .78);
+      height: calc(var(--peg) * .78);
+      box-shadow:
+        inset 0 2px 8px rgba(255,255,255,.08),
+        inset 0 -10px 16px rgba(0,0,0,.28),
+        0 10px 18px rgba(0,0,0,.26);
+    }
+    .meta{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .meta .t{
+      font-size:12px;
+      color:var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meta .n{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .feedback{
+      display:grid;
+      grid-template-columns: repeat(4, var(--pegSm));
+      gap: 6px;
+      justify-content:end;
+      align-content:center;
+    }
+    .fbPeg{
+      width: var(--pegSm);
+      height: var(--pegSm);
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      box-shadow: inset 0 2px 8px rgba(255,255,255,.08), 0 6px 10px rgba(0,0,0,.25);
+    }
+    .fbPeg.black{ background: #0b0f19; border-color: rgba(255,255,255,.18); }
+    .fbPeg.white{ background: rgba(255,255,255,.85); border-color: rgba(255,255,255,.40); }
+
+    /* right panel controls */
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .fieldRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex: 1 1 130px;
+      min-width: 130px;
+    }
+    label{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+    select,input[type="number"]{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(15,22,38,.55);
+      color: var(--text);
+      padding: 10px 12px;
+      min-height: var(--tap);
+      font-weight:650;
+      outline:none;
+    }
+    select:focus,input:focus{ border-color: rgba(122,167,255,.45); box-shadow: 0 0 0 4px rgba(122,167,255,.12); }
+
+    .note{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+
+    /* modal */
+    .modalBackdrop{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 50;
+      backdrop-filter: blur(6px);
+    }
+    .modal{
+      width:min(620px, 100%);
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(18,26,42,.88);
+      border-radius: 18px;
+      box-shadow: 0 26px 70px rgba(0,0,0,.55);
+      overflow:hidden;
+    }
+    .modalHeader{
+      padding: 12px 12px 10px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modalHeader h3{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.4px;
+    }
+    .modalBody{ padding: 12px; }
+    .modalActions{
+      padding: 12px;
+      border-top:1px solid var(--stroke);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .modalBackdrop.show{ display:flex; }
+
+    /* success / light up */
+    .flash{
+      animation: flash 420ms ease-out 1;
+    }
+    @keyframes flash{
+      0%{ box-shadow: 0 0 0 0 rgba(56,217,150,.0); }
+      30%{ box-shadow: 0 0 0 10px rgba(56,217,150,.10); }
+      100%{ box-shadow: 0 0 0 22px rgba(56,217,150,.0); }
+    }
+    .banner{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      top: max(12px, env(safe-area-inset-top));
+      z-index: 70;
+      display:none;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(56,217,150,.35);
+      background: rgba(15,22,38,.84);
+      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+      backdrop-filter: blur(10px);
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .banner.show{ display:block; }
+
+    .sr{
+      position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;
+    }
+    a{ color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header id="hdr">
+      <div class="title">
+        <h1>Mastermind</h1>
+        <div class="subtitle" id="subtitle">Touch-friendly • 7 colors • up to 7 pegs</div>
+      </div>
+      <div class="headerBtns">
+        <button class="ghost" id="btnHow">How to play</button>
+        <button class="ghost" id="btnNew">New game</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: board -->
+      <section class="panel">
+        <div class="panelHeader">
+          <h2>Game</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="ghost" id="btnHint">Hint</button>
+            <button class="primary" id="btnSubmit">Submit</button>
+          </div>
+        </div>
+        <div class="panelBody boardTop">
+          <div class="secretRow" id="secretRow">
+            <div class="secretLeft">
+              <div class="secretLabel">Secret code</div>
+              <div class="status" id="status">In progress<span class="small" id="status2">Select a peg slot, then tap a color.</span></div>
+            </div>
+            <div class="secretPegs" id="secretPegs" aria-label="Secret code pegs"></div>
+          </div>
+
+          <div class="composer">
+            <div class="currentGuessRow">
+              <div class="currentGuess" id="currentGuess" aria-label="Current guess"></div>
+              <div class="composerBtns">
+                <button class="ghost" id="btnClear">Clear</button>
+                <button class="ghost" id="btnUndo">Undo</button>
+              </div>
+            </div>
+
+            <div class="palette" id="palette" aria-label="Color palette"></div>
+
+            <div class="panel" style="background: rgba(15,22,38,.35); border-color: var(--stroke);">
+              <div class="panelHeader">
+                <h2>Previous guesses</h2>
+                <div class="note" id="guessCount">0 guesses</div>
+              </div>
+              <div class="panelBody">
+                <div class="history" id="history"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: settings -->
+      <aside class="panel">
+        <div class="panelHeader">
+          <h2>Settings</h2>
+          <button class="ghost" id="btnReveal">Reveal</button>
+        </div>
+        <div class="panelBody">
+          <div class="controls">
+            <div class="fieldRow">
+              <div class="field">
+                <label for="pegCount"># pegs (N)</label>
+                <select id="pegCount">
+                  <option value="3">3</option>
+                  <option value="4" selected>4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="allowDupes">Duplicates</label>
+                <select id="allowDupes">
+                  <option value="yes" selected>Allowed</option>
+                  <option value="no">Not allowed</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="fieldRow">
+              <div class="field">
+                <label for="mode">Mode</label>
+                <select id="mode">
+                  <option value="random" selected>Random code</option>
+                  <option value="2p">2-player (set code)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="maxHistory">Show last</label>
+                <select id="maxHistory">
+                  <option value="8">8</option>
+                  <option value="12" selected>12</option>
+                  <option value="20">20</option>
+                  <option value="50">All</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="fieldRow">
+              <button class="good" id="btnApply">Apply & Restart</button>
+              <button class="ghost" id="btnSound">Sound: On</button>
+            </div>
+
+            <div class="note">
+              Feedback: <b>black</b> = correct color + position, <b>white</b> = correct color wrong position. Order of feedback pegs is not positional.
+            </div>
+            <div class="note">
+              Hint reveals the color of one random unrevealed peg (position stays hidden until solve).
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="banner" id="banner">Correct color discovered!</div>
+
+  <!-- How-to modal -->
+  <div class="modalBackdrop" id="modalHow" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+    <div class="modal">
+      <div class="modalHeader">
+        <h3 id="howTitle">How to play</h3>
+        <button class="ghost" id="btnHowClose">Close</button>
+      </div>
+      <div class="modalBody">
+        <div class="note" style="font-size:13px; color: rgba(255,255,255,.78);">
+          Guess the hidden sequence of <b>N</b> colored pegs (up to 7). Tap a peg slot in your current guess, then tap a color.
+          Press <b>Submit</b> to get feedback:
+          <ul style="margin:10px 0 0 18px; padding:0; line-height:1.5;">
+            <li><b>Black</b>: right color in the right spot</li>
+            <li><b>White</b>: right color, wrong spot</li>
+          </ul>
+          Use <b>Hint</b> to reveal the <i>color</i> of a random secret peg. When you solve it, the secret code reveals on top.
+        </div>
+      </div>
+      <div class="modalActions">
+        <button class="primary" id="btnHowOk">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2-player set-code modal -->
+  <div class="modalBackdrop" id="modalSet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="modal">
+      <div class="modalHeader">
+        <h3 id="setTitle">2-player: Set the secret code</h3>
+        <button class="ghost" id="btnSetClose">Close</button>
+      </div>
+      <div class="modalBody">
+        <div class="note" style="margin-bottom:10px; font-size:13px; color: rgba(255,255,255,.78);">
+          Player 1: Tap colors to set the code. Then press <b>Lock code</b> and hand the phone to Player 2.
+        </div>
+        <div class="currentGuess" id="setCodeRow" style="justify-content:center;"></div>
+        <div class="palette" id="setPalette" style="margin-top:12px;"></div>
+        <div class="note" style="margin-top:10px;">
+          Tip: If duplicates are disabled, you can’t repeat a color.
+        </div>
+      </div>
+      <div class="modalActions">
+        <button class="ghost" id="btnSetClear">Clear</button>
+        <button class="primary" id="btnLockCode">Lock code</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------- config ----------
+  const COLORS = [
+    { id: "red",    name: "Red",    hex: "#ff4d5d" },
+    { id: "blue",   name: "Blue",   hex: "#4c8dff" },
+    { id: "green",  name: "Green",  hex: "#39d98a" },
+    { id: "yellow", name: "Yellow", hex: "#ffd24d" },
+    { id: "purple", name: "Purple", hex: "#b57bff" },
+    { id: "orange", name: "Orange", hex: "#ff9a3d" },
+    { id: "cyan",   name: "Cyan",   hex: "#49e7ff" },
+  ];
+
+  const el = (id) => document.getElementById(id);
+  const app = el("app");
+
+  // UI elements
+  const secretPegsEl = el("secretPegs");
+  const currentGuessEl = el("currentGuess");
+  const paletteEl = el("palette");
+  const historyEl = el("history");
+  const guessCountEl = el("guessCount");
+  const statusEl = el("status");
+  const status2El = el("status2");
+  const subtitleEl = el("subtitle");
+  const bannerEl = el("banner");
+
+  // settings
+  const pegCountSel = el("pegCount");
+  const allowDupesSel = el("allowDupes");
+  const modeSel = el("mode");
+  const maxHistorySel = el("maxHistory");
+
+  // buttons
+  const btnSubmit = el("btnSubmit");
+  const btnClear = el("btnClear");
+  const btnUndo = el("btnUndo");
+  const btnHint = el("btnHint");
+  const btnReveal = el("btnReveal");
+  const btnNew = el("btnNew");
+  const btnApply = el("btnApply");
+  const btnSound = el("btnSound");
+  const btnHow = el("btnHow");
+
+  // modals
+  const modalHow = el("modalHow");
+  const btnHowClose = el("btnHowClose");
+  const btnHowOk = el("btnHowOk");
+
+  const modalSet = el("modalSet");
+  const btnSetClose = el("btnSetClose");
+  const btnLockCode = el("btnLockCode");
+  const btnSetClear = el("btnSetClear");
+  const setCodeRowEl = el("setCodeRow");
+  const setPaletteEl = el("setPalette");
+
+  // ---------- state ----------
+  let N = 4;
+  let allowDupes = true;
+  let mode = "random"; // random | 2p
+  let maxHistory = 12;
+
+  let secret = [];              // array of color ids length N
+  let revealedColorHints = [];  // boolean length N (color hinted)
+  let solved = false;
+
+  let currentGuess = [];        // array length N with color ids or null
+  let selectedIndex = 0;
+  let guessHistory = [];        // [{guess:[...], black, white, ts}]
+
+  let soundOn = true;
+  let discoveredColors = new Set(); // colors that have appeared in any feedback (black+white implies present)
+  let hintedPositions = new Set();  // positions whose color was revealed by hint (color only)
+
+  // ---------- sound (WebAudio) ----------
+  let audioCtx = null;
+  function ensureAudio(){
+    if (!soundOn) return null;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }
+  function beep({freq=880, dur=0.12, type="sine", gain=0.07}={}){
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + dur);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  }
+  function chimeSuccess(){
+    // pleasant 3-note chime
+    beep({freq: 659, dur:0.10, type:"sine", gain:0.06});
+    setTimeout(()=>beep({freq: 784, dur:0.10, type:"sine", gain:0.06}), 110);
+    setTimeout(()=>beep({freq: 988, dur:0.12, type:"sine", gain:0.06}), 230);
+  }
+  function chimeDiscover(){
+    // short sparkle
+    beep({freq: 880, dur:0.08, type:"triangle", gain:0.05});
+    setTimeout(()=>beep({freq: 1175, dur:0.07, type:"triangle", gain:0.045}), 70);
+  }
+
+  // ---------- helpers ----------
+  function clampInt(v, min, max){
+    v = parseInt(v, 10);
+    if (Number.isNaN(v)) v = min;
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function colorById(id){
+    return COLORS.find(c => c.id === id);
+  }
+
+  function setPegVisual(pegEl, colorId, {hidden=false, locked=false} = {}){
+    if (!colorId || hidden){
+      pegEl.style.background = hidden
+        ? 'radial-gradient(circle at 30% 20%, rgba(255,255,255,.10), transparent 45%), rgba(255,255,255,.06)'
+        : 'rgba(255,255,255,.06)';
+      pegEl.classList.add("hidden");
+      pegEl.classList.remove("revealed");
+    } else {
+      const c = colorById(colorId);
+      pegEl.style.background = `radial-gradient(circle at 30% 20%, rgba(255,255,255,.18), transparent 45%), ${c.hex}`;
+      pegEl.classList.remove("hidden");
+      pegEl.classList.add("revealed");
+    }
+    pegEl.classList.toggle("locked", !!locked);
+  }
+
+  function deepEqual(a,b){
+    if (a.length !== b.length) return false;
+    for (let i=0;i<a.length;i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  function computeFeedback(secretArr, guessArr){
+    // Mastermind scoring: black exact matches; white correct colors wrong positions (excluding black).
+    let black = 0;
+    const s = secretArr.slice();
+    const g = guessArr.slice();
+
+    // mark exact matches
+    const sRemain = [];
+    const gRemain = [];
+    for (let i=0;i<N;i++){
+      if (g[i] === s[i]) {
+        black++;
+      } else {
+        sRemain.push(s[i]);
+        gRemain.push(g[i]);
+      }
+    }
+    // count whites via multiset intersection
+    const counts = new Map();
+    for (const col of sRemain){
+      counts.set(col, (counts.get(col)||0)+1);
+    }
+    let white = 0;
+    for (const col of gRemain){
+      const k = counts.get(col)||0;
+      if (k>0){
+        white++;
+        counts.set(col, k-1);
+      }
+    }
+    return {black, white};
+  }
+
+  function randInt(max){ return Math.floor(Math.random()*max); }
+
+  function generateSecret(){
+    const out = [];
+    const used = new Set();
+    for (let i=0;i<N;i++){
+      let pick;
+      do{
+        pick = COLORS[randInt(COLORS.length)].id;
+      } while (!allowDupes && used.has(pick));
+      out.push(pick);
+      used.add(pick);
+    }
+    return out;
+  }
+
+  function resetGame({keepSettings=true} = {}){
+    solved = false;
+    guessHistory = [];
+    discoveredColors = new Set();
+    hintedPositions = new Set();
+    revealedColorHints = Array.from({length:N}, ()=>false);
+
+    currentGuess = Array.from({length:N}, ()=>null);
+    selectedIndex = 0;
+
+    if (!keepSettings){
+      N = 4; allowDupes=true; mode="random"; maxHistory=12;
+      pegCountSel.value = "4";
+      allowDupesSel.value = "yes";
+      modeSel.value = "random";
+      maxHistorySel.value = "12";
+    }
+
+    secret = (mode === "random") ? generateSecret() : Array.from({length:N}, ()=>null);
+
+    renderAll();
+    setStatus("In progress", "Select a peg slot, then tap a color.");
+  }
+
+  function setStatus(main, sub){
+    statusEl.firstChild && (statusEl.firstChild.textContent = main);
+    status2El.textContent = sub || "";
+  }
+
+  function showBanner(text){
+    bannerEl.textContent = text;
+    bannerEl.classList.add("show");
+    setTimeout(()=>bannerEl.classList.remove("show"), 900);
+  }
+
+  function flashGood(){
+    const row = el("secretRow");
+    row.classList.remove("flash");
+    void row.offsetWidth;
+    row.classList.add("flash");
+  }
+
+  function lightUpAndChimeDiscover(){
+    flashGood();
+    showBanner("Correct color discovered!");
+    chimeDiscover();
+  }
+
+  function lightUpAndChimeSolved(){
+    flashGood();
+    showBanner("Solved!");
+    chimeSuccess();
+  }
+
+  // ---------- rendering ----------
+  function renderSecret(){
+    secretPegsEl.innerHTML = "";
+    for (let i=0;i<N;i++){
+      const peg = document.createElement("div");
+      peg.className = "peg";
+      // show hidden until solved; if hinted, show color but still "locked" ring
+      const hinted = revealedColorHints[i] === true;
+      if (solved){
+        setPegVisual(peg, secret[i], {hidden:false});
+      } else if (hinted && secret[i]){
+        setPegVisual(peg, secret[i], {hidden:false, locked:true});
+      } else {
+        setPegVisual(peg, null, {hidden:true});
+      }
+      secretPegsEl.appendChild(peg);
+    }
+  }
+
+  function renderCurrentGuess(){
+    currentGuessEl.innerHTML = "";
+    for (let i=0;i<N;i++){
+      const peg = document.createElement("div");
+      peg.className = "peg";
+      peg.setAttribute("role","button");
+      peg.setAttribute("aria-label", `Guess peg ${i+1}`);
+      peg.tabIndex = 0;
+
+      setPegVisual(peg, currentGuess[i], {hidden: !currentGuess[i]});
+      if (i === selectedIndex) peg.classList.add("sel");
+
+      const handler = () => {
+        selectedIndex = i;
+        renderCurrentGuess();
+      };
+      peg.addEventListener("click", handler);
+      peg.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") { e.preventDefault(); handler(); } });
+
+      currentGuessEl.appendChild(peg);
+    }
+  }
+
+  function renderPalette(targetEl, onPick){
+    targetEl.innerHTML = "";
+    for (const c of COLORS){
+      const sw = document.createElement("div");
+      sw.className = "swatch";
+      sw.style.background = `radial-gradient(circle at 30% 20%, rgba(255,255,255,.22), transparent 45%), ${c.hex}`;
+      sw.setAttribute("role","button");
+      sw.setAttribute("aria-label", c.name);
+      sw.tabIndex = 0;
+      sw.addEventListener("click", ()=>onPick(c.id));
+      sw.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") { e.preventDefault(); onPick(c.id); } });
+      targetEl.appendChild(sw);
+    }
+  }
+
+  function renderHistory(){
+    historyEl.innerHTML = "";
+    const limit = (maxHistory === 50) ? guessHistory.length : maxHistory;
+    const slice = guessHistory.slice(-limit).reverse(); // most recent on top
+    for (const item of slice){
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const left = document.createElement("div");
+      left.className = "rowLeft";
+
+      const pegs = document.createElement("div");
+      pegs.className = "guessPegs";
+      for (let i=0;i<N;i++){
+        const p = document.createElement("div");
+        p.className = "peg";
+        setPegVisual(p, item.guess[i], {hidden:false});
+        pegs.appendChild(p);
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const t = document.createElement("div");
+      t.className = "t";
+      t.textContent = item.ts;
+      const n = document.createElement("div");
+      n.className = "n";
+      n.textContent = `Black: ${item.black} • White: ${item.white}`;
+      meta.appendChild(t);
+      meta.appendChild(n);
+
+      left.appendChild(pegs);
+      left.appendChild(meta);
+
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+      // show up to N feedback pegs, but keep a 4-grid layout for aesthetics. Use blacks then whites then empties.
+      const total = Math.max(4, Math.min(7, N)); // if N>4 show more columns? keep 4 columns; still fine.
+      fb.style.gridTemplateColumns = `repeat(4, var(--pegSm))`; // fixed 4
+      const pegsFb = [];
+      for (let i=0;i<item.black;i++) pegsFb.push("black");
+      for (let i=0;i<item.white;i++) pegsFb.push("white");
+      while (pegsFb.length < 4) pegsFb.push("empty");
+
+      for (let i=0;i<4;i++){
+        const f = document.createElement("div");
+        f.className = "fbPeg";
+        if (pegsFb[i] === "black") f.classList.add("black");
+        if (pegsFb[i] === "white") f.classList.add("white");
+        fb.appendChild(f);
+      }
+
+      row.appendChild(left);
+      row.appendChild(fb);
+
+      historyEl.appendChild(row);
+    }
+
+    guessCountEl.textContent = `${guessHistory.length} ${guessHistory.length === 1 ? "guess" : "guesses"}`;
+  }
+
+  function renderSubtitle(){
+    subtitleEl.textContent = `Touch-friendly • ${COLORS.length} colors • ${N} pegs • ${allowDupes ? "dupes ok" : "no dupes"} • ${mode==="random" ? "random" : "2-player"}`;
+  }
+
+  function renderAll(){
+    renderSubtitle();
+    renderSecret();
+    renderCurrentGuess();
+    renderHistory();
+    btnSubmit.disabled = solved;
+    btnHint.disabled = solved || revealedColorHints.every(v => v) || secret.some(v => v == null);
+    btnReveal.disabled = secret.some(v => v == null);
+  }
+
+  // ---------- interactions ----------
+  function pickColor(colorId){
+    if (solved) return;
+    if (!allowDupes){
+      // If duplicates are disallowed, prevent placing a color already used in current guess (except replacing same slot)
+      const alreadyUsed = currentGuess.some((c, idx)=> idx !== selectedIndex && c === colorId);
+      if (alreadyUsed){
+        beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
+        showBanner("No duplicates");
+        return;
+      }
+    }
+    currentGuess[selectedIndex] = colorId;
+
+    // auto-advance to next empty slot if any
+    let next = selectedIndex;
+    for (let k=1;k<=N;k++){
+      const i = (selectedIndex + k) % N;
+      if (!currentGuess[i]){
+        next = i; break;
+      }
+    }
+    selectedIndex = next;
+    renderCurrentGuess();
+  }
+
+  function clearGuess(){
+    if (solved) return;
+    currentGuess = Array.from({length:N}, ()=>null);
+    selectedIndex = 0;
+    renderCurrentGuess();
+  }
+
+  function undoGuess(){
+    if (solved) return;
+    // remove previous filled slot from selectedIndex backwards
+    for (let k=0;k<N;k++){
+      const i = (selectedIndex - 1 - k + N*10) % N;
+      if (currentGuess[i]){
+        currentGuess[i] = null;
+        selectedIndex = i;
+        renderCurrentGuess();
+        return;
+      }
+    }
+  }
+
+  function allFilled(arr){ return arr.every(v => v != null); }
+
+  function formatTime(){
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  function submitGuess(){
+    if (solved) return;
+    if (secret.some(v => v == null)){
+      showBanner("Set the secret code first");
+      beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
+      return;
+    }
+    if (!allFilled(currentGuess)){
+      showBanner("Fill all pegs");
+      beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
+      return;
+    }
+
+    const {black, white} = computeFeedback(secret, currentGuess);
+    guessHistory.push({guess: currentGuess.slice(), black, white, ts: formatTime()});
+
+    // Detect newly discovered colors (black+white implies those colors exist, but not which ones).
+    // We approximate "discover" as: if feedback>0, then at least one of the guessed colors is in secret.
+    // To implement "when a correct color is discovered", we highlight when any *new* color in the guess is confirmed present.
+    // We'll confirm presence by checking each distinct guessed color against secret and compare with discoveredColors set.
+    let newly = false;
+    const distinctGuess = Array.from(new Set(currentGuess));
+    for (const c of distinctGuess){
+      if (secret.includes(c) && !discoveredColors.has(c)){
+        discoveredColors.add(c);
+        newly = true;
+      }
+    }
+    if (newly){
+      lightUpAndChimeDiscover();
+      setStatus("Nice.", "A correct color was found in the code.");
+    } else {
+      // light tap sound
+      beep({freq:520, dur:0.06, type:"sine", gain:0.03});
+      setStatus("In progress", black===0 && white===0 ? "No matches in that guess." : `Feedback received: ${black} black, ${white} white.`);
+    }
+
+    // check solved
+    if (black === N && deepEqual(secret, currentGuess)){
+      solved = true;
+      renderSecret();
+      lightUpAndChimeSolved();
+      setStatus("Solved!", `Done in ${guessHistory.length} ${guessHistory.length===1?"guess":"guesses"}.`);
+      btnSubmit.disabled = true;
+      btnHint.disabled = true;
+      btnReveal.disabled = false;
+    }
+
+    // prepare next guess
+    currentGuess = Array.from({length:N}, ()=>null);
+    selectedIndex = 0;
+
+    renderAll();
+    // scroll history to top (most recent)
+    historyEl.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function revealAll(){
+    if (secret.some(v => v == null)) return;
+    solved = true;
+    renderAll();
+    setStatus("Revealed.", `Secret code shown. Start a new game when ready.`);
+  }
+
+  function hint(){
+    if (solved) return;
+    if (secret.some(v => v == null)) return;
+
+    // reveal color of one random unrevealed position
+    const options = [];
+    for (let i=0;i<N;i++){
+      if (!revealedColorHints[i]) options.push(i);
+    }
+    if (!options.length) return;
+
+    const idx = options[randInt(options.length)];
+    revealedColorHints[idx] = true;
+    hintedPositions.add(idx);
+
+    renderSecret();
+    showBanner(`Hint: peg ${idx+1} color revealed`);
+    beep({freq:740, dur:0.08, type:"triangle", gain:0.045});
+  }
+
+  // ---------- modals ----------
+  function openHow(){ modalHow.classList.add("show"); }
+  function closeHow(){ modalHow.classList.remove("show"); }
+  function openSet(){ modalSet.classList.add("show"); }
+  function closeSet(){ modalSet.classList.remove("show"); }
+
+  // ---------- 2-player set code ----------
+  let setCode = []; // array length N of color ids or null
+  let setSel = 0;
+
+  function renderSetRow(){
+    setCodeRowEl.innerHTML = "";
+    for (let i=0;i<N;i++){
+      const peg = document.createElement("div");
+      peg.className = "peg";
+      peg.setAttribute("role","button");
+      peg.tabIndex = 0;
+      setPegVisual(peg, setCode[i], {hidden: !setCode[i]});
+      if (i === setSel) peg.classList.add("sel");
+      const handler = ()=>{ setSel = i; renderSetRow(); };
+      peg.addEventListener("click", handler);
+      peg.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); handler(); }});
+      setCodeRowEl.appendChild(peg);
+    }
+  }
+  function pickSetColor(colorId){
+    if (!allowDupes){
+      const alreadyUsed = setCode.some((c, idx)=> idx !== setSel && c === colorId);
+      if (alreadyUsed){
+        beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
+        showBanner("No duplicates");
+        return;
+      }
+    }
+    setCode[setSel] = colorId;
+    // advance
+    let next = setSel;
+    for (let k=1;k<=N;k++){
+      const i = (setSel + k) % N;
+      if (!setCode[i]){
+        next = i; break;
+      }
+    }
+    setSel = next;
+    renderSetRow();
+  }
+  function clearSet(){
+    setCode = Array.from({length:N}, ()=>null);
+    setSel = 0;
+    renderSetRow();
+  }
+  function lockCode(){
+    if (setCode.some(v=>v==null)){
+      showBanner("Fill all secret pegs");
+      beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
+      return;
+    }
+    secret = setCode.slice();
+    closeSet();
+    setStatus("In progress", "Secret locked. Player 2: start guessing.");
+    renderAll();
+  }
+
+  // ---------- apply settings ----------
+  function applySettings(){
+    N = clampInt(pegCountSel.value, 3, 7);
+    allowDupes = (allowDupesSel.value === "yes");
+    mode = modeSel.value;
+    maxHistory = clampInt(maxHistorySel.value, 8, 50);
+
+    // reset sizing for feedback grid stays 4; ok.
+    resetGame({keepSettings:true});
+
+    // if 2p, open set code modal immediately
+    if (mode === "2p"){
+      setCode = Array.from({length:N}, ()=>null);
+      setSel = 0;
+      renderSetRow();
+      renderPalette(setPaletteEl, pickSetColor);
+      openSet();
+      setStatus("Waiting for code", "Player 1: set and lock the code.");
+    }
+  }
+
+  // ---------- wire up UI ----------
+  renderPalette(paletteEl, pickColor);
+
+  btnClear.addEventListener("click", clearGuess);
+  btnUndo.addEventListener("click", undoGuess);
+  btnSubmit.addEventListener("click", submitGuess);
+  btnHint.addEventListener("click", hint);
+  btnReveal.addEventListener("click", revealAll);
+  btnNew.addEventListener("click", ()=>resetGame({keepSettings:true}));
+  btnApply.addEventListener("click", applySettings);
+
+  btnSound.addEventListener("click", ()=>{
+    soundOn = !soundOn;
+    btnSound.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
+    if (soundOn) { ensureAudio(); beep({freq:660, dur:0.06, type:"sine", gain:0.03}); }
+  });
+
+  btnHow.addEventListener("click", openHow);
+  btnHowClose.addEventListener("click", closeHow);
+  btnHowOk.addEventListener("click", closeHow);
+  modalHow.addEventListener("click", (e)=>{ if(e.target === modalHow) closeHow(); });
+
+  btnSetClose.addEventListener("click", closeSet);
+  btnLockCode.addEventListener("click", lockCode);
+  btnSetClear.addEventListener("click", clearSet);
+  modalSet.addEventListener("click", (e)=>{ if(e.target === modalSet) closeSet(); });
+
+  // keyboard shortcuts (desktop)
+  window.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter" && !modalHow.classList.contains("show") && !modalSet.classList.contains("show")){
+      submitGuess();
+    }
+    if (e.key === "Escape"){
+      closeHow(); closeSet();
+    }
+  }, {passive:true});
+
+  // initialize
+  resetGame({keepSettings:false});
+  openHow();
+})();
+</script>
+</body>
+</html>
