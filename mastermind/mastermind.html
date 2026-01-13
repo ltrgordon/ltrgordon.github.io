@@ -19,20 +19,21 @@
       --warn:#ffcc66;
       --bad:#ff5c7a;
       --accent:#7aa7ff;
-      --glow: 0 0 0 rgba(122,167,255,0);
       --shadow: 0 14px 40px rgba(0,0,0,.40);
       --r:18px;
+
+      /* These are auto-tuned by JS so N pegs never fall off-screen */
       --peg:40px;
       --pegSm:16px;
       --gap:10px;
       --tap:44px;
+
+      /* layout sizing */
+      --hdrH: 0px;
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
     }
-    @media (min-width: 420px){
-      :root{ --peg:44px; }
-    }
-    @media (min-width: 720px){
-      :root{ --peg:48px; }
-    }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -44,16 +45,20 @@
         radial-gradient(900px 600px at 10% 0%, rgba(56,217,150,.16), transparent 50%),
         radial-gradient(700px 500px at 40% 120%, rgba(255,92,122,.12), transparent 55%),
         var(--bg);
-      padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-      overflow-x:hidden;
+      padding: max(12px, var(--safeTop)) 12px max(12px, var(--safeBot));
+      overflow:hidden; /* no page scrolling on mobile; internal areas scroll */
     }
+
     .app{
       max-width: 980px;
       margin: 0 auto;
       display:flex;
       flex-direction:column;
       gap:12px;
+      height: calc(100vh - max(12px, var(--safeTop)) - max(12px, var(--safeBot)));
+      min-height: 0;
     }
+
     header{
       display:flex;
       align-items:center;
@@ -65,7 +70,9 @@
       backdrop-filter: blur(10px);
       border-radius: var(--r);
       box-shadow: var(--shadow);
+      flex: 0 0 auto;
     }
+
     .title{
       display:flex; flex-direction:column; gap:2px;
       min-width:0;
@@ -81,10 +88,19 @@
     .subtitle{
       font-size:12px;
       color:var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 56vw;
     }
+
     .headerBtns{
-      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
+
     button{
       appearance:none;
       border:1px solid var(--stroke);
@@ -99,6 +115,7 @@
       transition: transform .08s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
+      white-space:nowrap;
     }
     button:active{ transform: scale(.98); }
     button.primary{
@@ -122,13 +139,17 @@
       transform:none;
     }
 
+    /* Main area: always 1 column; no page scroll. Desktop may show aside, but still fits height */
     .grid{
       display:grid;
       grid-template-columns: 1fr;
       gap:12px;
+      min-height: 0;
+      flex: 1 1 auto;
     }
-    @media (min-width: 880px){
+    @media (min-width: 900px){
       .grid{ grid-template-columns: 1.25fr .75fr; }
+      body{ overflow:hidden; }
     }
 
     .panel{
@@ -138,6 +159,7 @@
       border-radius: var(--r);
       box-shadow: var(--shadow);
       overflow:hidden;
+      min-height:0;
     }
     .panelHeader{
       padding: 12px 12px 10px;
@@ -146,6 +168,7 @@
       align-items:center;
       justify-content:space-between;
       gap:10px;
+      flex-wrap:wrap;
     }
     .panelHeader h2{
       font-size: 13px;
@@ -155,29 +178,43 @@
       letter-spacing:.6px;
       text-transform:uppercase;
     }
-    .panelBody{ padding: 12px; }
+    .panelBody{
+      padding: 12px;
+      min-height:0;
+    }
 
-    .boardTop{
+    /* GAME panel layout: fixed height area with internal scroll only for history */
+    .gameWrap{
       display:flex;
       flex-direction:column;
       gap:12px;
+      height: calc(100% - 0px);
+      min-height:0;
     }
 
+    /* Secret row: responsive + wraps; status never cuts off */
     .secretRow{
-      display:flex;
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px 12px;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
       padding: 10px 12px;
       border:1px solid var(--stroke);
       border-radius: 16px;
       background: rgba(15,22,38,.55);
       box-shadow: 0 12px 30px rgba(0,0,0,.25);
     }
+    @media (max-width: 520px){
+      .secretRow{
+        grid-template-columns: 1fr;
+        align-items:start;
+      }
+    }
+
     .secretLeft{
       display:flex;
       flex-direction:column;
-      gap:2px;
+      gap:4px;
       min-width:0;
     }
     .secretLabel{
@@ -188,16 +225,21 @@
       font-size:13px;
       font-weight: 750;
       letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      line-height: 1.25;
+      white-space: normal;     /* FIX 1: allow wrap */
+      overflow: visible;       /* FIX 1: no truncation */
+      text-overflow: clip;
+      word-break: break-word;
     }
     .status .small{
       display:block;
       font-size:12px;
       font-weight:600;
       color:var(--muted);
-      margin-top:2px;
+      margin-top:3px;
+      line-height:1.25;
+      white-space: normal;     /* FIX 1 */
+      word-break: break-word;
     }
 
     .secretPegs{
@@ -205,7 +247,8 @@
       gap: var(--gap);
       align-items:center;
       justify-content:flex-end;
-      flex-wrap:nowrap;
+      flex-wrap:wrap;          /* FIX 2: allow wrap if needed */
+      max-width: 100%;
     }
 
     .peg{
@@ -236,9 +279,7 @@
         radial-gradient(circle at 30% 20%, rgba(255,255,255,.10), transparent 45%),
         rgba(255,255,255,.06);
     }
-    .peg.revealed{
-      border-color: rgba(255,255,255,.20);
-    }
+    .peg.revealed{ border-color: rgba(255,255,255,.20); }
     .peg.locked{
       outline: 2px solid rgba(122,167,255,.25);
       box-shadow:
@@ -246,27 +287,33 @@
         0 18px 40px rgba(0,0,0,.35);
     }
 
-    /* guess composer */
+    /* Guess composer: always fits without page scroll */
     .composer{
       display:flex;
       flex-direction:column;
       gap:12px;
+      min-height:0;
     }
+
+    /* FIX 2: make guess row wrap so buttons never disappear */
     .currentGuessRow{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
+      gap:10px;
       padding: 10px 12px;
       border:1px solid var(--stroke);
       border-radius: 16px;
       background: rgba(15,22,38,.55);
+      flex-wrap:wrap; /* key */
     }
     .currentGuess{
       display:flex;
       gap: var(--gap);
       align-items:center;
-      flex-wrap:nowrap;
+      flex-wrap:wrap; /* allow wrap for 6-7 pegs if needed */
+      flex: 1 1 auto;
+      min-width: 0;
     }
     .currentGuess .peg{
       cursor:pointer;
@@ -281,11 +328,12 @@
     .composerBtns{
       display:flex;
       gap:8px;
-      flex-wrap:wrap;
+      flex: 0 0 auto;
       justify-content:flex-end;
+      margin-left:auto;
     }
 
-    /* palette */
+    /* Palette */
     .palette{
       display:grid;
       grid-template-columns: repeat(7, minmax(0,1fr));
@@ -296,7 +344,7 @@
       background: rgba(15,22,38,.45);
       touch-action: manipulation;
     }
-    @media (max-width: 370px){
+    @media (max-width: 380px){
       .palette{ grid-template-columns: repeat(4, minmax(0,1fr)); }
     }
     .swatch{
@@ -318,14 +366,21 @@
       pointer-events:none;
     }
 
-    /* history */
+    /* History: internal scroll area so main screen doesn't scroll */
+    .historyPanel{
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      flex: 1 1 auto;
+    }
     .history{
       display:flex;
       flex-direction:column;
       gap:10px;
-      max-height: min(56vh, 520px);
       overflow:auto;
       padding-right: 4px;
+      min-height:0;
+      max-height: 100%;
     }
     .history::-webkit-scrollbar{ width: 10px; }
     .history::-webkit-scrollbar-thumb{
@@ -355,7 +410,8 @@
       display:flex;
       gap: 8px;
       align-items:center;
-      flex-wrap:nowrap;
+      flex-wrap:wrap; /* ensure no off-screen */
+      max-width: 56vw;
     }
     .guessPegs .peg{
       width: calc(var(--peg) * .78);
@@ -381,6 +437,10 @@
     .meta .n{
       font-size:12px;
       color:var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 34vw;
     }
 
     .feedback{
@@ -389,6 +449,7 @@
       gap: 6px;
       justify-content:end;
       align-content:center;
+      flex: 0 0 auto;
     }
     .fbPeg{
       width: var(--pegSm);
@@ -401,51 +462,13 @@
     .fbPeg.black{ background: #0b0f19; border-color: rgba(255,255,255,.18); }
     .fbPeg.white{ background: rgba(255,255,255,.85); border-color: rgba(255,255,255,.40); }
 
-    /* right panel controls */
-    .controls{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .fieldRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      flex: 1 1 130px;
-      min-width: 130px;
-    }
-    label{
-      font-size:12px;
-      color:var(--muted);
-      letter-spacing:.2px;
-    }
-    select,input[type="number"]{
-      width:100%;
-      border-radius: 14px;
-      border:1px solid var(--stroke);
-      background: rgba(15,22,38,.55);
-      color: var(--text);
-      padding: 10px 12px;
-      min-height: var(--tap);
-      font-weight:650;
-      outline:none;
-    }
-    select:focus,input:focus{ border-color: rgba(122,167,255,.45); box-shadow: 0 0 0 4px rgba(122,167,255,.12); }
-
     .note{
       font-size:12px;
       color: var(--muted);
       line-height:1.35;
     }
 
-    /* modal */
+    /* Modals */
     .modalBackdrop{
       position:fixed; inset:0;
       background: rgba(0,0,0,.55);
@@ -471,6 +494,7 @@
       align-items:center;
       justify-content:space-between;
       gap:10px;
+      flex-wrap:wrap;
     }
     .modalHeader h3{
       margin:0;
@@ -488,10 +512,49 @@
     }
     .modalBackdrop.show{ display:flex; }
 
-    /* success / light up */
-    .flash{
-      animation: flash 420ms ease-out 1;
+    /* Settings fields in modal */
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
+    .fieldRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex: 1 1 150px;
+      min-width: 150px;
+    }
+    label{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+    select,input[type="number"]{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(15,22,38,.55);
+      color: var(--text);
+      padding: 10px 12px;
+      min-height: var(--tap);
+      font-weight:650;
+      outline:none;
+    }
+    select:focus,input:focus{
+      border-color: rgba(122,167,255,.45);
+      box-shadow: 0 0 0 4px rgba(122,167,255,.12);
+    }
+
+    /* Success/notification */
+    .flash{ animation: flash 420ms ease-out 1; }
     @keyframes flash{
       0%{ box-shadow: 0 0 0 0 rgba(56,217,150,.0); }
       30%{ box-shadow: 0 0 0 10px rgba(56,217,150,.10); }
@@ -501,7 +564,7 @@
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
-      top: max(12px, env(safe-area-inset-top));
+      top: max(12px, var(--safeTop));
       z-index: 70;
       display:none;
       padding: 10px 12px;
@@ -512,13 +575,19 @@
       backdrop-filter: blur(10px);
       font-weight:800;
       letter-spacing:.2px;
+      max-width: 92vw;
+      text-align:center;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
     .banner.show{ display:block; }
 
-    .sr{
-      position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;
+    /* Desktop side panel remains, but on mobile it's hidden to keep game playable with zero scrolling */
+    .asidePanel{ display:none; }
+    @media (min-width: 900px){
+      .asidePanel{ display:block; }
     }
-    a{ color: inherit; }
   </style>
 </head>
 <body>
@@ -530,12 +599,13 @@
       </div>
       <div class="headerBtns">
         <button class="ghost" id="btnHow">How to play</button>
+        <button class="ghost" id="btnSettings">Settings</button>
         <button class="ghost" id="btnNew">New game</button>
       </div>
     </header>
 
     <div class="grid">
-      <!-- LEFT: board -->
+      <!-- LEFT: game -->
       <section class="panel">
         <div class="panelHeader">
           <h2>Game</h2>
@@ -544,11 +614,16 @@
             <button class="primary" id="btnSubmit">Submit</button>
           </div>
         </div>
-        <div class="panelBody boardTop">
+
+        <!-- body: fixed-height interior -->
+        <div class="panelBody gameWrap" id="gameWrap">
           <div class="secretRow" id="secretRow">
             <div class="secretLeft">
               <div class="secretLabel">Secret code</div>
-              <div class="status" id="status">In progress<span class="small" id="status2">Select a peg slot, then tap a color.</span></div>
+              <div class="status" id="status">
+                In progress
+                <span class="small" id="status2">Select a peg slot, then tap a color.</span>
+              </div>
             </div>
             <div class="secretPegs" id="secretPegs" aria-label="Secret code pegs"></div>
           </div>
@@ -564,12 +639,13 @@
 
             <div class="palette" id="palette" aria-label="Color palette"></div>
 
-            <div class="panel" style="background: rgba(15,22,38,.35); border-color: var(--stroke);">
+            <!-- History panel: consumes remaining space; internally scrolls -->
+            <div class="panel historyPanel" style="background: rgba(15,22,38,.35); border-color: var(--stroke);">
               <div class="panelHeader">
                 <h2>Previous guesses</h2>
                 <div class="note" id="guessCount">0 guesses</div>
               </div>
-              <div class="panelBody">
+              <div class="panelBody" style="padding-top:10px; min-height:0;">
                 <div class="history" id="history"></div>
               </div>
             </div>
@@ -577,64 +653,18 @@
         </div>
       </section>
 
-      <!-- RIGHT: settings -->
-      <aside class="panel">
+      <!-- RIGHT: desktop-only quick panel (optional) -->
+      <aside class="panel asidePanel">
         <div class="panelHeader">
-          <h2>Settings</h2>
-          <button class="ghost" id="btnReveal">Reveal</button>
+          <h2>Quick</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="ghost" id="btnReveal">Reveal</button>
+            <button class="ghost" id="btnSound">Sound: On</button>
+          </div>
         </div>
         <div class="panelBody">
-          <div class="controls">
-            <div class="fieldRow">
-              <div class="field">
-                <label for="pegCount"># pegs (N)</label>
-                <select id="pegCount">
-                  <option value="3">3</option>
-                  <option value="4" selected>4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="allowDupes">Duplicates</label>
-                <select id="allowDupes">
-                  <option value="yes" selected>Allowed</option>
-                  <option value="no">Not allowed</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="fieldRow">
-              <div class="field">
-                <label for="mode">Mode</label>
-                <select id="mode">
-                  <option value="random" selected>Random code</option>
-                  <option value="2p">2-player (set code)</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="maxHistory">Show last</label>
-                <select id="maxHistory">
-                  <option value="8">8</option>
-                  <option value="12" selected>12</option>
-                  <option value="20">20</option>
-                  <option value="50">All</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="fieldRow">
-              <button class="good" id="btnApply">Apply & Restart</button>
-              <button class="ghost" id="btnSound">Sound: On</button>
-            </div>
-
-            <div class="note">
-              Feedback: <b>black</b> = correct color + position, <b>white</b> = correct color wrong position. Order of feedback pegs is not positional.
-            </div>
-            <div class="note">
-              Hint reveals the color of one random unrevealed peg (position stays hidden until solve).
-            </div>
+          <div class="note">
+            On mobile, Settings are in the popup and the game fits without scrolling.
           </div>
         </div>
       </aside>
@@ -652,17 +682,84 @@
       </div>
       <div class="modalBody">
         <div class="note" style="font-size:13px; color: rgba(255,255,255,.78);">
-          Guess the hidden sequence of <b>N</b> colored pegs (up to 7). Tap a peg slot in your current guess, then tap a color.
-          Press <b>Submit</b> to get feedback:
+          Guess the hidden sequence of <b>N</b> colored pegs (up to 7). Tap a peg slot, then tap a color. Press <b>Submit</b>:
           <ul style="margin:10px 0 0 18px; padding:0; line-height:1.5;">
             <li><b>Black</b>: right color in the right spot</li>
             <li><b>White</b>: right color, wrong spot</li>
           </ul>
-          Use <b>Hint</b> to reveal the <i>color</i> of a random secret peg. When you solve it, the secret code reveals on top.
+          <b>Hint</b> reveals the <i>color</i> of a random secret peg. When solved, the secret code reveals on top.
         </div>
       </div>
       <div class="modalActions">
         <button class="primary" id="btnHowOk">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal (mobile-first) -->
+  <div class="modalBackdrop" id="modalSettings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal">
+      <div class="modalHeader">
+        <h3 id="settingsTitle">Settings</h3>
+        <button class="ghost" id="btnSettingsClose">Close</button>
+      </div>
+      <div class="modalBody">
+        <div class="controls">
+          <div class="fieldRow">
+            <div class="field">
+              <label for="pegCount"># pegs (N)</label>
+              <select id="pegCount">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="allowDupes">Duplicates</label>
+              <select id="allowDupes">
+                <option value="yes" selected>Allowed</option>
+                <option value="no">Not allowed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fieldRow">
+            <div class="field">
+              <label for="mode">Mode</label>
+              <select id="mode">
+                <option value="random" selected>Random code</option>
+                <option value="2p">2-player (set code)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="maxHistory">Show last</label>
+              <select id="maxHistory">
+                <option value="8">8</option>
+                <option value="12" selected>12</option>
+                <option value="20">20</option>
+                <option value="50">All</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fieldRow">
+            <button class="ghost" id="btnRevealMobile">Reveal</button>
+            <button class="ghost" id="btnSoundMobile">Sound: On</button>
+            <button class="good" id="btnApply">Apply & Restart</button>
+          </div>
+
+          <div class="note">
+            Feedback: <b>black</b> = correct color + position, <b>white</b> = correct color wrong position. Order is not positional.
+          </div>
+          <div class="note">
+            Hint reveals the color of one random peg (position stays hidden until solved).
+          </div>
+        </div>
+      </div>
+      <div class="modalActions">
+        <button class="primary" id="btnSettingsDone">Done</button>
       </div>
     </div>
   </div>
@@ -680,9 +777,7 @@
         </div>
         <div class="currentGuess" id="setCodeRow" style="justify-content:center;"></div>
         <div class="palette" id="setPalette" style="margin-top:12px;"></div>
-        <div class="note" style="margin-top:10px;">
-          Tip: If duplicates are disabled, you can’t repeat a color.
-        </div>
+        <div class="note" style="margin-top:10px;">If duplicates are disabled, you can’t repeat a color.</div>
       </div>
       <div class="modalActions">
         <button class="ghost" id="btnSetClear">Clear</button>
@@ -693,7 +788,6 @@
 
 <script>
 (() => {
-  // ---------- config ----------
   const COLORS = [
     { id: "red",    name: "Red",    hex: "#ff4d5d" },
     { id: "blue",   name: "Blue",   hex: "#4c8dff" },
@@ -705,7 +799,9 @@
   ];
 
   const el = (id) => document.getElementById(id);
-  const app = el("app");
+
+  const hdr = el("hdr");
+  const gameWrap = el("gameWrap");
 
   // UI elements
   const secretPegsEl = el("secretPegs");
@@ -718,7 +814,7 @@
   const subtitleEl = el("subtitle");
   const bannerEl = el("banner");
 
-  // settings
+  // settings controls (modal)
   const pegCountSel = el("pegCount");
   const allowDupesSel = el("allowDupes");
   const modeSel = el("mode");
@@ -729,16 +825,26 @@
   const btnClear = el("btnClear");
   const btnUndo = el("btnUndo");
   const btnHint = el("btnHint");
-  const btnReveal = el("btnReveal");
   const btnNew = el("btnNew");
-  const btnApply = el("btnApply");
-  const btnSound = el("btnSound");
+
   const btnHow = el("btnHow");
+  const btnSettings = el("btnSettings");
+  const btnApply = el("btnApply");
+
+  // reveal/sound mirrored (desktop + modal)
+  const btnRevealDesktop = el("btnReveal");
+  const btnSoundDesktop = el("btnSound");
+  const btnRevealMobile = el("btnRevealMobile");
+  const btnSoundMobile = el("btnSoundMobile");
 
   // modals
   const modalHow = el("modalHow");
   const btnHowClose = el("btnHowClose");
   const btnHowOk = el("btnHowOk");
+
+  const modalSettings = el("modalSettings");
+  const btnSettingsClose = el("btnSettingsClose");
+  const btnSettingsDone = el("btnSettingsDone");
 
   const modalSet = el("modalSet");
   const btnSetClose = el("btnSetClose");
@@ -753,19 +859,18 @@
   let mode = "random"; // random | 2p
   let maxHistory = 12;
 
-  let secret = [];              // array of color ids length N
-  let revealedColorHints = [];  // boolean length N (color hinted)
+  let secret = [];
+  let revealedColorHints = [];
   let solved = false;
 
-  let currentGuess = [];        // array length N with color ids or null
+  let currentGuess = [];
   let selectedIndex = 0;
-  let guessHistory = [];        // [{guess:[...], black, white, ts}]
+  let guessHistory = [];
 
   let soundOn = true;
-  let discoveredColors = new Set(); // colors that have appeared in any feedback (black+white implies present)
-  let hintedPositions = new Set();  // positions whose color was revealed by hint (color only)
+  let discoveredColors = new Set();
 
-  // ---------- sound (WebAudio) ----------
+  // ---------- sound ----------
   let audioCtx = null;
   function ensureAudio(){
     if (!soundOn) return null;
@@ -787,13 +892,11 @@
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
   }
   function chimeSuccess(){
-    // pleasant 3-note chime
     beep({freq: 659, dur:0.10, type:"sine", gain:0.06});
     setTimeout(()=>beep({freq: 784, dur:0.10, type:"sine", gain:0.06}), 110);
     setTimeout(()=>beep({freq: 988, dur:0.12, type:"sine", gain:0.06}), 230);
   }
   function chimeDiscover(){
-    // short sparkle
     beep({freq: 880, dur:0.08, type:"triangle", gain:0.05});
     setTimeout(()=>beep({freq: 1175, dur:0.07, type:"triangle", gain:0.045}), 70);
   }
@@ -804,10 +907,7 @@
     if (Number.isNaN(v)) v = min;
     return Math.min(max, Math.max(min, v));
   }
-
-  function colorById(id){
-    return COLORS.find(c => c.id === id);
-  }
+  function colorById(id){ return COLORS.find(c => c.id === id); }
 
   function setPegVisual(pegEl, colorId, {hidden=false, locked=false} = {}){
     if (!colorId || hidden){
@@ -832,34 +932,19 @@
   }
 
   function computeFeedback(secretArr, guessArr){
-    // Mastermind scoring: black exact matches; white correct colors wrong positions (excluding black).
     let black = 0;
-    const s = secretArr.slice();
-    const g = guessArr.slice();
-
-    // mark exact matches
     const sRemain = [];
     const gRemain = [];
     for (let i=0;i<N;i++){
-      if (g[i] === s[i]) {
-        black++;
-      } else {
-        sRemain.push(s[i]);
-        gRemain.push(g[i]);
-      }
+      if (guessArr[i] === secretArr[i]) black++;
+      else { sRemain.push(secretArr[i]); gRemain.push(guessArr[i]); }
     }
-    // count whites via multiset intersection
     const counts = new Map();
-    for (const col of sRemain){
-      counts.set(col, (counts.get(col)||0)+1);
-    }
+    for (const col of sRemain) counts.set(col, (counts.get(col)||0)+1);
     let white = 0;
     for (const col of gRemain){
       const k = counts.get(col)||0;
-      if (k>0){
-        white++;
-        counts.set(col, k-1);
-      }
+      if (k>0){ white++; counts.set(col, k-1); }
     }
     return {black, white};
   }
@@ -871,41 +956,17 @@
     const used = new Set();
     for (let i=0;i<N;i++){
       let pick;
-      do{
-        pick = COLORS[randInt(COLORS.length)].id;
-      } while (!allowDupes && used.has(pick));
+      do { pick = COLORS[randInt(COLORS.length)].id; }
+      while (!allowDupes && used.has(pick));
       out.push(pick);
       used.add(pick);
     }
     return out;
   }
 
-  function resetGame({keepSettings=true} = {}){
-    solved = false;
-    guessHistory = [];
-    discoveredColors = new Set();
-    hintedPositions = new Set();
-    revealedColorHints = Array.from({length:N}, ()=>false);
-
-    currentGuess = Array.from({length:N}, ()=>null);
-    selectedIndex = 0;
-
-    if (!keepSettings){
-      N = 4; allowDupes=true; mode="random"; maxHistory=12;
-      pegCountSel.value = "4";
-      allowDupesSel.value = "yes";
-      modeSel.value = "random";
-      maxHistorySel.value = "12";
-    }
-
-    secret = (mode === "random") ? generateSecret() : Array.from({length:N}, ()=>null);
-
-    renderAll();
-    setStatus("In progress", "Select a peg slot, then tap a color.");
-  }
-
   function setStatus(main, sub){
-    statusEl.firstChild && (statusEl.firstChild.textContent = main);
+    // FIX 1: always visible; no truncation. Keep simple.
+    statusEl.childNodes[0].textContent = main;
     status2El.textContent = sub || "";
   }
 
@@ -914,24 +975,52 @@
     bannerEl.classList.add("show");
     setTimeout(()=>bannerEl.classList.remove("show"), 900);
   }
-
   function flashGood(){
     const row = el("secretRow");
     row.classList.remove("flash");
     void row.offsetWidth;
     row.classList.add("flash");
   }
-
   function lightUpAndChimeDiscover(){
     flashGood();
     showBanner("Correct color discovered!");
     chimeDiscover();
   }
-
   function lightUpAndChimeSolved(){
     flashGood();
     showBanner("Solved!");
     chimeSuccess();
+  }
+
+  function formatTime(){
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  function allFilled(arr){ return arr.every(v => v != null); }
+
+  // ---------- FIX 2: dynamic peg sizing so N pegs never fall off-screen ----------
+  function updatePegSizing(){
+    // Determine available width for peg rows on mobile: panel body width minus padding
+    const container = currentGuessEl.closest(".currentGuessRow") || currentGuessEl;
+    const rect = container.getBoundingClientRect();
+    const w = Math.max(280, rect.width);
+    const gap = 10; // keep in sync with --gap feel
+    const paddingGuessRow = 24; // approx internal padding
+    // Aim: one row on most devices; allow wrap as fallback.
+    // Compute peg size so N pegs + gaps fits in ~75% of row width (leaving space for buttons); if wrap occurs, still fine.
+    const reservedForButtons = (w < 520) ? 120 : 170; // rough
+    const usable = Math.max(200, w - reservedForButtons - paddingGuessRow);
+    const px = Math.floor((usable - (N-1)*gap) / N);
+    const peg = Math.max(28, Math.min(48, px));
+    document.documentElement.style.setProperty("--peg", peg + "px");
+
+    // feedback dots can stay constant, but slightly adjust when pegs small
+    const pegSm = (peg <= 30) ? 14 : (peg <= 36 ? 15 : 16);
+    document.documentElement.style.setProperty("--pegSm", pegSm + "px");
   }
 
   // ---------- rendering ----------
@@ -940,7 +1029,6 @@
     for (let i=0;i<N;i++){
       const peg = document.createElement("div");
       peg.className = "peg";
-      // show hidden until solved; if hinted, show color but still "locked" ring
       const hinted = revealedColorHints[i] === true;
       if (solved){
         setPegVisual(peg, secret[i], {hidden:false});
@@ -965,12 +1053,9 @@
       setPegVisual(peg, currentGuess[i], {hidden: !currentGuess[i]});
       if (i === selectedIndex) peg.classList.add("sel");
 
-      const handler = () => {
-        selectedIndex = i;
-        renderCurrentGuess();
-      };
+      const handler = () => { selectedIndex = i; renderCurrentGuess(); };
       peg.addEventListener("click", handler);
-      peg.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") { e.preventDefault(); handler(); } });
+      peg.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); handler(); } });
 
       currentGuessEl.appendChild(peg);
     }
@@ -986,7 +1071,7 @@
       sw.setAttribute("aria-label", c.name);
       sw.tabIndex = 0;
       sw.addEventListener("click", ()=>onPick(c.id));
-      sw.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") { e.preventDefault(); onPick(c.id); } });
+      sw.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); onPick(c.id); } });
       targetEl.appendChild(sw);
     }
   }
@@ -1027,9 +1112,7 @@
 
       const fb = document.createElement("div");
       fb.className = "feedback";
-      // show up to N feedback pegs, but keep a 4-grid layout for aesthetics. Use blacks then whites then empties.
-      const total = Math.max(4, Math.min(7, N)); // if N>4 show more columns? keep 4 columns; still fine.
-      fb.style.gridTemplateColumns = `repeat(4, var(--pegSm))`; // fixed 4
+
       const pegsFb = [];
       for (let i=0;i<item.black;i++) pegsFb.push("black");
       for (let i=0;i<item.white;i++) pegsFb.push("white");
@@ -1057,20 +1140,47 @@
   }
 
   function renderAll(){
+    updatePegSizing();
     renderSubtitle();
     renderSecret();
     renderCurrentGuess();
     renderHistory();
+
     btnSubmit.disabled = solved;
     btnHint.disabled = solved || revealedColorHints.every(v => v) || secret.some(v => v == null);
-    btnReveal.disabled = secret.some(v => v == null);
+
+    const canReveal = !secret.some(v => v == null);
+    if (btnRevealDesktop) btnRevealDesktop.disabled = !canReveal;
+    btnRevealMobile.disabled = !canReveal;
   }
 
-  // ---------- interactions ----------
+  // ---------- game flow ----------
+  function resetGame({keepSettings=true} = {}){
+    solved = false;
+    guessHistory = [];
+    discoveredColors = new Set();
+    revealedColorHints = Array.from({length:N}, ()=>false);
+
+    currentGuess = Array.from({length:N}, ()=>null);
+    selectedIndex = 0;
+
+    if (!keepSettings){
+      N = 4; allowDupes=true; mode="random"; maxHistory=12;
+      pegCountSel.value = "4";
+      allowDupesSel.value = "yes";
+      modeSel.value = "random";
+      maxHistorySel.value = "12";
+    }
+
+    secret = (mode === "random") ? generateSecret() : Array.from({length:N}, ()=>null);
+
+    renderAll();
+    setStatus("In progress", "Select a peg slot, then tap a color.");
+  }
+
   function pickColor(colorId){
     if (solved) return;
     if (!allowDupes){
-      // If duplicates are disallowed, prevent placing a color already used in current guess (except replacing same slot)
       const alreadyUsed = currentGuess.some((c, idx)=> idx !== selectedIndex && c === colorId);
       if (alreadyUsed){
         beep({freq:220, dur:0.08, type:"sawtooth", gain:0.03});
@@ -1084,9 +1194,7 @@
     let next = selectedIndex;
     for (let k=1;k<=N;k++){
       const i = (selectedIndex + k) % N;
-      if (!currentGuess[i]){
-        next = i; break;
-      }
+      if (!currentGuess[i]) { next = i; break; }
     }
     selectedIndex = next;
     renderCurrentGuess();
@@ -1101,7 +1209,6 @@
 
   function undoGuess(){
     if (solved) return;
-    // remove previous filled slot from selectedIndex backwards
     for (let k=0;k<N;k++){
       const i = (selectedIndex - 1 - k + N*10) % N;
       if (currentGuess[i]){
@@ -1111,16 +1218,6 @@
         return;
       }
     }
-  }
-
-  function allFilled(arr){ return arr.every(v => v != null); }
-
-  function formatTime(){
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mm = String(d.getMinutes()).padStart(2,'0');
-    const ss = String(d.getSeconds()).padStart(2,'0');
-    return `${hh}:${mm}:${ss}`;
   }
 
   function submitGuess(){
@@ -1139,10 +1236,7 @@
     const {black, white} = computeFeedback(secret, currentGuess);
     guessHistory.push({guess: currentGuess.slice(), black, white, ts: formatTime()});
 
-    // Detect newly discovered colors (black+white implies those colors exist, but not which ones).
-    // We approximate "discover" as: if feedback>0, then at least one of the guessed colors is in secret.
-    // To implement "when a correct color is discovered", we highlight when any *new* color in the guess is confirmed present.
-    // We'll confirm presence by checking each distinct guessed color against secret and compare with discoveredColors set.
+    // "Correct color discovered" when any newly-confirmed color appears in secret
     let newly = false;
     const distinctGuess = Array.from(new Set(currentGuess));
     for (const c of distinctGuess){
@@ -1155,9 +1249,8 @@
       lightUpAndChimeDiscover();
       setStatus("Nice.", "A correct color was found in the code.");
     } else {
-      // light tap sound
       beep({freq:520, dur:0.06, type:"sine", gain:0.03});
-      setStatus("In progress", black===0 && white===0 ? "No matches in that guess." : `Feedback received: ${black} black, ${white} white.`);
+      setStatus("In progress", (black===0 && white===0) ? "No matches in that guess." : `Feedback: ${black} black, ${white} white.`);
     }
 
     // check solved
@@ -1166,17 +1259,13 @@
       renderSecret();
       lightUpAndChimeSolved();
       setStatus("Solved!", `Done in ${guessHistory.length} ${guessHistory.length===1?"guess":"guesses"}.`);
-      btnSubmit.disabled = true;
-      btnHint.disabled = true;
-      btnReveal.disabled = false;
     }
 
-    // prepare next guess
+    // next guess
     currentGuess = Array.from({length:N}, ()=>null);
     selectedIndex = 0;
 
     renderAll();
-    // scroll history to top (most recent)
     historyEl.scrollTo({top:0, behavior:"smooth"});
   }
 
@@ -1184,14 +1273,13 @@
     if (secret.some(v => v == null)) return;
     solved = true;
     renderAll();
-    setStatus("Revealed.", `Secret code shown. Start a new game when ready.`);
+    setStatus("Revealed.", "Secret code shown.");
   }
 
   function hint(){
     if (solved) return;
     if (secret.some(v => v == null)) return;
 
-    // reveal color of one random unrevealed position
     const options = [];
     for (let i=0;i<N;i++){
       if (!revealedColorHints[i]) options.push(i);
@@ -1200,8 +1288,6 @@
 
     const idx = options[randInt(options.length)];
     revealedColorHints[idx] = true;
-    hintedPositions.add(idx);
-
     renderSecret();
     showBanner(`Hint: peg ${idx+1} color revealed`);
     beep({freq:740, dur:0.08, type:"triangle", gain:0.045});
@@ -1210,11 +1296,15 @@
   // ---------- modals ----------
   function openHow(){ modalHow.classList.add("show"); }
   function closeHow(){ modalHow.classList.remove("show"); }
+
+  function openSettings(){ modalSettings.classList.add("show"); }
+  function closeSettings(){ modalSettings.classList.remove("show"); }
+
   function openSet(){ modalSet.classList.add("show"); }
   function closeSet(){ modalSet.classList.remove("show"); }
 
   // ---------- 2-player set code ----------
-  let setCode = []; // array length N of color ids or null
+  let setCode = [];
   let setSel = 0;
 
   function renderSetRow(){
@@ -1232,6 +1322,7 @@
       setCodeRowEl.appendChild(peg);
     }
   }
+
   function pickSetColor(colorId){
     if (!allowDupes){
       const alreadyUsed = setCode.some((c, idx)=> idx !== setSel && c === colorId);
@@ -1242,22 +1333,22 @@
       }
     }
     setCode[setSel] = colorId;
-    // advance
+
     let next = setSel;
     for (let k=1;k<=N;k++){
       const i = (setSel + k) % N;
-      if (!setCode[i]){
-        next = i; break;
-      }
+      if (!setCode[i]) { next = i; break; }
     }
     setSel = next;
     renderSetRow();
   }
+
   function clearSet(){
     setCode = Array.from({length:N}, ()=>null);
     setSel = 0;
     renderSetRow();
   }
+
   function lockCode(){
     if (setCode.some(v=>v==null)){
       showBanner("Fill all secret pegs");
@@ -1270,17 +1361,15 @@
     renderAll();
   }
 
-  // ---------- apply settings ----------
+  // ---------- settings apply ----------
   function applySettings(){
     N = clampInt(pegCountSel.value, 3, 7);
     allowDupes = (allowDupesSel.value === "yes");
     mode = modeSel.value;
     maxHistory = clampInt(maxHistorySel.value, 8, 50);
 
-    // reset sizing for feedback grid stays 4; ok.
     resetGame({keepSettings:true});
 
-    // if 2p, open set code modal immediately
     if (mode === "2p"){
       setCode = Array.from({length:N}, ()=>null);
       setSel = 0;
@@ -1289,46 +1378,69 @@
       openSet();
       setStatus("Waiting for code", "Player 1: set and lock the code.");
     }
+    updatePegSizing();
   }
 
-  // ---------- wire up UI ----------
+  function setSoundButtons(){
+    const txt = `Sound: ${soundOn ? "On" : "Off"}`;
+    if (btnSoundDesktop) btnSoundDesktop.textContent = txt;
+    btnSoundMobile.textContent = txt;
+  }
+
+  function toggleSound(){
+    soundOn = !soundOn;
+    setSoundButtons();
+    if (soundOn){ ensureAudio(); beep({freq:660, dur:0.06, type:"sine", gain:0.03}); }
+  }
+
+  // ---------- wire up ----------
   renderPalette(paletteEl, pickColor);
 
   btnClear.addEventListener("click", clearGuess);
   btnUndo.addEventListener("click", undoGuess);
   btnSubmit.addEventListener("click", submitGuess);
   btnHint.addEventListener("click", hint);
-  btnReveal.addEventListener("click", revealAll);
   btnNew.addEventListener("click", ()=>resetGame({keepSettings:true}));
-  btnApply.addEventListener("click", applySettings);
-
-  btnSound.addEventListener("click", ()=>{
-    soundOn = !soundOn;
-    btnSound.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
-    if (soundOn) { ensureAudio(); beep({freq:660, dur:0.06, type:"sine", gain:0.03}); }
-  });
 
   btnHow.addEventListener("click", openHow);
+  btnSettings.addEventListener("click", openSettings);
+
   btnHowClose.addEventListener("click", closeHow);
   btnHowOk.addEventListener("click", closeHow);
   modalHow.addEventListener("click", (e)=>{ if(e.target === modalHow) closeHow(); });
+
+  btnSettingsClose.addEventListener("click", closeSettings);
+  btnSettingsDone.addEventListener("click", closeSettings);
+  modalSettings.addEventListener("click", (e)=>{ if(e.target === modalSettings) closeSettings(); });
+
+  btnApply.addEventListener("click", ()=>{ applySettings(); closeSettings(); });
+
+  if (btnRevealDesktop) btnRevealDesktop.addEventListener("click", revealAll);
+  btnRevealMobile.addEventListener("click", revealAll);
+
+  if (btnSoundDesktop) btnSoundDesktop.addEventListener("click", toggleSound);
+  btnSoundMobile.addEventListener("click", toggleSound);
 
   btnSetClose.addEventListener("click", closeSet);
   btnLockCode.addEventListener("click", lockCode);
   btnSetClear.addEventListener("click", clearSet);
   modalSet.addEventListener("click", (e)=>{ if(e.target === modalSet) closeSet(); });
 
-  // keyboard shortcuts (desktop)
+  // Keyboard shortcuts (desktop)
   window.addEventListener("keydown", (e)=>{
-    if (e.key === "Enter" && !modalHow.classList.contains("show") && !modalSet.classList.contains("show")){
+    if (e.key === "Enter" && !modalHow.classList.contains("show") && !modalSet.classList.contains("show") && !modalSettings.classList.contains("show")){
       submitGuess();
     }
     if (e.key === "Escape"){
-      closeHow(); closeSet();
+      closeHow(); closeSet(); closeSettings();
     }
   }, {passive:true});
 
-  // initialize
+  // Resize handling for peg sizing
+  window.addEventListener("resize", ()=>{ updatePegSizing(); }, {passive:true});
+
+  // Initialize
+  setSoundButtons();
   resetGame({keepSettings:false});
   openHow();
 })();
