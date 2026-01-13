@@ -27,6 +27,8 @@
       --pegSm:16px;
       --gap:10px;
       --tap:44px;
+      --swatch:44px;
+      --historyMin: 200px;
 
       /* layout sizing */
       --hdrH: 0px;
@@ -293,6 +295,7 @@
       flex-direction:column;
       gap:12px;
       min-height:0;
+      flex: 1 1 auto;
     }
 
     /* FIX 2: make guess row wrap so buttons never disappear */
@@ -348,7 +351,7 @@
       .palette{ grid-template-columns: repeat(4, minmax(0,1fr)); }
     }
     .swatch{
-      height: 44px;
+      height: var(--swatch);
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.16);
       box-shadow: inset 0 2px 10px rgba(255,255,255,.10), 0 10px 20px rgba(0,0,0,.25);
@@ -372,6 +375,7 @@
       flex-direction:column;
       min-height:0;
       flex: 1 1 auto;
+      min-height: var(--historyMin);
     }
     .history{
       display:flex;
@@ -461,6 +465,14 @@
     }
     .fbPeg.black{ background: #0b0f19; border-color: rgba(255,255,255,.18); }
     .fbPeg.white{ background: rgba(255,255,255,.85); border-color: rgba(255,255,255,.40); }
+    .peg.feedbackBlack{
+      background: #0b0f19;
+      border-color: rgba(255,255,255,.22);
+    }
+    .peg.feedbackWhite{
+      background: rgba(255,255,255,.88);
+      border-color: rgba(255,255,255,.45);
+    }
 
     .note{
       font-size:12px;
@@ -862,6 +874,7 @@
   let secret = [];
   let revealedColorHints = [];
   let solved = false;
+  let lastFeedback = null;
 
   let currentGuess = [];
   let selectedIndex = 0;
@@ -910,6 +923,7 @@
   function colorById(id){ return COLORS.find(c => c.id === id); }
 
   function setPegVisual(pegEl, colorId, {hidden=false, locked=false} = {}){
+    pegEl.classList.remove("feedbackBlack", "feedbackWhite");
     if (!colorId || hidden){
       pegEl.style.background = hidden
         ? 'radial-gradient(circle at 30% 20%, rgba(255,255,255,.10), transparent 45%), rgba(255,255,255,.06)'
@@ -923,6 +937,12 @@
       pegEl.classList.add("revealed");
     }
     pegEl.classList.toggle("locked", !!locked);
+  }
+
+  function setPegFeedback(pegEl, tone){
+    pegEl.classList.remove("hidden", "revealed", "locked");
+    pegEl.classList.add(tone === "black" ? "feedbackBlack" : "feedbackWhite");
+    pegEl.removeAttribute("style");
   }
 
   function deepEqual(a,b){
@@ -1015,17 +1035,33 @@
     const reservedForButtons = (w < 520) ? 120 : 170; // rough
     const usable = Math.max(200, w - reservedForButtons - paddingGuessRow);
     const px = Math.floor((usable - (N-1)*gap) / N);
-    const peg = Math.max(28, Math.min(48, px));
+    const pegFromWidth = Math.max(28, Math.min(48, px));
+    const vh = Math.max(520, window.innerHeight);
+    const pegFromHeight = Math.max(26, Math.min(44, Math.floor((vh - 220) / 9)));
+    const peg = Math.min(pegFromWidth, pegFromHeight);
     document.documentElement.style.setProperty("--peg", peg + "px");
 
     // feedback dots can stay constant, but slightly adjust when pegs small
     const pegSm = (peg <= 30) ? 14 : (peg <= 36 ? 15 : 16);
     document.documentElement.style.setProperty("--pegSm", pegSm + "px");
+
+    const swatch = Math.max(32, Math.min(44, peg + 6));
+    document.documentElement.style.setProperty("--swatch", swatch + "px");
+
+    const historyMin = Math.max(170, Math.round(peg * 2.6) + 80);
+    document.documentElement.style.setProperty("--historyMin", historyMin + "px");
   }
 
   // ---------- rendering ----------
   function renderSecret(){
     secretPegsEl.innerHTML = "";
+    const canShowFeedback = !solved && lastFeedback && revealedColorHints.every(v => !v);
+    let feedbackSlots = [];
+    if (canShowFeedback){
+      for (let i=0;i<lastFeedback.black;i++) feedbackSlots.push("black");
+      for (let i=0;i<lastFeedback.white;i++) feedbackSlots.push("white");
+      while (feedbackSlots.length < N) feedbackSlots.push("empty");
+    }
     for (let i=0;i<N;i++){
       const peg = document.createElement("div");
       peg.className = "peg";
@@ -1034,6 +1070,8 @@
         setPegVisual(peg, secret[i], {hidden:false});
       } else if (hinted && secret[i]){
         setPegVisual(peg, secret[i], {hidden:false, locked:true});
+      } else if (canShowFeedback && feedbackSlots[i] !== "empty"){
+        setPegFeedback(peg, feedbackSlots[i]);
       } else {
         setPegVisual(peg, null, {hidden:true});
       }
@@ -1160,6 +1198,7 @@
     guessHistory = [];
     discoveredColors = new Set();
     revealedColorHints = Array.from({length:N}, ()=>false);
+    lastFeedback = null;
 
     currentGuess = Array.from({length:N}, ()=>null);
     selectedIndex = 0;
@@ -1235,6 +1274,7 @@
 
     const {black, white} = computeFeedback(secret, currentGuess);
     guessHistory.push({guess: currentGuess.slice(), black, white, ts: formatTime()});
+    lastFeedback = {black, white};
 
     // "Correct color discovered" when any newly-confirmed color appears in secret
     let newly = false;
