@@ -2,6 +2,6 @@
   "name": "ltrgordon.github.io",
   "version": "1.0.0",
   "scripts": {
-    "test": "node test/utils.test.js"
+    "test": "node test/run-tests.js"
   }
 }

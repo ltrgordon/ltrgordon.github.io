@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake</title>
+  <style>
+    :root {
+      --bg1: #0ea5e9;
+      --bg2: #22d3ee;
+      --panel: #ffffffee;
+      --ink: #0b1b2b;
+      --muted: #334155;
+      --accent: #16a34a;
+      --food: #dc2626;
+      --snake: #166534;
+      --grid: #0000001a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1000px 650px at 20% -10%, #ffffff 0%, #e0f2fe 35%, #bae6fd 60%, #93c5fd 100%), linear-gradient(180deg, var(--bg2), var(--bg1));
+      background-attachment: fixed;
+    }
+
+    .page {
+      width: min(680px, 94vw);
+      margin: 20px auto 30px;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid #00000014;
+      background: var(--panel);
+      box-shadow: 0 14px 32px #00000020;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+
+    .meta {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #00000018;
+      background: #ffffff;
+    }
+
+    .board-wrap {
+      margin-top: 14px;
+      border-radius: 12px;
+      border: 1px solid #00000018;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid #00000020;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: #15803d;
+      color: #ffffff;
+    }
+
+    .touch {
+      margin-top: 12px;
+      display: none;
+      grid-template-columns: repeat(3, 48px);
+      grid-template-rows: repeat(2, 48px);
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .touch button {
+      padding: 0;
+      font-size: 16px;
+    }
+
+    .touch .up { grid-column: 2; grid-row: 1; }
+    .touch .left { grid-column: 1; grid-row: 2; }
+    .touch .down { grid-column: 2; grid-row: 2; }
+    .touch .right { grid-column: 3; grid-row: 2; }
+
+    .help {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .link-back {
+      display: inline-block;
+      margin-top: 14px;
+      color: #0c4a6e;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    @media (max-width: 860px) {
+      .touch { display: grid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Snake</h1>
+    <div class="meta">
+      <span class="badge">Score: <span id="score">0</span></span>
+      <span class="badge">Status: <span id="status">Running</span></span>
+    </div>
+
+    <div class="board-wrap">
+      <canvas id="board" width="480" height="480" aria-label="Snake game board"></canvas>
+    </div>
+
+    <div class="controls">
+      <button id="pauseBtn">Pause</button>
+      <button id="restartBtn" class="primary">Restart</button>
+    </div>
+
+    <div class="touch" aria-label="On-screen controls">
+      <button class="up" data-dir="up" aria-label="Move up">▲</button>
+      <button class="left" data-dir="left" aria-label="Move left">◀</button>
+      <button class="down" data-dir="down" aria-label="Move down">▼</button>
+      <button class="right" data-dir="right" aria-label="Move right">▶</button>
+    </div>
+
+    <p class="help">Use arrow keys or WASD. Space pauses/resumes. Enter restarts after game over.</p>
+    <a class="link-back" href="../games/">← Back to games</a>
+  </main>
+
+  <script src="./logic.js"></script>
+  <script>
+    (function () {
+      var GRID_COLS = 16;
+      var GRID_ROWS = 16;
+      var TICK_MS = 140;
+
+      var canvas = document.getElementById('board');
+      var ctx = canvas.getContext('2d');
+      var scoreEl = document.getElementById('score');
+      var statusEl = document.getElementById('status');
+      var pauseBtn = document.getElementById('pauseBtn');
+
+      var cellW = canvas.width / GRID_COLS;
+      var cellH = canvas.height / GRID_ROWS;
+      var state = SnakeLogic.createInitialState({ cols: GRID_COLS, rows: GRID_ROWS });
+
+      function statusLabel(status) {
+        if (status === 'game_over') return 'Game Over';
+        if (status === 'paused') return 'Paused';
+        return 'Running';
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
+        ctx.lineWidth = 1;
+
+        for (var x = 0; x <= GRID_COLS; x += 1) {
+          ctx.beginPath();
+          ctx.moveTo(Math.round(x * cellW) + 0.5, 0);
+          ctx.lineTo(Math.round(x * cellW) + 0.5, canvas.height);
+          ctx.stroke();
+        }
+
+        for (var y = 0; y <= GRID_ROWS; y += 1) {
+          ctx.beginPath();
+          ctx.moveTo(0, Math.round(y * cellH) + 0.5);
+          ctx.lineTo(canvas.width, Math.round(y * cellH) + 0.5);
+          ctx.stroke();
+        }
+      }
+
+      function drawCell(cell, fillStyle) {
+        ctx.fillStyle = fillStyle;
+        ctx.fillRect(cell.x * cellW + 1, cell.y * cellH + 1, cellW - 2, cellH - 2);
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawGrid();
+
+        if (state.food) {
+          drawCell(state.food, getComputedStyle(document.documentElement).getPropertyValue('--food'));
+        }
+
+        for (var i = 0; i < state.snake.length; i += 1) {
+          drawCell(state.snake[i], getComputedStyle(document.documentElement).getPropertyValue('--snake'));
+        }
+
+        scoreEl.textContent = String(state.score);
+        statusEl.textContent = statusLabel(state.status);
+        pauseBtn.textContent = state.status === 'paused' ? 'Resume' : 'Pause';
+      }
+
+      function queueDirectionFromInput(dir) {
+        state = SnakeLogic.queueDirection(state, dir);
+      }
+
+      function handleKey(event) {
+        var key = event.key.toLowerCase();
+
+        if (key === 'arrowup' || key === 'w') {
+          event.preventDefault();
+          queueDirectionFromInput('up');
+          return;
+        }
+        if (key === 'arrowdown' || key === 's') {
+          event.preventDefault();
+          queueDirectionFromInput('down');
+          return;
+        }
+        if (key === 'arrowleft' || key === 'a') {
+          event.preventDefault();
+          queueDirectionFromInput('left');
+          return;
+        }
+        if (key === 'arrowright' || key === 'd') {
+          event.preventDefault();
+          queueDirectionFromInput('right');
+          return;
+        }
+        if (key === ' ') {
+          event.preventDefault();
+          state = SnakeLogic.togglePause(state);
+          render();
+          return;
+        }
+        if (key === 'enter' && state.status === 'game_over') {
+          event.preventDefault();
+          state = SnakeLogic.restartGame(state);
+          render();
+        }
+      }
+
+      document.getElementById('pauseBtn').addEventListener('click', function () {
+        state = SnakeLogic.togglePause(state);
+        render();
+      });
+
+      document.getElementById('restartBtn').addEventListener('click', function () {
+        state = SnakeLogic.restartGame(state);
+        render();
+      });
+
+      document.querySelectorAll('.touch button[data-dir]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          queueDirectionFromInput(button.getAttribute('data-dir'));
+        });
+      });
+
+      window.addEventListener('keydown', handleKey);
+
+      setInterval(function () {
+        state = SnakeLogic.stepGame(state);
+        render();
+      }, TICK_MS);
+
+      render();
+    }());
+  </script>
+</body>
+</html>
