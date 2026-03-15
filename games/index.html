@@ -134,6 +134,16 @@
           <span class="cta" style="background:linear-gradient(90deg,#16a34a,#15803d)">Play <span class="arr">→</span></span>
         </div>
       </a>
+      <a class="card" href="../robo-fight/index.html" aria-label="Play Robo-Fight">
+        <div class="art">
+          <canvas id="art-rf" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Robo-Fight</div>
+          <div class="desc">Pick your bot and battle in the arena.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#6366f1,#4f46e5)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
     </main>
     <footer>Use keyboard or touch — have fun!</footer>
   </div>
@@ -212,7 +222,25 @@
       x.fillStyle='#dc2626';
       x.fillRect(ox+6*size+2, oy+1*size+2, size-4, size-4);
     }
-    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN();
+    function drawRF(){
+      const c=document.getElementById('art-rf'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#ddd6fe'); g.addColorStop(1,'#c7d2fe'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='#312e81';
+      x.fillRect(0,H-70,W,70);
+      x.fillStyle='#64748b';
+      x.fillRect(W/2-80,H-170,60,90);
+      x.fillRect(W/2+20,H-170,60,90);
+      x.fillStyle='#1f2937';
+      x.fillRect(W/2-30,H-240,60,70);
+      x.fillStyle='#22d3ee';
+      x.fillRect(W/2-15,H-220,30,20);
+      x.fillStyle='#f43f5e';
+      x.beginPath(); x.arc(W/2+120,H-190,18,0,Math.PI*2); x.fill();
+      x.strokeStyle='#f43f5e'; x.lineWidth=6;
+      x.beginPath(); x.moveTo(W/2+35,H-200); x.lineTo(W/2+102,H-190); x.stroke();
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF();
   </script>
 </body>
 </html>
