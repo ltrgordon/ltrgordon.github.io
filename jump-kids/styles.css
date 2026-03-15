@@ -65,16 +65,22 @@
   .menu-section{ margin:10px 0 18px; }
   .menu-section-title{ font-weight:800; margin:0 0 10px; text-transform:uppercase; letter-spacing:1px; font-size:14px; opacity:0.8; }
 
-  .level-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
+  .world-grid{ display:grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap:12px; }
+  .world-tile,
   .level-tile{ padding:26px 18px; font-weight:800; font-size:26px; text-align:center; border-radius:14px; border:2px solid rgba(0,0,0,0.15);
     background:linear-gradient(180deg,#fff,#eef3f8); box-shadow:0 4px 0 rgba(0,0,0,0.15); cursor:pointer; }
+  .world-tile.active,
   .level-tile.active{ outline:3px solid var(--accent); box-shadow:0 4px 0 rgba(0,0,0,0.2), 0 0 0 6px rgba(255,183,3,0.25) inset; }
 
-  .char-select{ display:grid; grid-template-columns: 1fr 460px; gap:16px; align-items:stretch; }
+  .level-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
+  .level-prompt{ margin-bottom:10px; color:#334155; font-weight:600; }
+  .level-grid.locked{ opacity:0.45; pointer-events:none; }
+
+  .char-select{ display:grid; grid-template-columns: 1fr 420px; gap:16px; align-items:stretch; }
   .char-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; }
-  .char-card{ position:relative; padding:16px; border-radius:14px; border:2px solid rgba(0,0,0,0.12); background:linear-gradient(180deg,#fff,#f4f7fb); text-align:center; cursor:pointer; }
+  .char-card{ position:relative; padding:14px 10px; min-height:74px; border-radius:14px; border:2px solid rgba(0,0,0,0.12); background:linear-gradient(180deg,#fff,#f4f7fb); text-align:center; cursor:pointer; }
   .char-card[aria-selected="true"]{ outline:3px solid var(--accent2); box-shadow:0 4px 0 rgba(0,0,0,0.2), 0 0 0 6px rgba(251,133,0,0.25) inset; }
-  .char-name{ font-weight:900; font-size:22px; }
+  .char-name{ font-weight:900; font-size:20px; line-height:1.25; }
   /* removed .char-bio */
   .char-preview-wrap{ border-radius:16px; border:2px solid rgba(0,0,0,0.12); background:linear-gradient(180deg,#fff,#eef3f8); display:flex; align-items:center; justify-content:center; }
   #charPreview{ width:100%; height:auto; display:block; opacity:1; transition: opacity .15s ease; }
@@ -90,3 +96,8 @@
 
   .sr-only{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
 
+  @media (max-width: 1080px){
+    .char-select{ grid-template-columns: 1fr; }
+    .char-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .char-preview-wrap{ min-height: 220px; }
+  }
