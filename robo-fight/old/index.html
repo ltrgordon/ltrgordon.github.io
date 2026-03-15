@@ -1,0 +1,1197 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ROBO RUMBLE X</title>
+<style>
+  :root{
+    --bg1:#0b1020;
+    --bg2:#121c36;
+    --panel:rgba(8,14,28,.76);
+    --line:rgba(255,255,255,.12);
+    --text:#eef6ff;
+    --muted:#9fc0ff;
+    --accent:#4fd3ff;
+    --gold:#ffd54a;
+    --danger:#ff5577;
+    --good:#4dff95;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:
+    radial-gradient(circle at top, #203a7a 0%, #101834 36%, #080b16 100%);color:var(--text);overflow:hidden}
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;
+    background:
+      linear-gradient(transparent 96%, rgba(255,255,255,.06) 96%),
+      linear-gradient(90deg, transparent 96%, rgba(255,255,255,.04) 96%);
+    background-size:36px 36px,36px 36px;
+    mix-blend-mode:screen;
+  }
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+  .hidden{display:none!important}
+  .title{
+    font-size:clamp(34px,6vw,72px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+    text-shadow:0 0 14px rgba(79,211,255,.7),0 0 28px rgba(255,86,119,.45);
+    margin:0 0 8px;
+  }
+  .subtitle{color:#d1e4ff;opacity:.9;margin-bottom:20px;text-align:center;max-width:900px}
+  .panel{
+    background:linear-gradient(180deg, rgba(19,30,58,.88), rgba(8,14,28,.82));
+    border:1px solid var(--line);border-radius:24px;padding:18px 18px 16px;
+    box-shadow:0 18px 45px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(8px);
+  }
+  .select-wrap{width:min(1180px,96vw)}
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap
+  }
+  .pill{
+    border:1px solid rgba(255,255,255,.12);padding:8px 12px;border-radius:999px;
+    background:rgba(255,255,255,.05);font-size:13px;color:#d9e7ff
+  }
+  .robot-grid{display:grid;grid-template-columns:repeat(4,minmax(190px,1fr));gap:14px}
+  .robot-card{
+    position:relative;padding:14px;border-radius:20px;cursor:pointer;overflow:hidden;
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+    border:2px solid transparent;transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    min-height:260px;
+  }
+  .robot-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.24)}
+  .robot-card.selected1{border-color:#4fd3ff;box-shadow:0 0 0 3px rgba(79,211,255,.14),0 16px 30px rgba(79,211,255,.18)}
+  .robot-card.selected2{border-color:#ff79b0;box-shadow:0 0 0 3px rgba(255,121,176,.14),0 16px 30px rgba(255,121,176,.18)}
+  .robot-card .corner{
+    position:absolute;right:-24px;top:-24px;width:120px;height:120px;border-radius:50%;filter:blur(2px);opacity:.16
+  }
+  .robot-card canvas{width:100%;height:110px;display:block;margin:4px auto 12px}
+  .robot-name{font-weight:900;letter-spacing:.04em;text-transform:uppercase;font-size:20px}
+  .robot-style{font-size:12px;color:#d9edff;opacity:.9;margin-top:2px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .stat{
+    padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);font-size:12px;
+    border:1px solid rgba(255,255,255,.08)
+  }
+  .move{font-size:13px;color:#eef6ffcc;line-height:1.35;margin-top:4px}
+  .selectors{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .player-box{
+    border-radius:18px;padding:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)
+  }
+  .player-box h3{margin:0 0 8px;font-size:18px}
+  .controls{font-size:13px;color:#d7e6ff;line-height:1.45}
+  .cta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
+  button{
+    appearance:none;border:0;border-radius:16px;padding:14px 18px;font-weight:800;cursor:pointer;
+    color:#08111f;background:linear-gradient(180deg,#8af1ff,#46d2ff);
+    box-shadow:0 10px 24px rgba(79,211,255,.28);
+    transition:transform .16s ease, filter .16s ease;
+  }
+  button:hover{transform:translateY(-2px);filter:brightness(1.04)}
+  button:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+  .btn-secondary{
+    color:#fff;background:linear-gradient(180deg,#ff7ba7,#ff5577);box-shadow:0 10px 24px rgba(255,85,119,.25)
+  }
+  #gameWrap{position:absolute;inset:0}
+  #hud{
+    position:absolute;left:0;right:0;top:0;padding:14px 18px 8px;z-index:3;pointer-events:none
+  }
+  .hud-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center}
+  .fighter-ui{
+    background:rgba(7,11,25,.62);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:12px 14px;
+    backdrop-filter:blur(6px)
+  }
+  .fighter-ui.right{text-align:right}
+  .fighter-name{font-size:18px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}
+  .hpbar{
+    margin-top:8px;height:18px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 0 10px rgba(0,0,0,.25)
+  }
+  .hpfill{
+    height:100%;width:100%;border-radius:999px;
+    background:linear-gradient(90deg,#5cff8d,#ffe05a,#ff5f7f);
+    box-shadow:0 0 20px rgba(92,255,141,.22);
+    transition:width .12s linear
+  }
+  .energy{
+    margin-top:8px;height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid rgba(255,255,255,.08)
+  }
+  .energy > div{
+    height:100%;width:0%;background:linear-gradient(90deg,#66b5ff,#d67dff);transition:width .12s linear
+  }
+  .timer{
+    font-weight:900;font-size:42px;line-height:1;min-width:110px;text-align:center;
+    text-shadow:0 0 16px rgba(255,255,255,.24)
+  }
+  #battleCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #fightBanner,#roundBanner,#resultOverlay{
+    position:absolute;left:50%;transform:translateX(-50%);z-index:4;text-align:center;pointer-events:none
+  }
+  #roundBanner{
+    top:18%;font-size:min(9vw,86px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+    text-shadow:0 0 16px rgba(255,213,74,.6), 0 0 36px rgba(255,85,119,.35);opacity:0
+  }
+  #fightBanner{
+    top:34%;font-size:min(12vw,110px);font-weight:1000;letter-spacing:.1em;text-transform:uppercase;
+    color:#fff360;text-shadow:0 0 12px rgba(255,243,96,.9),0 0 28px rgba(255,75,75,.45);opacity:0
+  }
+  #resultOverlay{
+    top:18%;width:min(700px,92vw);background:rgba(8,12,24,.78);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.1);border-radius:26px;padding:26px;opacity:0;pointer-events:none;
+    box-shadow:0 24px 70px rgba(0,0,0,.45)
+  }
+  #resultOverlay.show{opacity:1;pointer-events:auto}
+  .winnerText{font-size:clamp(28px,5vw,56px);font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+  .resultSub{margin-top:8px;color:#dce8ff}
+  .resultBtns{display:flex;justify-content:center;gap:12px;margin-top:20px;pointer-events:auto}
+  .footer-tip{
+    position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:3;
+    background:rgba(5,10,20,.55);border:1px solid rgba(255,255,255,.08);border-radius:999px;
+    padding:10px 16px;color:#dbe8ff;font-size:13px;backdrop-filter:blur(6px)
+  }
+  @media (max-width:980px){
+    .robot-grid{grid-template-columns:repeat(2,minmax(200px,1fr))}
+    .selectors{grid-template-columns:1fr}
+    .hud-row{grid-template-columns:1fr}
+    .timer{order:-1;margin-bottom:8px}
+  }
+</style>
+</head>
+<body>
+  <div id="selectScreen" class="screen">
+    <h1 class="title">Robo Rumble X</h1>
+    <div class="subtitle">A two-player robot battle game with giant punches, blazing fire, crackling lightning, and huge knockout explosions.</div>
+
+    <div class="panel select-wrap">
+      <div class="section-head">
+        <div class="pill">Player 1 clicks a robot first. Player 2 clicks a different robot second.</div>
+        <div class="pill">Best on keyboard • 2 local players</div>
+      </div>
+
+      <div id="robotGrid" class="robot-grid"></div>
+
+      <div class="selectors">
+        <div class="player-box">
+          <h3>Player 1 Controls</h3>
+          <div class="controls">
+            Move: <b>W A S D</b><br>
+            Punch: <b>F</b> &nbsp; Smash: <b>G</b> &nbsp; Special: <b>H</b> &nbsp; Dash: <b>R</b>
+          </div>
+        </div>
+        <div class="player-box">
+          <h3>Player 2 Controls</h3>
+          <div class="controls">
+            Move: <b>↑ ↓ ← →</b><br>
+            Punch: <b>K</b> &nbsp; Smash: <b>L</b> &nbsp; Special: <b>;</b> &nbsp; Dash: <b>P</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div id="selectionText" class="pill">Choose robots to begin.</div>
+        <button id="startBtn" disabled>Start Battle</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameWrap" class="hidden">
+    <canvas id="battleCanvas"></canvas>
+
+    <div id="hud">
+      <div class="hud-row">
+        <div class="fighter-ui">
+          <div id="p1Name" class="fighter-name">Player 1</div>
+          <div class="hpbar"><div id="p1Hp" class="hpfill"></div></div>
+          <div class="energy"><div id="p1Energy"></div></div>
+        </div>
+        <div id="timer" class="timer">99</div>
+        <div class="fighter-ui right">
+          <div id="p2Name" class="fighter-name">Player 2</div>
+          <div class="hpbar"><div id="p2Hp" class="hpfill"></div></div>
+          <div class="energy"><div id="p2Energy"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="roundBanner">Round 1</div>
+    <div id="fightBanner">Fight!</div>
+
+    <div id="resultOverlay">
+      <div id="winnerText" class="winnerText">Player 1 Wins!</div>
+      <div id="resultSub" class="resultSub">That knockout was ridiculous.</div>
+      <div class="resultBtns">
+        <button id="rematchBtn">Rematch</button>
+        <button id="selectBtn" class="btn-secondary">Robot Select</button>
+      </div>
+    </div>
+
+    <div class="footer-tip">Stay close to hit. Smash attacks hit harder. Specials need energy.</div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('battleCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const selectScreen = document.getElementById('selectScreen');
+  const gameWrap = document.getElementById('gameWrap');
+  const robotGrid = document.getElementById('robotGrid');
+  const selectionText = document.getElementById('selectionText');
+  const startBtn = document.getElementById('startBtn');
+  const roundBanner = document.getElementById('roundBanner');
+  const fightBanner = document.getElementById('fightBanner');
+  const resultOverlay = document.getElementById('resultOverlay');
+  const winnerText = document.getElementById('winnerText');
+  const resultSub = document.getElementById('resultSub');
+  const rematchBtn = document.getElementById('rematchBtn');
+  const selectBtn = document.getElementById('selectBtn');
+
+  const p1Name = document.getElementById('p1Name');
+  const p2Name = document.getElementById('p2Name');
+  const p1Hp = document.getElementById('p1Hp');
+  const p2Hp = document.getElementById('p2Hp');
+  const p1Energy = document.getElementById('p1Energy');
+  const p2Energy = document.getElementById('p2Energy');
+  const timerEl = document.getElementById('timer');
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const sign = v => v < 0 ? -1 : 1;
+  const lerp = (a,b,t) => a + (b-a) * t;
+
+  let W = innerWidth, H = innerHeight, floorY = H * 0.82;
+  let particles = [];
+  let shockwaves = [];
+  let projectiles = [];
+  let keys = {};
+  let gameState = 'select';
+  let fighters = [];
+  let selectedP1 = null;
+  let selectedP2 = null;
+  let lastTime = 0;
+  let battleTimer = 99;
+  let timerAccumulator = 0;
+  let roundStarted = false;
+  let countdownLock = true;
+  let screenShake = 0;
+  let winner = null;
+  let audioCtx = null;
+
+  const robots = [
+    {
+      id: 'blaze',
+      name: 'Blaze Titan',
+      style: 'Inferno Brawler',
+      color: '#ff6b2c',
+      accent: '#ffd85c',
+      dark: '#7b2305',
+      speed: 240,
+      jump: 0,
+      power: 1.0,
+      armor: 1.0,
+      body: 'heavy',
+      desc: 'Rocket fists and a dragon-flame burst.',
+      specialName: 'Inferno Burst',
+      stats: {Speed:'Medium', Power:'High', Range:'Medium', Special:'Fire wave'},
+      specialType: 'fire'
+    },
+    {
+      id: 'volt',
+      name: 'Volt Viper',
+      style: 'Shock Assassin',
+      color: '#27d9ff',
+      accent: '#b7f6ff',
+      dark: '#04556b',
+      speed: 290,
+      jump: 0,
+      power: 0.88,
+      armor: 0.9,
+      body: 'slim',
+      desc: 'Lightning-fast kicks and chain shock.',
+      specialName: 'Thunder Cage',
+      stats: {Speed:'Very High', Power:'Medium', Range:'Long', Special:'Electric trap'},
+      specialType: 'electric'
+    },
+    {
+      id: 'nova',
+      name: 'Nova Crusher',
+      style: 'Missile Tank',
+      color: '#b06cff',
+      accent: '#ffe36d',
+      dark: '#41156b',
+      speed: 200,
+      jump: 0,
+      power: 1.18,
+      armor: 1.18,
+      body: 'tank',
+      desc: 'Titan smash with missile barrage.',
+      specialName: 'Meteor Slam',
+      stats: {Speed:'Low', Power:'Very High', Range:'Short', Special:'Shock slam'},
+      specialType: 'slam'
+    },
+    {
+      id: 'frost',
+      name: 'Frostbyte X',
+      style: 'Cryo Ranger',
+      color: '#66b6ff',
+      accent: '#f1feff',
+      dark: '#17457d',
+      speed: 255,
+      jump: 0,
+      power: 0.95,
+      armor: 0.96,
+      body: 'medium',
+      desc: 'Ice beam and spinning saw blade.',
+      specialName: 'Blizzard Beam',
+      stats: {Speed:'High', Power:'Medium', Range:'Very Long', Special:'Freeze ray'},
+      specialType: 'beam'
+    }
+  ];
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+    }
+  }
+
+  function sfx(type='hit') {
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1600;
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.gain.value = 0.0001;
+
+    if (type === 'hit') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(220, t0);
+      osc.frequency.exponentialRampToValueAtTime(90, t0 + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.04, t0 + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.1);
+      osc.start(t0); osc.stop(t0 + 0.12);
+    } else if (type === 'special') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, t0);
+      osc.frequency.exponentialRampToValueAtTime(150, t0 + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.05, t0 + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      osc.start(t0); osc.stop(t0 + 0.2);
+    } else if (type === 'boom') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(80, t0);
+      osc.frequency.exponentialRampToValueAtTime(35, t0 + 0.35);
+      gain.gain.exponentialRampToValueAtTime(0.09, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+      osc.start(t0); osc.stop(t0 + 0.36);
+    } else if (type === 'zap') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(760, t0);
+      osc.frequency.exponentialRampToValueAtTime(220, t0 + 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.04, t0 + 0.003);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.095);
+      osc.start(t0); osc.stop(t0 + 0.1);
+    }
+  }
+
+  function resize() {
+    W = canvas.width = innerWidth * devicePixelRatio;
+    H = canvas.height = innerHeight * devicePixelRatio;
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    floorY = innerHeight * 0.82;
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  function drawRobotIcon(c, r) {
+    const g = c.getContext('2d');
+    c.width = 220; c.height = 120;
+    g.clearRect(0,0,c.width,c.height);
+    drawRobot(g, c.width/2, 78, 1, r, 0, 0, true);
+  }
+
+  function buildSelectCards() {
+    robotGrid.innerHTML = '';
+    robots.forEach(robot => {
+      const card = document.createElement('div');
+      card.className = 'robot-card';
+      card.dataset.id = robot.id;
+      card.innerHTML = `
+        <div class="corner" style="background:${robot.color}"></div>
+        <canvas></canvas>
+        <div class="robot-name">${robot.name}</div>
+        <div class="robot-style">${robot.style}</div>
+        <div class="stats">
+          <div class="stat"><b>Speed:</b> ${robot.stats.Speed}</div>
+          <div class="stat"><b>Power:</b> ${robot.stats.Power}</div>
+          <div class="stat"><b>Range:</b> ${robot.stats.Range}</div>
+          <div class="stat"><b>Special:</b> ${robot.specialName}</div>
+        </div>
+        <div class="move">${robot.desc}</div>
+      `;
+      const iconCanvas = card.querySelector('canvas');
+      drawRobotIcon(iconCanvas, robot);
+      card.addEventListener('click', () => handleSelection(robot.id));
+      robotGrid.appendChild(card);
+    });
+    refreshSelectionUI();
+  }
+
+  function handleSelection(id) {
+    ensureAudio();
+    if (!selectedP1) selectedP1 = id;
+    else if (!selectedP2 && id !== selectedP1) selectedP2 = id;
+    else if (selectedP1 === id) selectedP1 = null;
+    else if (selectedP2 === id) selectedP2 = null;
+    else {
+      selectedP2 = id;
+    }
+    refreshSelectionUI();
+    sfx('zap');
+  }
+
+  function refreshSelectionUI() {
+    [...robotGrid.children].forEach(card => {
+      const id = card.dataset.id;
+      card.classList.toggle('selected1', id === selectedP1);
+      card.classList.toggle('selected2', id === selectedP2);
+    });
+    const name1 = robots.find(r => r.id === selectedP1)?.name || '—';
+    const name2 = robots.find(r => r.id === selectedP2)?.name || '—';
+    selectionText.textContent = `P1: ${name1}   •   P2: ${name2}`;
+    startBtn.disabled = !(selectedP1 && selectedP2 && selectedP1 !== selectedP2);
+  }
+
+  class Fighter {
+    constructor(playerIndex, robot, x, facing) {
+      this.playerIndex = playerIndex;
+      this.robot = robot;
+      this.x = x;
+      this.y = floorY;
+      this.vx = 0;
+      this.vy = 0;
+      this.w = robot.body === 'tank' ? 82 : robot.body === 'slim' ? 62 : 72;
+      this.h = robot.body === 'tank' ? 118 : robot.body === 'slim' ? 102 : 110;
+      this.baseH = this.h;
+      this.color = robot.color;
+      this.accent = robot.accent;
+      this.dark = robot.dark;
+      this.facing = facing;
+      this.hp = 100;
+      this.maxHp = 100;
+      this.energy = 0;
+      this.onGround = true;
+      this.state = 'idle';
+      this.attackCooldown = 0;
+      this.stun = 0;
+      this.hitFlash = 0;
+      this.knockdown = false;
+      this.dead = false;
+      this.dashCd = 0;
+      this.specialCd = 0;
+      this.attackTimer = 0;
+      this.activeHit = null;
+      this.specialActive = false;
+      this.anim = 0;
+      this.collapse = 0;
+      this.aiGlow = rand(0, 1000);
+      this.comboText = '';
+      this.comboT = 0;
+    }
+    input(dt) {
+      if (this.dead || this.stun > 0 || countdownLock) return;
+      const map = this.playerIndex === 1
+        ? {left:'a',right:'d',up:'w',down:'s',punch:'f',smash:'g',special:'h',dash:'r'}
+        : {left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown',punch:'k',smash:'l',special:';',dash:'p'};
+      const movingLeft = !!keys[map.left];
+      const movingRight = !!keys[map.right];
+      const crouch = !!keys[map.down];
+
+      let speed = this.robot.speed;
+      if (crouch && !this.specialActive) speed *= 0.55;
+      if (this.attackTimer > 0) speed *= 0.34;
+      if (!this.specialActive) {
+        this.vx = (movingRight - movingLeft) * speed;
+      }
+
+      if (movingLeft) this.facing = -1;
+      if (movingRight) this.facing = 1;
+
+      if (keys[map.punch] && this.attackCooldown <= 0) this.basicAttack('punch');
+      if (keys[map.smash] && this.attackCooldown <= 0) this.basicAttack('smash');
+      if (keys[map.special] && this.specialCd <= 0 && this.energy >= 45) this.specialAttack();
+      if (keys[map.dash] && this.dashCd <= 0) this.dash();
+    }
+    dash() {
+      this.dashCd = 1.0;
+      this.vx = this.facing * 520;
+      this.stun = 0.04;
+      for (let i=0;i<14;i++) {
+        spawnParticle(this.x - this.facing*20, this.y - rand(30,80), -this.facing*rand(80,160), rand(-25,25), this.accent, rand(2,5), 0.35);
+      }
+      sfx('zap');
+    }
+    basicAttack(type) {
+      this.attackCooldown = type === 'punch' ? 0.33 : 0.55;
+      this.attackTimer = type === 'punch' ? 0.16 : 0.26;
+      const dmg = (type === 'punch' ? 6.5 : 11.5) * this.robot.power;
+      const reach = type === 'punch' ? 70 : 95;
+      const knock = type === 'punch' ? 160 : 260;
+      this.activeHit = {
+        t: type === 'punch' ? 0.08 : 0.14,
+        kind: type,
+        dmg, reach, knock, used:false,
+        height: type === 'punch' ? 0.55 : 0.66
+      };
+      for (let i=0;i<10;i++) {
+        const c = type === 'punch' ? this.accent : '#fff07d';
+        spawnParticle(this.x + this.facing*(this.w*0.35), this.y - this.h*0.55, this.facing*rand(40,180), rand(-60,40), c, rand(2,5), 0.25);
+      }
+      sfx('hit');
+    }
+    specialAttack() {
+      this.specialCd = 2.1;
+      this.energy -= 45;
+      this.attackCooldown = 0.65;
+      this.attackTimer = 0.4;
+      this.specialActive = true;
+      sfx('special');
+
+      const t = this.robot.specialType;
+      if (t === 'fire') {
+        for (let i=0;i<4;i++) {
+          projectiles.push({
+            kind:'fireball', owner:this, x:this.x + this.facing*50, y:this.y - 60 - i*6,
+            vx:this.facing*(330 + i*55), vy:rand(-10,10), r:14 + i*2, life:0.9, color:i%2? '#ffb01f':'#ff5a20',
+            dmg:8, knock:180, hitSet:new Set()
+          });
+        }
+      } else if (t === 'electric') {
+        projectiles.push({
+          kind:'shockOrb', owner:this, x:this.x + this.facing*55, y:this.y - 58,
+          vx:this.facing*270, vy:0, r:24, life:1.0, color:'#93f7ff', dmg:13, knock:170, hitSet:new Set()
+        });
+      } else if (t === 'slam') {
+        this.vx = this.facing * 180;
+        this.activeHit = {t:0.35, kind:'slamCharge', dmg:16*this.robot.power, reach:88, knock:350, used:false, height:.74};
+        setTimeout(() => {
+          if (this.dead) return;
+          makeShockwave(this.x, this.y - 10, '#ffd36d', 24, 180);
+          for (let i=0;i<38;i++) {
+            spawnParticle(this.x, this.y - 10, rand(-240,240), rand(-250,-40), i%3 ? '#ffcf67' : this.color, rand(4,8), 0.8, 220);
+          }
+          screenShake = Math.max(screenShake, 18);
+          sfx('boom');
+        }, 240);
+      } else if (t === 'beam') {
+        projectiles.push({
+          kind:'beam', owner:this, x:this.x, y:this.y - 62, vx:this.facing*0, vy:0, r:0, life:0.45, color:'#dffaff',
+          dmg:0.55, knock:35, hitSet:new Set(), length:320
+        });
+      }
+
+      setTimeout(() => { this.specialActive = false; }, 400);
+    }
+    takeHit(dmg, from, knockX, effectColor='#fff', stun=0.16) {
+      if (this.dead) return;
+      const actual = dmg / this.robot.armor;
+      this.hp = clamp(this.hp - actual, 0, this.maxHp);
+      this.stun = Math.max(this.stun, stun);
+      this.hitFlash = 0.16;
+      this.vx += knockX;
+      this.energy = clamp(this.energy + 12, 0, 100);
+
+      for (let i=0;i<18;i++) {
+        spawnParticle(this.x + rand(-16,16), this.y - rand(20,90), rand(-170,170), rand(-140,70), effectColor, rand(2,6), 0.38);
+      }
+      screenShake = Math.max(screenShake, 7);
+      sfx(effectColor === '#93f7ff' ? 'zap' : 'hit');
+
+      if (this.hp <= 0) {
+        this.die(from);
+      }
+    }
+    die(from) {
+      this.dead = true;
+      this.state = 'dead';
+      this.stun = 999;
+      this.vx = from ? sign(this.x - from.x) * 180 : 0;
+      this.collapse = 1;
+      makeExplosion(this.x, this.y - this.h*0.58, this.color, 74, 48);
+      screenShake = 24;
+      sfx('boom');
+      if (!winner) {
+        winner = from || fighters.find(f => f !== this);
+        setTimeout(endBattle, 850);
+      }
+    }
+    update(dt, enemy) {
+      this.anim += dt * 7;
+      if (!this.dead) this.energy = clamp(this.energy + dt * 7.5, 0, 100);
+      this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+      this.attackTimer = Math.max(0, this.attackTimer - dt);
+      this.stun = Math.max(0, this.stun - dt);
+      this.hitFlash = Math.max(0, this.hitFlash - dt);
+      this.dashCd = Math.max(0, this.dashCd - dt);
+      this.specialCd = Math.max(0, this.specialCd - dt);
+      if (this.comboT > 0) this.comboT -= dt;
+
+      if (!this.dead && enemy) {
+        if (Math.abs(enemy.x - this.x) > 10) this.facing = enemy.x > this.x ? 1 : -1;
+      }
+
+      this.input(dt);
+
+      if (this.stun <= 0 && !this.dead && !this.specialActive) {
+        this.x += this.vx * dt;
+      } else if (this.dead) {
+        this.x += this.vx * dt;
+      }
+
+      this.vx *= this.dead ? 0.94 : 0.84;
+
+      this.x = clamp(this.x, 58, innerWidth - 58);
+
+      if (this.activeHit) {
+        this.activeHit.t -= dt;
+        if (!this.activeHit.used && this.activeHit.t <= 0.06) {
+          tryHit(this, enemy, this.activeHit);
+          this.activeHit.used = true;
+        }
+        if (this.activeHit.t <= 0) this.activeHit = null;
+      }
+    }
+    draw(g) {
+      let y = this.y;
+      let h = this.h;
+      let down = this.dead ? clamp((1 - Math.exp(-this.collapse*3)) * 24, 0, 24) : 0;
+      if (this.dead) {
+        y += 10;
+        h = this.h * 0.65;
+      }
+      const bob = this.dead ? 0 : Math.sin(this.anim * 2 + this.playerIndex) * 2.3;
+      drawRobot(g, this.x, y + bob + down, this.facing, this.robot, this.hitFlash, this.attackTimer, false, this.dead, this.w, h);
+      if (this.activeHit && !this.dead) {
+        const range = this.activeHit.reach;
+        const hx = this.x + this.facing * (this.w * .42 + range * .55);
+        const hy = this.y - this.h * this.activeHit.height;
+        g.save();
+        g.globalAlpha = 0.18 + (this.activeHit.kind==='smash' ? 0.12 : 0);
+        g.fillStyle = this.activeHit.kind === 'smash' ? '#fff07d' : this.accent;
+        g.beginPath();
+        g.ellipse(hx, hy, range*0.58, this.activeHit.kind==='slamCharge' ? 42 : 28, 0, 0, Math.PI*2);
+        g.fill();
+        g.restore();
+      }
+    }
+  }
+
+  function tryHit(attacker, defender, hit) {
+    if (!defender || defender.dead) return;
+    const dx = defender.x - attacker.x;
+    const facingOK = sign(dx) === attacker.facing || Math.abs(dx) < 24;
+    const closeY = Math.abs((defender.y - defender.h*0.5) - (attacker.y - attacker.h*hit.height)) < 80;
+    if (facingOK && Math.abs(dx) < hit.reach && closeY) {
+      let dmg = hit.dmg;
+      if (hit.kind === 'slamCharge') {
+        makeShockwave((attacker.x + defender.x)/2, floorY - 8, attacker.accent, 20, 150);
+      }
+      defender.takeHit(dmg, attacker, attacker.facing * hit.knock, hit.kind === 'smash' ? '#fff07d' : attacker.accent, hit.kind === 'smash' ? 0.24 : 0.16);
+      attacker.energy = clamp(attacker.energy + 12, 0, 100);
+    }
+  }
+
+  function spawnParticle(x,y,vx,vy,color,size,life,gravity=0) {
+    particles.push({x,y,vx,vy,color,size,life,maxLife:life,gravity,rot:rand(0,6.28),spin:rand(-7,7)});
+  }
+  function makeShockwave(x,y,color='#fff', width=16, maxR=140) {
+    shockwaves.push({x,y,r:6,width,maxR,life:0.45,maxLife:0.45,color});
+  }
+  function makeExplosion(x,y,color='#ff8a3d', power=64, count=36) {
+    makeShockwave(x,y,color, 22, power*2.1);
+    for (let i=0;i<count;i++) {
+      const a = rand(0, Math.PI*2);
+      const sp = rand(power*1.2, power*5.5);
+      spawnParticle(x, y, Math.cos(a)*sp, Math.sin(a)*sp, i%3 ? color : '#fff59d', rand(4,9), rand(.45,1.1), 160);
+    }
+    for (let i=0;i<14;i++) {
+      spawnParticle(x, y, rand(-120,120), rand(-280,-30), 'rgba(255,255,255,.9)', rand(3,8), rand(.25,.6), 280);
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i=particles.length-1;i>=0;i--) {
+      const p = particles[i];
+      p.life -= dt;
+      p.vy += p.gravity * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.spin * dt;
+      if (p.life <= 0) particles.splice(i,1);
+    }
+    for (let i=shockwaves.length-1;i>=0;i--) {
+      const s = shockwaves[i];
+      s.life -= dt;
+      const t = 1 - s.life / s.maxLife;
+      s.r = lerp(6, s.maxR, t);
+      if (s.life <= 0) shockwaves.splice(i,1);
+    }
+    for (let i=projectiles.length-1;i>=0;i--) {
+      const p = projectiles[i];
+      p.life -= dt;
+      if (p.kind === 'beam') {
+        p.x = p.owner.x;
+        p.y = p.owner.y - 62;
+        checkProjectileHit(p);
+        for (let j=0;j<6;j++) {
+          spawnParticle(p.x + p.owner.facing*rand(40,p.length), p.y + rand(-8,8), p.owner.facing*rand(140,300), rand(-25,25), j%2? '#bffcff':'#7ad9ff', rand(2,4), 0.18);
+        }
+      } else {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.kind === 'fireball') {
+          p.vy += Math.sin(performance.now()*0.02 + p.x*0.01)*2;
+          for (let j=0;j<3;j++) spawnParticle(p.x, p.y, rand(-60,60), rand(-40,40), j%2? '#ffec94':'#ff6a20', rand(2,5), .2);
+        } else if (p.kind === 'shockOrb') {
+          for (let j=0;j<4;j++) spawnParticle(p.x, p.y, rand(-80,80), rand(-80,80), '#93f7ff', rand(2,4), .14);
+        }
+        checkProjectileHit(p);
+      }
+      if (p.life <= 0 || p.x < -80 || p.x > innerWidth+80) projectiles.splice(i,1);
+    }
+  }
+
+  function checkProjectileHit(p) {
+    const target = fighters.find(f => f !== p.owner);
+    if (!target || target.dead) return;
+    if (p.kind === 'beam') {
+      if (p.hitSet.has(target)) {
+        target.takeHit(p.dmg, p.owner, p.owner.facing * p.knock, '#c9ffff', 0.02);
+      } else {
+        const inFront = p.owner.facing === 1 ? (target.x > p.x && target.x < p.x + p.length) : (target.x < p.x && target.x > p.x - p.length);
+        if (inFront && Math.abs(target.y - p.y - target.h*0.35) < 78) {
+          p.hitSet.add(target);
+          target.takeHit(7, p.owner, p.owner.facing * 120, '#c9ffff', 0.08);
+          makeShockwave(target.x, target.y - 58, '#c9ffff', 14, 74);
+        }
+      }
+    } else {
+      const d = Math.hypot(target.x - p.x, (target.y - target.h*0.45) - p.y);
+      if (d < (p.r || 18) + target.w*0.42 && !p.hitSet.has(target)) {
+        p.hitSet.add(target);
+        target.takeHit(p.dmg, p.owner, p.owner.facing * p.knock, p.kind === 'shockOrb' ? '#93f7ff' : '#ffb01f', 0.13);
+        makeExplosion(p.x, p.y, p.color, p.kind === 'shockOrb' ? 28 : 34, p.kind === 'shockOrb' ? 20 : 22);
+        p.life = 0;
+      }
+    }
+  }
+
+  function drawBackground(g, t) {
+    const sky = g.createLinearGradient(0,0,0,innerHeight);
+    sky.addColorStop(0,'#12214d');
+    sky.addColorStop(.45,'#1a2550');
+    sky.addColorStop(1,'#1b1234');
+    g.fillStyle = sky;
+    g.fillRect(0,0,innerWidth,innerHeight);
+
+    // city glow
+    for (let i=0;i<18;i++) {
+      const x = (i/18) * innerWidth;
+      const w = 40 + (i%5)*18;
+      const h = 80 + (i%7)*22;
+      g.fillStyle = i%3===0 ? 'rgba(83,132,255,.18)' : i%3===1 ? 'rgba(255,91,130,.13)' : 'rgba(79,211,255,.12)';
+      g.fillRect(x, floorY - 190 - h, w, h + 190);
+      for (let y=0;y<8;y++) {
+        for (let c=0;c<2;c++) {
+          g.fillStyle = Math.random() > 0.4 ? 'rgba(255,244,152,.5)' : 'rgba(79,211,255,.25)';
+          g.fillRect(x+8+c*13, floorY - 185 - y*18, 7, 9);
+        }
+      }
+    }
+
+    // neon sun / moon
+    g.save();
+    g.globalAlpha = 0.9;
+    const grad = g.createRadialGradient(innerWidth*0.82, innerHeight*0.19, 10, innerWidth*0.82, innerHeight*0.19, 120);
+    grad.addColorStop(0,'rgba(255,242,123,.9)');
+    grad.addColorStop(.35,'rgba(255,110,88,.55)');
+    grad.addColorStop(1,'rgba(255,110,88,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(innerWidth*0.82, innerHeight*0.19, 120, 0, Math.PI*2);
+    g.fill();
+    g.restore();
+
+    // floor
+    const ground = g.createLinearGradient(0,floorY-40,0,innerHeight);
+    ground.addColorStop(0,'#172341');
+    ground.addColorStop(1,'#08111f');
+    g.fillStyle = ground;
+    g.fillRect(0,floorY,innerWidth,innerHeight-floorY);
+
+    // neon grid
+    g.strokeStyle = 'rgba(110,185,255,.16)';
+    g.lineWidth = 1;
+    for (let i=0;i<24;i++) {
+      const y = floorY + i*16;
+      g.beginPath();
+      g.moveTo(0, y);
+      g.lineTo(innerWidth, y);
+      g.stroke();
+    }
+    for (let i=0;i<28;i++) {
+      const x = i * (innerWidth/27);
+      g.beginPath();
+      g.moveTo(x, floorY);
+      g.lineTo(innerWidth/2 + (x-innerWidth/2)*2.1, innerHeight);
+      g.stroke();
+    }
+
+    // sparks ambience
+    for (let i=0;i<22;i++) {
+      const x = (i*171 + t*18) % (innerWidth+60) - 30;
+      const y = 80 + (i*47)%180 + Math.sin(t + i)*8;
+      g.fillStyle = i%2 ? 'rgba(255,242,123,.5)' : 'rgba(79,211,255,.45)';
+      g.fillRect(x, y, 2, 2);
+    }
+  }
+
+  function drawRobot(g, x, y, facing, robot, hitFlash=0, attackTimer=0, icon=false, dead=false, overrideW=null, overrideH=null) {
+    const w = overrideW || (robot.body === 'tank' ? 82 : robot.body === 'slim' ? 62 : 72);
+    const h = overrideH || (robot.body === 'tank' ? 118 : robot.body === 'slim' ? 102 : 110);
+    const scale = icon ? 0.92 : 1;
+    g.save();
+    g.translate(x, y);
+    g.scale(facing * scale, scale);
+
+    if (!icon && !dead) {
+      const shadowW = w * 0.85 + Math.sin(performance.now()*0.01)*2;
+      g.fillStyle = 'rgba(0,0,0,.28)';
+      g.beginPath();
+      g.ellipse(0, 0, shadowW, 14, 0, 0, Math.PI*2);
+      g.fill();
+    }
+
+    if (hitFlash > 0) {
+      g.shadowColor = '#ffffff';
+      g.shadowBlur = 18;
+    }
+
+    // legs
+    const step = dead ? 0 : Math.sin(performance.now()*0.014 + x*0.01) * 4;
+    const legColor = robot.dark;
+    g.fillStyle = legColor;
+    g.fillRect(-w*0.22, -h*0.28, w*0.16, h*0.28);
+    g.fillRect(w*0.06, -h*0.28, w*0.16, h*0.28);
+    g.fillStyle = robot.color;
+    g.fillRect(-w*0.25, -h*0.16 + step*0.15, w*0.22, h*0.22);
+    g.fillRect(w*0.03, -h*0.16 - step*0.15, w*0.22, h*0.22);
+
+    // torso
+    g.fillStyle = robot.color;
+    roundRect(g, -w*0.36, -h*0.86, w*0.72, h*0.52, 16, true, false);
+    g.fillStyle = robot.accent;
+    roundRect(g, -w*0.24, -h*0.74, w*0.48, h*0.16, 10, true, false);
+
+    // shoulders
+    g.fillStyle = robot.dark;
+    roundRect(g, -w*0.52, -h*0.8, w*0.18, h*0.14, 8, true, false);
+    roundRect(g, w*0.34, -h*0.8, w*0.18, h*0.14, 8, true, false);
+
+    // head
+    g.fillStyle = robot.dark;
+    roundRect(g, -w*0.2, -h*1.05, w*0.4, h*0.24, 10, true, false);
+    g.fillStyle = robot.accent;
+    g.fillRect(-w*0.14, -h*0.96, w*0.28, h*0.055);
+    g.fillStyle = '#ffffff';
+    g.fillRect(-w*0.1, -h*0.95, w*0.06, h*0.03);
+    g.fillRect(w*0.04, -h*0.95, w*0.06, h*0.03);
+
+    // arms
+    const armSwing = attackTimer > 0 && !dead ? 18 : step;
+    g.fillStyle = robot.dark;
+    g.save();
+    g.translate(-w*0.34, -h*0.72);
+    g.rotate((-0.25 - armSwing*0.02));
+    roundRect(g, -w*0.12, 0, w*0.16, h*0.34, 10, true, false);
+    g.fillStyle = robot.accent;
+    roundRect(g, -w*0.15, h*0.24, w*0.22, h*0.12, 10, true, false);
+    g.restore();
+
+    g.fillStyle = robot.dark;
+    g.save();
+    g.translate(w*0.34, -h*0.72);
+    g.rotate((0.25 + armSwing*0.04));
+    roundRect(g, -w*0.04, 0, w*0.16, h*0.34, 10, true, false);
+    g.fillStyle = robot.accent;
+    roundRect(g, -w*0.07, h*0.24, w*0.22, h*0.12, 10, true, false);
+    g.restore();
+
+    // highlights and details
+    g.strokeStyle = 'rgba(255,255,255,.2)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(-w*0.18, -h*0.55);
+    g.lineTo(w*0.18, -h*0.55);
+    g.stroke();
+
+    if (robot.id === 'blaze') {
+      g.fillStyle = '#ffef8a';
+      g.beginPath();
+      g.moveTo(0, -h*1.1);
+      g.lineTo(w*0.08, -h*1.2);
+      g.lineTo(w*0.02, -h*1.03);
+      g.closePath();
+      g.fill();
+    } else if (robot.id === 'volt') {
+      g.strokeStyle = '#dffbff';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.moveTo(-w*0.05, -h*1.12);
+      g.lineTo(w*0.05, -h*1.18);
+      g.lineTo(0, -h*1.02);
+      g.stroke();
+    } else if (robot.id === 'nova') {
+      g.fillStyle = '#ffe36d';
+      g.fillRect(-w*0.34, -h*0.94, w*0.1, h*0.2);
+      g.fillRect(w*0.24, -h*0.94, w*0.1, h*0.2);
+    } else if (robot.id === 'frost') {
+      g.strokeStyle = '#f1feff';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(0, -h*1.14);
+      g.lineTo(0, -h*1.02);
+      g.moveTo(-w*0.05, -h*1.08);
+      g.lineTo(w*0.05, -h*1.08);
+      g.stroke();
+    }
+
+    g.restore();
+  }
+
+  function roundRect(g, x, y, w, h, r, fill, stroke) {
+    g.beginPath();
+    g.moveTo(x+r, y);
+    g.arcTo(x+w, y, x+w, y+h, r);
+    g.arcTo(x+w, y+h, x, y+h, r);
+    g.arcTo(x, y+h, x, y, r);
+    g.arcTo(x, y, x+w, y, r);
+    if (fill) g.fill();
+    if (stroke) g.stroke();
+  }
+
+  function startBattle() {
+    ensureAudio();
+    const r1 = robots.find(r => r.id === selectedP1);
+    const r2 = robots.find(r => r.id === selectedP2);
+    fighters = [
+      new Fighter(1, r1, innerWidth * 0.27, 1),
+      new Fighter(2, r2, innerWidth * 0.73, -1)
+    ];
+    particles = [];
+    projectiles = [];
+    shockwaves = [];
+    winner = null;
+    battleTimer = 99;
+    timerAccumulator = 0;
+    roundStarted = false;
+    countdownLock = true;
+    resultOverlay.classList.remove('show');
+    gameState = 'battle';
+    selectScreen.classList.add('hidden');
+    gameWrap.classList.remove('hidden');
+    p1Name.textContent = 'P1 • ' + r1.name;
+    p2Name.textContent = 'P2 • ' + r2.name;
+    showCountdown();
+  }
+
+  function showCountdown() {
+    roundBanner.style.opacity = 1;
+    roundBanner.textContent = 'Round 1';
+    fightBanner.style.opacity = 0;
+    setTimeout(() => {
+      roundBanner.style.transition = 'opacity .25s ease';
+      roundBanner.style.opacity = 0;
+      setTimeout(() => {
+        fightBanner.style.opacity = 1;
+        fightBanner.style.transition = 'opacity .2s ease';
+        sfx('special');
+        setTimeout(() => {
+          fightBanner.style.opacity = 0;
+          countdownLock = false;
+          roundStarted = true;
+        }, 700);
+      }, 260);
+    }, 900);
+  }
+
+  function endBattle() {
+    if (!winner) {
+      if (fighters[0].hp === fighters[1].hp) {
+        winnerText.textContent = 'Draw!';
+        resultSub.textContent = 'Double knockout chaos.';
+      } else {
+        winner = fighters[0].hp > fighters[1].hp ? fighters[0] : fighters[1];
+      }
+    }
+    if (winner) {
+      winnerText.textContent = `${winner.playerIndex === 1 ? 'Player 1' : 'Player 2'} Wins!`;
+      resultSub.textContent = `${winner.robot.name} crushed the arena.`;
+    }
+    resultOverlay.classList.add('show');
+    gameState = 'over';
+  }
+
+  function update(dt) {
+    if (gameState !== 'battle' && gameState !== 'over') return;
+    if (gameState === 'battle') {
+      fighters[0].update(dt, fighters[1]);
+      fighters[1].update(dt, fighters[0]);
+
+      if (roundStarted && !winner) {
+        timerAccumulator += dt;
+        if (timerAccumulator >= 1) {
+          timerAccumulator -= 1;
+          battleTimer = Math.max(0, battleTimer - 1);
+          if (battleTimer <= 0) endBattle();
+        }
+      }
+      timerEl.textContent = String(battleTimer).padStart(2, '0');
+      p1Hp.style.width = `${fighters[0].hp}%`;
+      p2Hp.style.width = `${fighters[1].hp}%`;
+      p1Energy.style.width = `${fighters[0].energy}%`;
+      p2Energy.style.width = `${fighters[1].energy}%`;
+
+      updateParticles(dt);
+    } else {
+      updateParticles(dt);
+    }
+    screenShake *= 0.88;
+  }
+
+  function draw() {
+    ctx.save();
+    const shakeX = rand(-screenShake, screenShake);
+    const shakeY = rand(-screenShake, screenShake);
+    ctx.translate(shakeX, shakeY);
+    drawBackground(ctx, performance.now() * 0.001);
+
+    // behind fighters special glows
+    fighters.forEach(f => {
+      if (!f) return;
+      const grad = ctx.createRadialGradient(f.x, f.y - 70, 8, f.x, f.y - 70, 90);
+      grad.addColorStop(0, f.hitFlash > 0 ? 'rgba(255,255,255,.35)' : hexToRgba(f.color, .24));
+      grad.addColorStop(1, hexToRgba(f.color, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y - 70, 90, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    // projectiles
+    projectiles.forEach(p => {
+      if (p.kind === 'beam') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 18;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.owner.facing * p.length, p.y);
+        ctx.stroke();
+        ctx.strokeStyle = '#8ee8ff';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.owner.facing * p.length, p.y);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        const grad = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, p.r*1.8);
+        grad.addColorStop(0, '#fffde0');
+        grad.addColorStop(.4, p.color);
+        grad.addColorStop(1, hexToRgba(p.color, 0));
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r*1.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r*.45, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+
+    // fighters
+    fighters.forEach(f => f && f.draw(ctx));
+
+    // particles
+    particles.forEach(p => {
+      ctx.save();
+      ctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+      ctx.restore();
+    });
+
+    shockwaves.forEach(s => {
+      ctx.save();
+      ctx.globalAlpha = clamp(s.life / s.maxLife, 0, 1);
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width * (s.life / s.maxLife);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  function hexToRgba(hex, a) {
+    const c = hex.replace('#','');
+    const n = parseInt(c.length === 3 ? c.split('').map(v=>v+v).join('') : c, 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function loop(ts) {
+    const dt = clamp((ts - lastTime) / 1000, 0, 0.033);
+    lastTime = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',';',' '].includes(e.key)) e.preventDefault();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  });
+  addEventListener('keyup', e => { keys[e.key] = false; });
+
+  startBtn.addEventListener('click', startBattle);
+  rematchBtn.addEventListener('click', startBattle);
+  selectBtn.addEventListener('click', () => {
+    gameState = 'select';
+    gameWrap.classList.add('hidden');
+    selectScreen.classList.remove('hidden');
+    resultOverlay.classList.remove('show');
+    countdownLock = true;
+  });
+
+  buildSelectCards();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
