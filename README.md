@@ -23,22 +23,7 @@ npm test
 
 The test suite exercises core game logic, including lens material/handicap calculations and Snake movement/collision behavior.
 
-## Homepage Access Protection
+## Archived Authentication Code
 
-The homepage (`index.html`) now shows a username/password login gate before the site links are accessible.
+The previous client-side homepage login gate has been moved to `auth/` for future reuse.
 
-Default credentials are:
-
-- Username: `user`
-- Password: `password`
-
-To change the required credentials, edit `auth-config.js`:
-
-```js
-window.AUTH_CONFIG = {
-  username: 'user',
-  password: 'password'
-};
-```
-
-The login state is stored in `sessionStorage`, so reloading the page in the same browser tab/session keeps you signed in.
