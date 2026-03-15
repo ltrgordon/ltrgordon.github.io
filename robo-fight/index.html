@@ -424,6 +424,11 @@
       this.jumpState = false;
       this.specialActive = false;
       this.powerActive = false;
+      this.powerActiveTimer = 0;
+      this.specialActiveTimer = 0;
+      this.movePrep = null;
+      this.actionToken = 0;
+      this.superArmor = 0;
       // limb animation state
       this.attackPhase = 0;   // 0=idle, 1=windup, 2=extend, 3=retract
       this.attackKind = null; // 'punch' | 'kick'
@@ -452,7 +457,21 @@
       this.attackTimer = Math.max(0,this.attackTimer-dt);
       this.powerCd = Math.max(0,this.powerCd-dt);
       this.specialCd = Math.max(0,this.specialCd-dt);
+      this.powerActiveTimer = Math.max(0, this.powerActiveTimer - dt);
+      this.specialActiveTimer = Math.max(0, this.specialActiveTimer - dt);
+      this.superArmor = Math.max(0, this.superArmor - dt);
+      this.powerActive = this.powerActiveTimer > 0;
+      this.specialActive = this.specialActiveTimer > 0;
       if (this.freeze) this.freeze = Math.max(0, this.freeze - dt);
+
+      if (this.movePrep) {
+        this.movePrep.timer -= dt;
+        if (this.movePrep.timer <= 0) {
+          const prep = this.movePrep;
+          this.movePrep = null;
+          this.executePreparedMove(prep);
+        }
+      }
 
       // tick limb animation phases
       if (this.attackPhase > 0) {
@@ -521,7 +540,7 @@
       // blocking: only on ground, cancels movement
       this.blocking = block && this.onGround() && !this.attackTimer;
 
-      if (!this.specialActive && !this.powerActive && !this.blocking) {
+      if (!this.specialActive && !this.powerActive && !this.movePrep && !this.blocking) {
         let speed = this.robot.speed;
         if (!this.onGround()) speed *= 0.7;
         if (this.attackTimer > 0) speed *= 0.42;
@@ -535,7 +554,7 @@
       if (jump && this.onGround() && this.jumpCooldown <= 0 && !this.blocking) this.jump();
 
       // track rising-edge presses — only when not blocking
-      if (!this.blocking) {
+      if (!this.blocking && !this.movePrep) {
         if (!this._prevPunch && punch && this.attackCooldown <= 0) {
           this.inputBuffer.push('p');
           this.inputBufferTimer = 0.55;
@@ -550,9 +569,31 @@
       this._prevPunch = punch;
       this._prevKick  = kick;
 
-      if (power && this.powerCd <= 0 && this.powerMeter >= 100) this.usePower(enemy);
-      if (!this._prevSpecial && special && this.superMeter >= 100 && this.specialCd <= 0) this.useSuper(enemy);
+      if (power && this.powerCd <= 0 && this.powerMeter >= 100 && !this.movePrep) this.usePower(enemy);
+      if (!this._prevSpecial && special && this.superMeter >= 100 && this.specialCd <= 0 && !this.movePrep) this.useSuper(enemy);
       this._prevSpecial = special;
+    }
+    startMovePrep(type, prepDuration, onExecute) {
+      this.actionToken += 1;
+      this.movePrep = { type, timer: prepDuration, onExecute, token: this.actionToken };
+      this.attackKind = type === 'power' ? 'powerPrep' : 'superPrep';
+      this.attackPhase = 0;
+      this.attackTimer = prepDuration;
+      this.vx *= 0.2;
+    }
+    cancelMovePrep() {
+      if (!this.movePrep) return;
+      this.movePrep = null;
+      this.attackTimer = Math.max(this.attackTimer, 0.16);
+      this.attackKind = 'flinch';
+      this.attackPhase = 2;
+      this.attackPhaseMax = 0.2;
+      this.attackPhaseDur = 0.1;
+    }
+    executePreparedMove(prep) {
+      if (!prep || prep.token !== this.actionToken || this.dead) return;
+      this.attackKind = null;
+      prep.onExecute();
     }
     _checkCombo(enemy) {
       const buf = this.inputBuffer.join('');
@@ -644,10 +685,10 @@
       if (isPunch) {
         this.attackCooldown = 1.0;
       } else {
-        this.kickCooldown = 1.0;
+        this.kickCooldown = 1.18;
       }
       // Kick is slower and more deliberate: longer animation window
-      const phaseDur = isPunch ? 0.22 : 0.42;
+      const phaseDur = isPunch ? 0.22 : 0.54;
       this.attackTimer = phaseDur;
       this.attackKind = kind;
       this.attackPhase = 1;
@@ -656,14 +697,14 @@
       const comboBoost = this.comboCount >= 2 ? 1.35 : 1;
       // kick height varies by robot speed: fast = very high (head), slow = chest/mid
       const kickSpeedFactor = clamp((this.robot.speed - 140) / (420 - 140), 0, 1);
-      const kickHeight = 0.60 + kickSpeedFactor * 0.22; // 0.60 (nova, chest) .. 0.82 (volt, above head)
+      const kickHeight = 0.72 + kickSpeedFactor * 0.2; // 0.72 (nova, shoulder/head) .. 0.92 (volt, very high)
       this.activeHit = {
-        t:isPunch?0.20:0.38,
-        triggerAt:isPunch?0.09:0.18,
+        t:isPunch?0.20:0.48,
+        triggerAt:isPunch?0.09:0.22,
         used:false,
         kind,
         dmg:(isPunch?9.5:13.5) * this.robot.power * comboBoost,
-        reach:isPunch?165:210,
+        reach:isPunch?165:255,
         knock:isPunch?260:380,
         height:isPunch?0.54:kickHeight,
         color:isPunch?this.robot.accent:'#fff175',
@@ -707,10 +748,11 @@
       this.powerMeter = 0;
       this.powerCd = POWER_COOLDOWN;
       this.attackCooldown = 0.65;
-      this.attackTimer = 0.5;
-      this.powerActive = true;
-      setTimeout(()=>this.powerActive=false, 600);
-      sfx('super');
+      this.startMovePrep('power', 0.24, () => {
+        this.powerActiveTimer = 0.65;
+        this.superArmor = Math.max(this.superArmor, 0.65);
+        this.attackTimer = 0.52;
+        sfx('super');
 
       if (this.robot.id === 'blaze') {
         // INFERNO AURA: body-hugging fire that persists 10s, damages on contact, moves with robot
@@ -751,14 +793,16 @@
           vx:this.facing*115, vy:0, r:60, life:1.6, color:'#dffaff', dmg:1.8, knock:46, hitTick:0
         });
       }
+      });
     }
     useSuper(enemy) {
       this.superMeter = 0;
       this.specialCd = 1.8;
       this.attackCooldown = 0.7;
-      this.attackTimer = 0.6;
-      this.specialActive = true;
-      setTimeout(()=>this.specialActive=false, 700);
+      this.startMovePrep('super', 0.32, () => {
+      this.attackTimer = 0.66;
+      this.specialActiveTimer = 0.82;
+      this.superArmor = Math.max(this.superArmor, 0.82);
       sfx('super');
       screenShake = Math.max(screenShake, 14);
 
@@ -827,6 +871,7 @@
         makeExplosion(this.x + this.facing*60, floorY - 40, '#dffaff', 52, 24);
         showComboText('ABSOLUTE ZERO!', this);
       }
+      });
     }
     takeHit(dmg, from, knockX, effectColor='#fff', stun=0.14) {
       if (this.dead) return;
@@ -844,11 +889,20 @@
         if (this.hp <= 0) this.die(from);
         return;
       }
+      if (this.movePrep) this.cancelMovePrep();
       const actual = dmg / this.robot.armor;
       this.hp = clamp(this.hp - actual, 0, this.maxHp);
-      this.stun = Math.max(this.stun, stun);
+      const armored = this.superArmor > 0;
+      this.stun = armored ? this.stun : Math.max(this.stun, stun + 0.08);
       this.hitFlash = 0.16;
-      this.vx += knockX;
+      this.vx += armored ? knockX * 0.24 : knockX * 1.1;
+      if (!armored) this.x += sign(knockX || this.facing) * 18;
+      if (!armored) {
+        this.attackKind = 'flinch';
+        this.attackPhase = 2;
+        this.attackPhaseMax = 0.24;
+        this.attackPhaseDur = 0.14;
+      }
       this.superMeter = clamp(this.superMeter + 8, 0, 100);
       this.powerMeter = clamp(this.powerMeter + 5, 0, 100);
       for (let i=0;i<18;i++) spawnParticle(this.x+rand(-20,20), this.y-rand(30,this.h*0.9), rand(-220,220), rand(-180,80), effectColor, rand(3,8), 0.38);
@@ -1285,6 +1339,28 @@
       torsoLean  = -0.06; // slight duck
       shoulderDrop = -0.01;
     }
+    // ── PREP / FLINCH POSES ───────────────────────────────────────────────────
+    else if (attackKind === 'powerPrep' || attackKind === 'superPrep') {
+      const prepAmp = attackKind === 'superPrep' ? 1 : 0.75;
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.02 + x * 0.01);
+      punchUpperAngle = 0.6 + prepAmp * 0.22;
+      punchForeAngle = 0.3 + prepAmp * 0.16;
+      backArmUpperAngle = -0.68 - prepAmp * 0.22;
+      backArmForeAngle = 0.34 + prepAmp * 0.14;
+      kickThighAngle = -0.24 - prepAmp * 0.12 - pulse * 0.06;
+      kickShinAngle = 0.28 + prepAmp * 0.1;
+      torsoLean = -0.08 - prepAmp * 0.06;
+      shoulderDrop = 0.014;
+    } else if (attackKind === 'flinch') {
+      punchUpperAngle = 0.92;
+      punchForeAngle = 0.65;
+      backArmUpperAngle = 0.56;
+      backArmForeAngle = 0.4;
+      kickThighAngle = 0.12;
+      kickShinAngle = 0.2;
+      torsoLean = 0.14;
+      shoulderDrop = 0.03;
+    }
     // ── PUNCH PHASES ───────────────────────────────────────────────────────────
     else if (attackPhase > 0 && (attackKind === 'punch' || attackKind === 'uppercut' || attackKind === 'cyclone' || attackKind === 'doublekick')) {
       const isKindPunch = attackKind === 'punch' || attackKind === 'uppercut' || attackKind === 'cyclone';
@@ -1321,21 +1397,21 @@
     const kickSpeedFactor = clamp((robot.speed - 140) / (420 - 140), 0, 1);
     // Range: nova → -0.62π (still above horizontal, hits chest),
     //         volt → -0.88π (nearly vertical, head-height like the Tekken image)
-    const kickExtendThigh = -Math.PI * (0.62 + kickSpeedFactor * 0.26);
+    const kickExtendThigh = -Math.PI * (0.82 + kickSpeedFactor * 0.22);
 
     if (isKicking) {
       if (attackPhase === 1) {
         // Windup: knee drives sharply upward toward chest before snapping out
-        kickThighAngle = -Math.PI * (0.38 + kickSpeedFactor * 0.14); // knee lifts high
+        kickThighAngle = -Math.PI * (0.54 + kickSpeedFactor * 0.16); // knee lifts very high
         kickShinAngle  = Math.PI * 0.55;  // shin folded back behind thigh
       } else if (attackPhase === 2) {
         // Full extension: thigh past horizontal, shin cancels the angle → dead straight line
         kickThighAngle = kickExtendThigh;
         kickShinAngle  = -kickExtendThigh; // negates parent rotation → perfectly straight leg
-        torsoLean = -(0.10 + kickSpeedFactor * 0.08); // lean back to counter-balance
+        torsoLean = -(0.16 + kickSpeedFactor * 0.1); // lean back hard to counter-balance
       } else {
         // Retract smoothly
-        kickThighAngle = -Math.PI * (0.28 + kickSpeedFactor * 0.10);
+        kickThighAngle = -Math.PI * (0.42 + kickSpeedFactor * 0.12);
         kickShinAngle  = Math.PI * 0.22;
         torsoLean = -0.04;
       }
