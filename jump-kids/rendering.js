@@ -136,8 +136,14 @@ function drawCastle(camX){
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, '#87CEEB'); // Sky blue
-  gradient.addColorStop(1, '#C2E9FB'); // Light blue
+  if (backdrop === 'volcano-castle'){
+    gradient.addColorStop(0, '#6b0f1a');
+    gradient.addColorStop(0.5, '#b22222');
+    gradient.addColorStop(1, '#2f1b12');
+  } else {
+    gradient.addColorStop(0, '#87CEEB'); // Sky blue
+    gradient.addColorStop(1, '#C2E9FB'); // Light blue
+  }
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
@@ -160,6 +166,9 @@ function drawBackdrop(camX){
     drawVolcano(camX);
   } else if (backdrop === 'castle'){
     drawClouds(camX);
+    drawCastle(camX);
+  } else if (backdrop === 'volcano-castle'){
+    drawVolcano(camX);
     drawCastle(camX);
   }
 }

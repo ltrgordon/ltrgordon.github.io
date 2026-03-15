@@ -65,9 +65,9 @@ export function initInput(){
     if (k==='arrowleft'||k==='a') setKey('left',true);
     if (k==='arrowright') setKey('right',true);
     if (k==='d') setKey('dash',true);
-    if (k===' '||k==='z'){ setKey('jump',true); bufferJump(); }
+    if (k===' '||k==='z'||k==='arrowup'){ setKey('jump',true); bufferJump(); }
     if (k==='arrowup'||k==='w') setKey('up',true);
-    if (k==='arrowdown') setKey('down',true);
+    if (k==='arrowdown') { setKey('down',true); triggerSpecial('s3'); }
     if (k==='s') triggerSpecial('s1');
     if (k==='f') triggerSpecial('s2');
     if (k==='e') triggerSpecial('s3');
@@ -94,7 +94,7 @@ export function initInput(){
     if (k==='arrowleft'||k==='a') setKey('left',false);
     if (k==='arrowright') setKey('right',false);
     if (k==='d') setKey('dash',false);
-    if (k===' '||k==='z') setKey('jump',false);
+    if (k===' '||k==='z'||k==='arrowup') setKey('jump',false);
     if (k==='arrowup'||k==='w') setKey('up',false);
     if (k==='arrowdown') setKey('down',false);
   });
