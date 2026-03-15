@@ -206,6 +206,7 @@
     crashed: false,
     shake: 0,
     flameBoostTimer: 0,
+    lowGravityTimer: 0,
     baseMaxSpeed: 900
   };
 
@@ -306,6 +307,7 @@
   const medkits = [];   // health pickups {x,y, size, taken}
   const hourglasses = []; // time pickups {x,y,r,taken}
   const flames = []; // speed boost pickups {x,y,r,taken}
+  const lowGravityOrbs = []; // low-gravity pickups {x,y,r,taken}
   const ramps = [];     // dirt ramps {x, baseY, w, h, used}
   let lastSpawnX = 0;
   let lastRampX = 0;
@@ -348,21 +350,25 @@
       // Occasionally spawn a health box
       if(rnd() < 0.15){
         const hy = gy - h - (140 + rnd()*160);
-        medkits.push({x:lastSpawnX + w*0.5, y: hy, size: 30, taken:false});
+        medkits.push({x:lastSpawnX + w*0.5, y: hy, size: 64, taken:false});
       }
       // Occasionally spawn a hourglass
       if(rnd() < 0.1){
         const gy2 = gy - h - (60 + rnd()*140);
-        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:16, taken:false});
+        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:40, taken:false});
       }
       if(rnd() < 0.14){
         const ry = gy - h - (100 + rnd()*130);
-        flames.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:30, taken:false});
+        flames.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:42, taken:false});
+      }
+      if(rnd() < 0.08){
+        const by = gy - h - (120 + rnd()*180);
+        lowGravityOrbs.push({x:lastSpawnX + w*0.5 + (rnd()*120-60), y: by, r:44, taken:false});
       }
     }
     while(lastRampX < rightEdge){
       lastRampX += 900 + rnd()*800;
-      const gy = trackBaseY(lastRampX, 240);
+      const gy = groundY(lastRampX);
       let w = 140 + rnd()*80;
       let h = 80 + rnd()*40;
       if(rnd() < 0.35){
@@ -375,13 +381,13 @@
       const launchSpeed = Math.max(600, world.maxSpeed * 0.9);
       const vx = launchSpeed * Math.cos(Math.atan(rampSlope));
       const vy = launchSpeed * Math.sin(Math.atan(rampSlope));
-      const count = 7;
+      const count = 8;
       for(let i=0;i<count;i++){
-        const flightT = 0.14 + i*0.08;
+        const flightT = 0.12 + i*0.085;
         const cx = ramp.x + ramp.w + vx * flightT;
         const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * world.gravity * flightT * flightT;
         const ground = groundY(cx);
-        const cy = Math.min(jumpY, ground - 70);
+        const cy = Math.min(jumpY - 34, ground - 132);
         stars.push({x:cx, y:cy, r:18, taken:false});
       }
       for(let i=obstacles.length-1;i>=0;i--){
@@ -398,6 +404,7 @@
     while(medkits.length && medkits[0].x + 40 < minX) medkits.shift();
     while(hourglasses.length && hourglasses[0].x + 40 < minX) hourglasses.shift();
     while(flames.length && flames[0].x + 40 < minX) flames.shift();
+    while(lowGravityOrbs.length && lowGravityOrbs[0].x + 40 < minX) lowGravityOrbs.shift();
     while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
   }
 
@@ -420,6 +427,10 @@
 
   function hasFlameBoost(){
     return world.flameBoostTimer > 0;
+  }
+
+  function hasLowGravityBoost(){
+    return world.lowGravityTimer > 0;
   }
 
   function rampYAt(ramp, x){
@@ -533,8 +544,8 @@
 
   // ===== Game Control =====
   function resetGame(){
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
-    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; ramps.length=0; puffs.length=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
+    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; ramps.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -577,17 +588,19 @@
       if(input.brake) world.speed -= world.brake * dt;
       world.speed = Math.max(0, Math.min(world.maxSpeed, world.speed));
 
+      const gravityScale = hasLowGravityBoost() ? 0.56 : 1;
+
       // Jump
       if(input.jump){
         if(truck.onGround){
-          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed));
+          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (hasLowGravityBoost() ? 1.25 : 1);
           playBeep();
         }
         input.jump=false;
       }
 
       // Vertical motion
-      truck.vy += world.gravity*dt;
+      truck.vy += world.gravity*gravityScale*dt;
       truck.y  += truck.vy*dt;
 
       // World scrolls left
@@ -633,7 +646,7 @@
       for(const h of medkits){
         if(h.taken) continue;
         const hx = h.x - world.scrollX;
-        if(Math.abs(hx - truck.baseX) < 50 && Math.abs(h.y - (truck.y - truck.bodyH)) < 60){
+        if(Math.abs(hx - truck.baseX) < 88 && Math.abs(h.y - (truck.y - truck.bodyH)) < 88){
           h.taken = true; if(world.damage>0) world.damage--; playBeep();
           for(let i=0;i<10;i++){
             puffs.push({x:hx, y:h.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#ffffff', size:3+Math.random()*3});
@@ -645,7 +658,7 @@
       for(const g of hourglasses){
         if(g.taken) continue;
         const gx = g.x - world.scrollX;
-        if(Math.abs(gx - truck.baseX) < 50 && Math.abs(g.y - (truck.y - truck.bodyH)) < 60){
+        if(Math.abs(gx - truck.baseX) < 88 && Math.abs(g.y - (truck.y - truck.bodyH)) < 88){
           g.taken = true; world.timeLeft += 5; playBeep();
           for(let i=0;i<10;i++){
             puffs.push({x:gx, y:g.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#fde047', size:3+Math.random()*3});
@@ -657,7 +670,7 @@
       for(const f of flames){
         if(f.taken) continue;
         const fx = f.x - world.scrollX;
-        if(Math.abs(fx - truck.baseX) < 64 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 72){
+        if(Math.abs(fx - truck.baseX) < 96 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 98){
           f.taken = true;
           world.flameBoostTimer = 4;
           world.speed = Math.min(world.speed + 260, world.maxSpeed + 300);
@@ -668,8 +681,25 @@
         }
       }
 
+      // Collect low-gravity orbs
+      for(const orb of lowGravityOrbs){
+        if(orb.taken) continue;
+        const ox = orb.x - world.scrollX;
+        if(Math.abs(ox - truck.baseX) < 98 && Math.abs(orb.y - (truck.y - truck.bodyH*0.6)) < 98){
+          orb.taken = true;
+          world.lowGravityTimer = 15;
+          playBeep();
+          for(let i=0;i<32;i++){
+            puffs.push({x:ox, y:orb.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.15)*220, life:0, ttl:0.55+Math.random()*0.5, color:Math.random()<0.5?'#38bdf8':'#60a5fa', size:6+Math.random()*8});
+          }
+        }
+      }
+
       if(world.flameBoostTimer > 0){
         world.flameBoostTimer = Math.max(0, world.flameBoostTimer - dt);
+      }
+      if(world.lowGravityTimer > 0){
+        world.lowGravityTimer = Math.max(0, world.lowGravityTimer - dt);
       }
 
       // Obstacle collisions (simple AABB with truck front)
@@ -832,6 +862,12 @@
       if(f.taken) continue;
       const x = f.x - world.scrollX;
       drawFlamePickup(x, f.y, f.r);
+    }
+
+    for(const orb of lowGravityOrbs){
+      if(orb.taken) continue;
+      const x = orb.x - world.scrollX;
+      drawLowGravityOrb(x, orb.y, orb.r);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -1092,6 +1128,32 @@
     ctx.lineTo(0, 0);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawLowGravityOrb(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    const pulse = 0.88 + 0.12*Math.sin(world.t*7 + x*0.02);
+    const glow = ctx.createRadialGradient(0, 0, r*0.2, 0, 0, r*1.65);
+    glow.addColorStop(0, '#dbeafeee');
+    glow.addColorStop(0.45, '#60a5fadd');
+    glow.addColorStop(1, '#2563eb00');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, r*1.65, 0, Math.PI*2);
+    ctx.fill();
+    const sphere = ctx.createRadialGradient(-r*0.35, -r*0.35, r*0.18, 0, 0, r);
+    sphere.addColorStop(0, '#eff6ff');
+    sphere.addColorStop(0.55, '#38bdf8');
+    sphere.addColorStop(1, '#1d4ed8');
+    ctx.fillStyle = sphere;
+    ctx.beginPath();
+    ctx.arc(0, 0, r*pulse, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#bfdbfe';
+    ctx.lineWidth = 4;
+    ctx.stroke();
     ctx.restore();
   }
 
