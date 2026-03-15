@@ -106,7 +106,7 @@
 
   <div id="hud">
     <div>🏁 <span id="distance">0</span> m</div>
-    <div>⭐ <span id="stars">0</span></div>
+    <div>🪙 <span id="stars">0</span></div>
     <div>🌀 <span id="speed">0</span> m/s</div>
     <div>❤️ <span id="health">10</span></div>
   </div>
@@ -151,7 +151,7 @@
 <div id="winOverlay" style="display:none" role="dialog" aria-modal="true">
   <div class="card">
     <h1 style="color:#15803d;">You Win!</h1>
-    <p>Stars collected: <span id="finalStars">0</span></p>
+    <p>Coins collected: <span id="finalStars">0</span></p>
     <p>Time: <span id="finalTime">0</span>s</p>
     <button id="btnWinAgain" class="big">Play Again</button>
   </div>
@@ -199,7 +199,8 @@
     playing: false,
     crashed: false,
     shake: 0,
-    invincibleTimer: 0
+    flameBoostTimer: 0,
+    baseMaxSpeed: 900
   };
 
   // ===== Input =====
@@ -283,10 +284,9 @@
   // ===== Entities: Obstacles & Stars =====
   const obstacles = []; // {x, yTop, w, h, hue}
   const stars = [];     // collectibles {x,y, r, taken}
-  const legoBricks = []; // collectibles {x,y,w,h,taken}
   const hearts = [];    // health pickups {x,y, r, taken}
   const hourglasses = []; // time pickups {x,y,r,taken}
-  const rainbows = []; // invincibility pickups {x,y,r,taken}
+  const flames = []; // speed boost pickups {x,y,r,taken}
   const ramps = [];     // dirt ramps {x, baseY, w, h, used}
   let lastSpawnX = 0;
   let lastRampX = 0;
@@ -299,29 +299,32 @@
       const gy = groundY(lastSpawnX);
       let w, h, type, hue;
       const oType = rnd();
-      if(oType < 0.5){
+      if(oType < 0.34){
         type = 'crate';
         h = 40 + rnd()*70;
         w = 50 + rnd()*50;
         hue = 10+Math.floor(rnd()*40);
-      } else if(oType < 0.75){
+      } else if(oType < 0.5){
         type = 'cone';
         w = 60;
         h = 60 + rnd()*30;
-      } else {
+      } else if(oType < 0.7){
         type = 'barrel';
         w = 50;
         h = 80 + rnd()*40;
+      } else if(oType < 0.86){
+        type = 'garbage';
+        w = 58;
+        h = 78;
+      } else {
+        type = 'tnt';
+        w = 62;
+        h = 62;
       }
       obstacles.push({x:lastSpawnX, yTop:gy - h, w, h, hue, type});
-      // Place star above it ~ sometimes
-      if(rnd() < 0.8){
-        const sy = gy - h - (120 + rnd()*160);
-        stars.push({x:lastSpawnX + w*0.5, y: sy, r: 20, taken:false});
-      }
-      if(rnd() < 0.55){
-        const by = gy - h - (70 + rnd()*90);
-        legoBricks.push({x:lastSpawnX + w*0.5 + (rnd()*120-60), y: by, w:40, h:24, taken:false});
+      if(rnd() < 0.5){
+        const sy = gy - h - (100 + rnd()*110);
+        stars.push({x:lastSpawnX + w*0.5, y: sy, r: 19, taken:false});
       }
       // Occasionally spawn a heart
       if(rnd() < 0.15){
@@ -333,9 +336,9 @@
         const gy2 = gy - h - (60 + rnd()*140);
         hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:16, taken:false});
       }
-      if(rnd() < 0.12){
-        const ry = gy - h - (90 + rnd()*120);
-        rainbows.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:22, taken:false});
+      if(rnd() < 0.14){
+        const ry = gy - h - (100 + rnd()*130);
+        flames.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:30, taken:false});
       }
     }
     while(lastRampX < rightEdge){
@@ -351,6 +354,16 @@
       }
       const ramp = {x:lastRampX, baseY:gy, w, h, used:false, big};
       ramps.push(ramp);
+      if(big){
+        const count = 9 + Math.floor(rnd()*4);
+        for(let i=0;i<count;i++){
+          const t = i / (count-1);
+          const cx = ramp.x + ramp.w + 80 + t*430;
+          const arcLift = Math.sin(t*Math.PI) * (180 + rnd()*40);
+          const cy = groundY(cx) - 140 - arcLift;
+          stars.push({x:cx, y:cy, r:18, taken:false});
+        }
+      }
       for(let i=obstacles.length-1;i>=0;i--){
         const o = obstacles[i];
         if(o.x < ramp.x + ramp.w && o.x + o.w > ramp.x - 120){
@@ -362,10 +375,9 @@
     const minX = world.scrollX - 300;
     while(obstacles.length && obstacles[0].x + obstacles[0].w < minX) obstacles.shift();
     while(stars.length && stars[0].x + 40 < minX) stars.shift();
-    while(legoBricks.length && legoBricks[0].x + 40 < minX) legoBricks.shift();
     while(hearts.length && hearts[0].x + 40 < minX) hearts.shift();
     while(hourglasses.length && hourglasses[0].x + 40 < minX) hourglasses.shift();
-    while(rainbows.length && rainbows[0].x + 40 < minX) rainbows.shift();
+    while(flames.length && flames[0].x + 40 < minX) flames.shift();
     while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
   }
 
@@ -386,8 +398,8 @@
   addEventListener('resize', ()=>{ truck.baseX = canvas.width / DPR * 0.35; });
 
 
-  function isInvincible(){
-    return world.invincibleTimer > 0;
+  function hasFlameBoost(){
+    return world.flameBoostTimer > 0;
   }
 
   function rampYAt(ramp, x){
@@ -434,23 +446,38 @@
   }
 
   // ===== Audio (WebAudio, no external assets) =====
-  let audioCtx=null, engineOsc=null, engineGain=null;
+  let audioCtx=null, engineOsc=null, engineGain=null, engineSubOsc=null, engineSubGain=null;
   function ensureAudio(){
     if(audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     // Engine
     engineOsc = audioCtx.createOscillator();
     engineOsc.type = 'sawtooth';
+    engineSubOsc = audioCtx.createOscillator();
+    engineSubOsc.type = 'triangle';
     engineGain = audioCtx.createGain();
-    engineGain.gain.value = 0; // start silent; unmute on play
-    engineOsc.connect(engineGain).connect(audioCtx.destination);
+    engineSubGain = audioCtx.createGain();
+    engineGain.gain.value = 0;
+    engineSubGain.gain.value = 0;
+    const lowPass = audioCtx.createBiquadFilter();
+    lowPass.type = 'lowpass';
+    lowPass.frequency.value = 650;
+    engineOsc.connect(engineGain).connect(lowPass);
+    engineSubOsc.connect(engineSubGain).connect(lowPass);
+    lowPass.connect(audioCtx.destination);
     engineOsc.start();
+    engineSubOsc.start();
   }
   function resumeAudio(){ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
   function setEngine(vol, freq){
-    if(!engineGain) return;
-    engineGain.gain.value = Math.max(0, Math.min(0.06, vol));
-    engineOsc.frequency.setTargetAtTime(Math.max(60, Math.min(800, freq)), audioCtx.currentTime, 0.05);
+    if(!engineGain || !engineSubGain) return;
+    const mainVol = Math.max(0, Math.min(0.09, vol));
+    const subVol = mainVol * 0.8;
+    const target = Math.max(45, Math.min(500, freq));
+    engineGain.gain.setTargetAtTime(mainVol, audioCtx.currentTime, 0.04);
+    engineSubGain.gain.setTargetAtTime(subVol, audioCtx.currentTime, 0.06);
+    engineOsc.frequency.setTargetAtTime(target, audioCtx.currentTime, 0.05);
+    engineSubOsc.frequency.setTargetAtTime(target * 0.52, audioCtx.currentTime, 0.05);
   }
   function playBeep(){
     if(!audioCtx) return;
@@ -486,8 +513,8 @@
 
   // ===== Game Control =====
   function resetGame(){
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0; world.damage=0; world.invincibleTimer=0; world.timeLeft=60; world.timeElapsed=0;
-    obstacles.length = 0; stars.length=0; legoBricks.length=0; hearts.length=0; hourglasses.length=0; rainbows.length=0; ramps.length=0; puffs.length=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
+    obstacles.length = 0; stars.length=0; hearts.length=0; hourglasses.length=0; flames.length=0; ramps.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -532,7 +559,7 @@
 
       // Jump
       if(input.jump){
-        if(truck.onGround && !isInvincible()){
+        if(truck.onGround){
           truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed));
           playBeep();
         }
@@ -551,7 +578,7 @@
       const worldX = world.scrollX + truck.baseX;
       const gy = trackY(worldX);
       const surfaceDY = trackDY(worldX);
-      if(truck.y >= gy - truck.wheelR || isInvincible()){
+      if(truck.y >= gy - truck.wheelR){
         truck.y = gy - truck.wheelR;
         truck.vy = surfaceDY * world.speed;
         truck.onGround = true;
@@ -566,31 +593,18 @@
       // Spawn ahead / cull
       spawnAhead();
       
-      // Collect stars
+      // Collect coins
       for(const s of stars){
         if(s.taken) continue;
         const sx = s.x - world.scrollX;
-        if(Math.abs(sx - truck.baseX) < 50 && Math.abs(s.y - (truck.y - truck.bodyH)) < 60){
+        if(Math.abs(sx - truck.baseX) < 52 && Math.abs(s.y - (truck.y - truck.bodyH)) < 64){
           s.taken = true; world.stars++; playBeep();
-          console.log('Star collected!', world.stars);
-          world.speed = Math.min(world.speed + 80, world.maxSpeed);
-          // tiny sparkle
+          if(world.stars % 10 === 0){
+            world.maxSpeed = Math.min(world.maxSpeed + 90, 1600);
+            world.speed = Math.min(world.speed + 120, world.maxSpeed);
+          }
           for(let i=0;i<12;i++){
             puffs.push({x:sx, y:s.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.2)*200, life:0, ttl:0.5+Math.random()*0.4, color:'#ffd54a', size:3+Math.random()*3});
-          }
-        }
-      }
-
-      // Collect LEGO bricks
-      for(const b of legoBricks){
-        if(b.taken) continue;
-        const bx = b.x - world.scrollX;
-        if(Math.abs(bx - truck.baseX) < 58 && Math.abs(b.y - (truck.y - truck.bodyH*0.55)) < 58){
-          b.taken = true;
-          world.stars += 2;
-          playBeep();
-          for(let i=0;i<16;i++){
-            puffs.push({x:bx, y:b.y, vx:(Math.random()*2-1)*140, vy:(Math.random()*-1-0.2)*210, life:0, ttl:0.45+Math.random()*0.4, color:'#ef4444', size:4+Math.random()*5});
           }
         }
       }
@@ -620,22 +634,23 @@
         }
       }
 
-      // Collect rainbow invincibility
-      for(const r of rainbows){
-        if(r.taken) continue;
-        const rx = r.x - world.scrollX;
-        if(Math.abs(rx - truck.baseX) < 56 && Math.abs(r.y - (truck.y - truck.bodyH*0.6)) < 64){
-          r.taken = true;
-          world.invincibleTimer = 15;
+      // Collect flame speed boost
+      for(const f of flames){
+        if(f.taken) continue;
+        const fx = f.x - world.scrollX;
+        if(Math.abs(fx - truck.baseX) < 64 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 72){
+          f.taken = true;
+          world.flameBoostTimer = 4;
+          world.speed = Math.min(world.speed + 260, world.maxSpeed + 300);
           playBeep();
-          for(let i=0;i<24;i++){
-            puffs.push({x:rx, y:r.y, vx:(Math.random()*2-1)*180, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.6+Math.random()*0.5, color:`hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`, size:4+Math.random()*5});
+          for(let i=0;i<28;i++){
+            puffs.push({x:fx, y:f.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.1)*220, life:0, ttl:0.5+Math.random()*0.4, color:Math.random()<0.5?'#fb923c':'#facc15', size:5+Math.random()*6});
           }
         }
       }
 
-      if(world.invincibleTimer > 0){
-        world.invincibleTimer = Math.max(0, world.invincibleTimer - dt);
+      if(world.flameBoostTimer > 0){
+        world.flameBoostTimer = Math.max(0, world.flameBoostTimer - dt);
       }
 
       // Obstacle collisions (simple AABB with truck front)
@@ -656,8 +671,10 @@
       }
 
       // Engine audio
-      const engineVol = world.speed>5 ? (0.02 + world.speed/world.maxSpeed*0.04) : 0;
-      const engineHz  = 70 + world.speed*0.45;
+      const speedCap = world.maxSpeed + (hasFlameBoost() ? 300 : 0);
+      world.speed = Math.max(0, Math.min(speedCap, world.speed));
+      const engineVol = world.speed>5 ? (0.028 + world.speed/speedCap*0.06) : 0;
+      const engineHz  = 55 + world.speed*0.22 + (hasFlameBoost() ? 20 : 0);
       setEngine(engineVol, engineHz);
     } else {
       // When not playing or crashed, fade engine
@@ -682,17 +699,32 @@
   function hitObstacle(o, cx, cy){
     const idx = obstacles.indexOf(o);
     if(idx >= 0) obstacles.splice(idx,1);
-    spawnConfetti(cx, cy);
-    if(isInvincible()){
-      world.speed = Math.min(world.maxSpeed, world.speed + 25);
-      return;
+    const boom = o.type === 'tnt';
+    const garbageBurst = o.type === 'garbage';
+    world.shake = boom ? 20 : 10;
+    if(boom){
+      for(let i=0;i<160;i++){
+        const a = Math.random()*Math.PI*2;
+        const s = 220 + Math.random()*900;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-240, life:0, ttl:0.5+Math.random()*0.7, color:Math.random()<0.55?'#fb923c':'#1f2937', size:5+Math.random()*8});
+      }
+      world.speed = Math.max(0, world.speed - 180);
+      world.damage += 2;
+    } else if(garbageBurst){
+      for(let i=0;i<90;i++){
+        const a = Math.random()*Math.PI*1.5 - Math.PI*1.25;
+        const s = 140 + Math.random()*460;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-120, life:0, ttl:0.8+Math.random()*0.8, color:['#84cc16','#6b7280','#f97316','#22c55e'][Math.floor(Math.random()*4)], size:4+Math.random()*6});
+      }
+      world.damage += 1;
+    } else {
+      spawnConfetti(cx, cy, 80);
+      world.damage += 1;
     }
-    world.damage++;
-    world.shake = 10;
+    if(hasFlameBoost()) world.speed = Math.min(world.maxSpeed + 300, world.speed + 35);
     playCrash();
-    console.log('Obstacle hit, damage:', world.damage);
     if(world.damage >= world.maxDamage){
-      finishGame(true, cx, cy);
+      finishGame(false, cx, cy);
     }
   }
 
@@ -755,13 +787,6 @@
       drawStar(x, s.y, s.r);
     }
 
-    // LEGO bricks
-    for(const b of legoBricks){
-      if(b.taken) continue;
-      const x = b.x - world.scrollX;
-      drawLegoBrick(x, b.y, b.w, b.h);
-    }
-
     // Hearts
     for(const h of hearts){
       if(h.taken) continue;
@@ -776,11 +801,11 @@
       drawHourglass(x, g.y, g.r);
     }
 
-    // Rainbow pickups
-    for(const r of rainbows){
-      if(r.taken) continue;
-      const x = r.x - world.scrollX;
-      drawRainbowPickup(x, r.y, r.r);
+    // Flame pickups
+    for(const f of flames){
+      if(f.taken) continue;
+      const x = f.x - world.scrollX;
+      drawFlamePickup(x, f.y, f.r);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -933,6 +958,27 @@
         ctx.fillRect(0, h*0.33-2, w,4);
         ctx.fillRect(0, h*0.66-2, w,4);
         break;
+      case 'garbage':
+        ctx.fillStyle = '#4b5563';
+        roundRect(ctx, 0, 0, w, h, 10, true, false);
+        ctx.fillStyle = '#9ca3af';
+        roundRect(ctx, 6, -8, w-12, 12, 4, true, false);
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(w*0.2, h*0.35, w*0.18, h*0.2);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(w*0.52, h*0.42, w*0.22, h*0.14);
+        break;
+      case 'tnt':
+        ctx.fillStyle = '#dc2626';
+        roundRect(ctx, 0, 0, w, h, 6, true, false);
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(0,0,w,h);
+        ctx.fillStyle = '#fee2e2';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign='center';
+        ctx.fillText('TNT', w/2, h*0.58);
+        break;
       default:
         ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
         ctx.fillRect(0, 0, w, h);
@@ -961,32 +1007,26 @@
     ctx.restore();
   }
 
-  function drawLegoBrick(x, y, w, h){
+  function drawFlamePickup(x, y, r){
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = '#ef4444';
-    roundRect(ctx, -w/2, -h/2, w, h, 6, true, false);
-    ctx.fillStyle = '#f87171';
-    for(let i=0;i<4;i++){
-      const px = -w/2 + 7 + i*(w-14)/3;
-      ctx.beginPath();
-      ctx.arc(px, -h/2-2, 4, 0, Math.PI*2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawRainbowPickup(x, y, r){
-    ctx.save();
-    ctx.translate(x, y);
-    const colors = ['#ef4444','#f97316','#facc15','#22c55e','#3b82f6','#9333ea'];
-    colors.forEach((color, i)=>{
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(0,0,r-i*2,Math.PI,0);
-      ctx.stroke();
-    });
+    const flicker = 0.8 + Math.sin(world.t*24 + x*0.02)*0.2;
+    const inner = r * flicker;
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(0,-inner);
+    ctx.quadraticCurveTo(inner*0.7,-inner*0.1,0,inner);
+    ctx.quadraticCurveTo(-inner*0.7,-inner*0.1,0,-inner);
+    ctx.fill();
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(0,-inner*0.6);
+    ctx.quadraticCurveTo(inner*0.35,0,0,inner*0.55);
+    ctx.quadraticCurveTo(-inner*0.35,0,0,-inner*0.6);
+    ctx.fill();
+    ctx.strokeStyle = '#7c2d12';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-r*0.45, r*0.62, r*0.9, r*0.28);
     ctx.restore();
   }
 
@@ -1091,15 +1131,17 @@
     ctx.translate(0, -bh/2+8);
     ctx.rotate(-0.03);
     ctx.fillText('ABE', 0, 0);
-    if(isInvincible()){
-      ctx.globalAlpha = 0.82;
-      const ringR = Math.max(bw, bh)*0.54;
-      for(let i=0;i<7;i++){
-        ctx.strokeStyle = `hsl(${(world.t*240 + i*45)%360}, 95%, 60%)`;
-        ctx.lineWidth = 5;
+    if(hasFlameBoost()){
+      ctx.globalAlpha = 0.9;
+      for(let i=0;i<4;i++){
+        const fx = -bw/2 - 20 - i*14;
+        const flameH = 16 + Math.sin(world.t*30 + i*0.8)*10 + i*8;
+        ctx.fillStyle = i % 2 ? '#fb923c' : '#facc15';
         ctx.beginPath();
-        ctx.arc(0, -bh/2 + 8, ringR - i*8, 0, Math.PI*2);
-        ctx.stroke();
+        ctx.moveTo(fx, -22);
+        ctx.quadraticCurveTo(fx-16, -22 + flameH*0.5, fx, -22 + flameH);
+        ctx.quadraticCurveTo(fx+10, -22 + flameH*0.5, fx, -22);
+        ctx.fill();
       }
       ctx.globalAlpha = 1;
     }
