@@ -72,7 +72,7 @@
   .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
   .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
   .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
-  #startOverlay, #crashOverlay, #winOverlay{
+  #startOverlay, #crashOverlay, #winOverlay, #highScoreOverlay{
     position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     background: linear-gradient(180deg,#00000022,#00000055);
     z-index:10; color:white; text-align:center; padding:20px;
@@ -84,6 +84,26 @@
   }
   .card h1{ margin:0 0 8px 0; font-size:28px;}
   .card p{ margin:8px 0; font-weight:600;}
+  .card label{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:12px; font-weight:700; }
+  .card input[type="text"]{
+    width:100%;
+    font-size:18px;
+    padding:10px 12px;
+    margin-top:10px;
+    border:2px solid #93c5fd;
+    border-radius:10px;
+    box-sizing:border-box;
+  }
+  .leaderboard{
+    margin-top:14px;
+    text-align:left;
+    background:#eff6ff;
+    border-radius:12px;
+    padding:10px 12px;
+  }
+  .leaderboard h3{ margin:0 0 6px 0; font-size:16px; color:#1d4ed8; }
+  .leaderboard ol{ margin:0; padding-left:20px; max-height:180px; overflow:auto; }
+  .leaderboard li{ margin:2px 0; font-weight:700; color:#1e3a8a; }
   .big{
     font-size:22px; font-weight:900; margin-top:10px; padding:14px 18px; border-radius:12px; border:none; cursor:pointer;
     background:linear-gradient(135deg, #34d399, #3b82f6); color:white; box-shadow:0 6px 0 #0003;
@@ -136,6 +156,11 @@
     <p>Tap <b>▶️</b> to start the monster truck.</p>
     <p>Use <b>⛔</b> to brake, <b>⤴️</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
+    <label><input type="checkbox" id="zoomToggle" checked /> Dynamic zoom (zoom in/out while jumping)</label>
+    <div class="leaderboard">
+      <h3>🏆 High Scores</h3>
+      <ol id="leaderboardStart"></ol>
+    </div>
     <button id="btnStart" class="big">Start Race</button>
   </div>
 </div>
@@ -149,6 +174,10 @@
     <p><b>TNT Crates Hit:</b> <span id="scoreTnt">0</span></p>
     <p><b>Bricks Collected:</b> <span id="scoreBricks">0</span></p>
     <p><b>Distance Travelled:</b> <span id="scoreDistance">0</span> m</p>
+    <div class="leaderboard">
+      <h3>🏆 High Scores</h3>
+      <ol id="leaderboardCrash"></ol>
+    </div>
     <button id="btnPlayAgain" class="big">Restart</button>
   </div>
 </div>
@@ -159,7 +188,21 @@
     <p>Stars collected: <span id="finalStars">0</span></p>
     <p>Time: <span id="finalTime">0</span>s</p>
     <p>Distance travelled: <span id="finalDistance">0</span> m</p>
+    <div class="leaderboard">
+      <h3>🏆 High Scores</h3>
+      <ol id="leaderboardWin"></ol>
+    </div>
     <button id="btnWinAgain" class="big">Play Again</button>
+  </div>
+</div>
+
+<div id="highScoreOverlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="card">
+    <h1 style="color:#1d4ed8;">HIGH SCORE!</h1>
+    <p>You collected <b><span id="highScoreStars">0</span> stars</b>.</p>
+    <p>Enter your name to add your score to the leaderboard:</p>
+    <input id="highScoreName" maxlength="20" placeholder="Your name" autocomplete="nickname" />
+    <button id="btnSaveHighScore" class="big">Save Score</button>
   </div>
 </div>
 
@@ -215,6 +258,7 @@
     invincibleTimer: 0,
     bubbleTimer: 0,
     cameraZoom: 1,
+    zoomEnabled: true,
     greenBricks: 0,
     redBricks: 0,
     blueBricks: 0,
@@ -261,6 +305,8 @@
   const startOverlay = document.getElementById('startOverlay');
   const crashOverlay = document.getElementById('crashOverlay');
   const winOverlay = document.getElementById('winOverlay');
+  const highScoreOverlay = document.getElementById('highScoreOverlay');
+  const zoomToggle = document.getElementById('zoomToggle');
   const timerEl = document.getElementById('time');
   const finalStarsEl = document.getElementById('finalStars');
   const finalTimeEl = document.getElementById('finalTime');
@@ -268,18 +314,74 @@
   document.getElementById('btnPlayAgain').addEventListener('click', ()=>{ crashOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
   document.getElementById('btnWinAgain').addEventListener('click', ()=>{ winOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
 
+  const LEADERBOARD_KEY = 'jumpAbeLeaderboardV1';
+  let pendingOutcome = null;
+
+  function loadLeaderboard(){
+    try{
+      const raw = localStorage.getItem(LEADERBOARD_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    }catch{
+      return [];
+    }
+  }
+  function saveLeaderboard(list){
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list.slice(0,10)));
+  }
+  function renderLeaderboard(){
+    const list = loadLeaderboard();
+    const targets = [
+      document.getElementById('leaderboardStart'),
+      document.getElementById('leaderboardCrash'),
+      document.getElementById('leaderboardWin')
+    ];
+    for(const target of targets){
+      if(!target) continue;
+      target.innerHTML = '';
+      if(!list.length){
+        const li = document.createElement('li');
+        li.textContent = 'No high scores yet.';
+        target.appendChild(li);
+        continue;
+      }
+      list.forEach((entry)=>{
+        const li = document.createElement('li');
+        li.textContent = `${entry.name} — ${entry.stars} ⭐`;
+        target.appendChild(li);
+      });
+    }
+  }
+  function qualifiesForLeaderboard(stars){
+    if(stars <= 100) return false;
+    const list = loadLeaderboard();
+    if(list.length < 10) return true;
+    return stars > list[9].stars;
+  }
+
+  zoomToggle.addEventListener('change', ()=>{
+    world.zoomEnabled = zoomToggle.checked;
+    if(!world.zoomEnabled) world.cameraZoom = 1;
+  });
+
+  document.getElementById('btnSaveHighScore').addEventListener('click', ()=>{
+    const input = document.getElementById('highScoreName');
+    const name = (input.value || '').trim().slice(0,20) || 'Player';
+    const list = loadLeaderboard();
+    list.push({name, stars: world.stars});
+    list.sort((a,b)=> b.stars - a.stars);
+    saveLeaderboard(list);
+    renderLeaderboard();
+    highScoreOverlay.style.display='none';
+    if(pendingOutcome) showEndOverlay(pendingOutcome.win);
+  });
+  renderLeaderboard();
+
   function startGameIfNeeded(){
     if(!world.playing){
       startOverlay.style.display='none';
       world.playing = true;
       resumeAudio();
-      if(canvas.requestFullscreen){
-        canvas.requestFullscreen().then(()=>{
-          if(screen.orientation && screen.orientation.lock){
-            screen.orientation.lock('landscape').catch(()=>{});
-          }
-        }).catch(()=>{});
-      }
     }
   }
 
@@ -805,7 +907,7 @@
       }
 
       const truckTopVisual = truck.y - (truck.bodyH + 10);
-      const zoomTarget = truckTopVisual < 70 ? 0.78 : 1;
+      const zoomTarget = world.zoomEnabled && truckTopVisual < 70 ? 0.78 : 1;
       world.cameraZoom += (zoomTarget - world.cameraZoom) * Math.min(1, dt * 6);
 
       // Obstacle collisions (simple AABB with truck front)
@@ -918,6 +1020,23 @@
     spawnConfetti(truck.baseX, truck.y - truck.bodyH/2);
     if(cx !== undefined && cy !== undefined) spawnConfetti(cx, cy);
     playCrash();
+    pendingOutcome = { win };
+    const shouldPromptHighScore = qualifiesForLeaderboard(world.stars);
+    if(shouldPromptHighScore){
+      document.getElementById('highScoreStars').textContent = world.stars;
+      const nameInput = document.getElementById('highScoreName');
+      nameInput.value = '';
+      setTimeout(()=>{
+        highScoreOverlay.style.display='flex';
+        nameInput.focus();
+      }, 550);
+      return;
+    }
+    showEndOverlay(win);
+  }
+
+  function showEndOverlay(win){
+    pendingOutcome = null;
     if(win){
       finalStarsEl.textContent = world.stars;
       finalTimeEl.textContent = Math.floor(world.timeElapsed);
@@ -932,6 +1051,7 @@
       document.getElementById('scoreDistance').textContent = Math.floor(world.distance);
       setTimeout(()=>{ crashOverlay.style.display='flex'; }, 550);
     }
+    renderLeaderboard();
   }
 
   // ===== Drawing =====
@@ -1070,29 +1190,42 @@
   function drawHills(){
     const baseY = world.groundBase()+40;
     const w = canvas.width/DPR;
+    const padX = getHorizontalRenderPadding();
+    const startX = -padX;
+    const endX = w + padX;
     ctx.fillStyle = '#86efac';
     ctx.beginPath();
-    ctx.moveTo(0, baseY+200);
-    for(let x=0; x<=w; x+=6){
+    ctx.moveTo(startX, baseY+200);
+    for(let x=startX; x<=endX; x+=6){
       const wx = x + world.scrollX*0.3;
       const y = baseY + 30*Math.sin(wx*0.0012) + 20*Math.sin(wx*0.0006+1.2);
       ctx.lineTo(x, y);
     }
-    ctx.lineTo(w, baseY+200); ctx.closePath(); ctx.fill();
+    ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
 
     ctx.fillStyle = '#4ade80';
     ctx.beginPath();
-    ctx.moveTo(0, baseY+260);
-    for(let x=0; x<=w; x+=6){
+    ctx.moveTo(startX, baseY+260);
+    for(let x=startX; x<=endX; x+=6){
       const wx = x + world.scrollX*0.15;
       const y = baseY+50 + 40*Math.sin(wx*0.0007) + 15*Math.sin(wx*0.001+2.1);
       ctx.lineTo(x, y);
     }
-    ctx.lineTo(w, baseY+260); ctx.closePath(); ctx.fill();
+    ctx.lineTo(endX, baseY+260); ctx.closePath(); ctx.fill();
+  }
+
+  function getHorizontalRenderPadding(){
+    const w = canvas.width / DPR;
+    const zoom = world.cameraZoom || 1;
+    if(zoom >= 0.999) return 0;
+    return ((w / zoom) - w) / 2 + 220;
   }
 
   function drawGround(){
     const w = canvas.width/DPR, h=canvas.height/DPR;
+    const padX = getHorizontalRenderPadding();
+    const startX = -padX;
+    const endX = w + padX;
     const topColor = '#065f46';
     const dirt = ctx.createLinearGradient(0,0,0,h);
     dirt.addColorStop(0.0,'#10b981');
@@ -1103,21 +1236,21 @@
     dirt.addColorStop(1.0,'#92400e');
 
     ctx.beginPath();
-    ctx.moveTo(0,h);
-    for(let x=0; x<=w; x+=4){
+    ctx.moveTo(startX,h);
+    for(let x=startX; x<=endX; x+=4){
       const y = groundY(x + world.scrollX);
       ctx.lineTo(x, y);
     }
-    ctx.lineTo(w,h);
+    ctx.lineTo(endX,h);
     ctx.closePath();
     ctx.fillStyle = dirt; ctx.fill();
 
     // Track edge
     ctx.lineWidth = 6; ctx.strokeStyle = topColor;
     ctx.beginPath();
-    for(let x=0; x<=w; x+=4){
+    for(let x=startX; x<=endX; x+=4){
       const y = groundY(x + world.scrollX);
-      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      if(x===startX) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke();
 
@@ -1125,9 +1258,9 @@
     ctx.setLineDash([16,18]); ctx.lineDashOffset = (world.scrollX*0.5)%34;
     ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = 4;
     ctx.beginPath();
-    for(let x=0; x<=w; x+=6){
+    for(let x=startX; x<=endX; x+=6){
       const y = groundY(x + world.scrollX) - 28;
-      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      if(x===startX) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke();
     ctx.setLineDash([]);
