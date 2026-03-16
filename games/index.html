@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Games — Launcher</title>
+  <style>
+    :root{
+      --bg1:#0ea5e9; --bg2:#22d3ee; --panel:#ffffffee; --ink:#0b1b2b; --sub:#334155; --accent:#f59e0b; --accent2:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      display:grid; place-items:center; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink); background: radial-gradient(1200px 700px at 20% -10%, #ffffff 0%, #e0f2fe 35%, #bae6fd 60%, #93c5fd 100%), linear-gradient(180deg,var(--bg2),var(--bg1));
+      background-attachment: fixed;
+    }
+    .wrap{ width:min(1100px, 96vw); margin:auto; padding: 20px; }
+    header{ text-align:center; margin-bottom:24px; }
+    .title{ font-size:44px; font-weight:900; letter-spacing:.6px; margin:0; text-shadow:0 3px 0 #00000020; }
+    .subtitle{ margin:6px 0 0; opacity:.8; font-weight:600 }
+
+    .grid{ display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap:18px; }
+
+    .card{ position:relative; border-radius:20px; background:var(--panel); border:1px solid #00000014; overflow:hidden;
+      box-shadow: 0 20px 40px #00000026, inset 0 1px 0 #ffffff; cursor:pointer; min-height: 220px; display:flex; align-items:stretch; }
+    .card:focus{ outline:none; box-shadow:0 0 0 4px #00000014, 0 20px 40px #00000026; }
+    .card:hover .cta, .card:focus .cta{ transform: translateX(4px); }
+
+    .art{ flex: 0 0 42%; display:grid; place-items:center; background: linear-gradient(180deg,#ffffff,#f8fafc); border-right:1px solid #00000010; }
+    .art canvas{ width:100%; height:auto; aspect-ratio: 4/3; display:block; }
+
+    .details{ padding:18px 18px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+    .name{ font-size:30px; font-weight:900; letter-spacing:.3px; }
+    .desc{ color:var(--sub); opacity:.9 }
+    .cta{ margin-top:6px; display:inline-flex; align-items:center; gap:8px; font-weight:800; color:#fff; background:linear-gradient(90deg,var(--accent),#f97316);
+      padding:10px 14px; border-radius:999px; box-shadow: 0 6px 0 #00000020; transform: translateX(0); transition: transform .12s ease; }
+    .cta .arr{ font-size:18px; }
+
+    footer{ margin-top:18px; text-align:center; color:#0000008a; font-size:12px }
+    
+    .mobile-notice{ display:none; text-align:center; padding:20px; background: rgba(255,255,255,0.9); border-radius:16px; border:1px solid #00000014; }
+    .mobile-notice h3{ margin:0 0 12px; color:var(--accent); }
+    .mobile-notice p{ margin:0; font-size:14px; opacity:0.8; }
+    
+    @media (max-width: 860px){ 
+      .grid{ grid-template-columns: 1fr; } 
+      .art{ display:none } 
+      .card{ min-height: 140px} 
+      .title{ font-size:36px; }
+      .name{ font-size:24px; }
+      .mobile-notice{ display:block; margin-bottom:20px; }
+    }
+    
+    @media (max-width: 860px) and (orientation: portrait) {
+      .mobile-notice h3:after{ content: " 📱"; }
+    }
+    
+    @media (max-width: 860px) and (orientation: landscape) {
+      .mobile-notice h3:after{ content: " ✅"; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 class="title">Pick a Game</h1>
+      <p class="subtitle">Choose a classic-inspired mini-game</p>
+    </header>
+    
+    <div class="mobile-notice">
+      <h3>Mobile Tip</h3>
+      <p>For the best mobile experience, please rotate your device to landscape mode before playing.</p>
+    </div>
+    
+    <main class="grid">
+      <a class="card" href="../jump-kids/index.html" aria-label="Play Jump Kids">
+        <div class="art">
+          <canvas id="art-jk" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Jump Kids</div>
+          <div class="desc">Dash, jump, and clear the level!</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../beamer/index.html" aria-label="Play Beamer">
+        <div class="art">
+          <canvas id="art-bm" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Beamer</div>
+          <div class="desc">Fast arcade action with lasers.</div>
+          <span class="cta" style="background:linear-gradient(90deg,var(--accent2),#f43f5e)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../race-abe/race-abe.html" aria-label="Play Jump Abe">
+        <div class="art">
+          <canvas id="art-ja" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Jump Abe</div>
+          <div class="desc">Race Abe's monster truck.</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../peg-triangle-game.html" aria-label="Play Peg Game">
+        <div class="art">
+          <canvas id="art-pg" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Peg Game</div>
+          <div class="desc">Jump the pegs to solve the puzzle.</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../peg-solitaire.html" aria-label="Play Peg Solitaire">
+        <div class="art">
+          <canvas id="art-ps" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Peg Solitaire+</div>
+          <div class="desc">Triangle, English, or European boards.</div>
+          <span class="cta">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../snake/index.html" aria-label="Play Snake">
+        <div class="art">
+          <canvas id="art-sn" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Snake</div>
+          <div class="desc">Classic grid chase with growing difficulty.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#16a34a,#15803d)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../robo-fight/index.html" aria-label="Play Robo-Fight">
+        <div class="art">
+          <canvas id="art-rf" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Robo-Fight</div>
+          <div class="desc">Pick your bot and battle in the arena.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#6366f1,#4f46e5)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+    </main>
+    <footer>Use keyboard or touch — have fun!</footer>
+  </div>
+  <script>
+    // Tiny art doodles for the cards
+    function drawJK(){
+      const c = document.getElementById('art-jk'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#e0f2fe'); g.addColorStop(1,'#93c5fd'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // ground
+      x.fillStyle='#7c4a1f'; x.fillRect(0,H-70,W,70); x.fillStyle='#49a020'; x.fillRect(0,H-70,W,6);
+      // platforms
+      x.fillStyle='#b85a35'; x.fillRect(40,H-120,120,18); x.fillRect(W-200,H-160,140,18);
+      // coin
+      x.fillStyle='#f2c14e'; x.beginPath(); x.ellipse(140,H-140,10,9,0,0,Math.PI*2); x.fill();
+      // player
+      x.fillStyle='#ff5fa2'; x.fillRect(80,H-148,18,28); x.fillStyle='#ffddbf'; x.fillRect(82,H-158,14,10);
+      // flag
+      x.fillStyle='#169B62'; x.fillRect(W-120,H-210,20,50); x.fillStyle='#fff'; x.fillRect(W-100,H-210,20,50); x.fillStyle='#FF883E'; x.fillRect(W-80,H-210,20,50);
+    }
+    function drawBM(){
+      const c = document.getElementById('art-bm'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#111827'); g.addColorStop(1,'#0b1220'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // ship
+      x.fillStyle='#38bdf8'; x.beginPath(); x.moveTo(W/2-30,H-120); x.lineTo(W/2+30,H-120); x.lineTo(W/2,H-160); x.closePath(); x.fill();
+      // beam
+      x.strokeStyle='#f472b6'; x.lineWidth=6; x.beginPath(); x.moveTo(W/2,H-160); x.lineTo(W/2,H-260); x.stroke();
+      // stars
+      x.fillStyle='#fff'; for(let i=0;i<30;i++){ x.fillRect((i*53)%W, (i*97)%H, 2, 2); }
+    }
+    function drawJA(){
+      const c = document.getElementById('art-ja'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#fef3c7'); g.addColorStop(1,'#fde68a'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // ground
+      x.fillStyle='#7c4a1f'; x.fillRect(0,H-60,W,60); x.fillStyle='#49a020'; x.fillRect(0,H-60,W,6);
+      // truck
+      x.fillStyle='#34d399'; x.fillRect(W/2-40,H-120,80,40);
+      // wheels
+      x.fillStyle='#111827';
+      x.beginPath(); x.arc(W/2-30,H-60,20,0,Math.PI*2); x.fill();
+      x.beginPath(); x.arc(W/2+30,H-60,20,0,Math.PI*2); x.fill();
+    }
+    function drawPG(){
+      const c = document.getElementById('art-pg'); if(!c) return; const x=c.getContext('2d'); const W=c.width, H=c.height;
+      x.clearRect(0,0,W,H);
+      const g = x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f5f5f4'); g.addColorStop(1,'#e7e5e4'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      // board
+      x.fillStyle='#a16207';
+      x.beginPath(); x.moveTo(W/2,80); x.lineTo(80,H-80); x.lineTo(W-80,H-80); x.closePath(); x.fill();
+      // pegs
+      x.fillStyle='#f59e0b';
+      const pts=[[W/2,110],[W/2-40,160],[W/2+40,160],[W/2-80,210],[W/2,210],[W/2+80,210]];
+      pts.forEach(([px,py])=>{x.beginPath(); x.arc(px,py,10,0,Math.PI*2); x.fill();});
+    }
+    function drawPS(){
+      const c=document.getElementById('art-ps'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f5f5f4'); g.addColorStop(1,'#e7e5e4'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='#a16207';
+      x.fillRect(W/2-60,H/2-60,120,120);
+      x.fillStyle='#f59e0b';
+      for(let r=-1;r<=1;r++) for(let c2=-1;c2<=1;c2++) if(r===0||c2===0){ x.beginPath(); x.arc(W/2+c2*30,H/2+r*30,10,0,Math.PI*2); x.fill(); }
+    }
+    function drawSN(){
+      const c=document.getElementById('art-sn'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#ecfccb'); g.addColorStop(1,'#bbf7d0'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      const size=36; const ox=(W-size*8)/2; const oy=(H-size*5)/2;
+      x.strokeStyle='#00000018';
+      for(let gx=0; gx<=8; gx++){ x.beginPath(); x.moveTo(ox+gx*size, oy); x.lineTo(ox+gx*size, oy+size*5); x.stroke(); }
+      for(let gy=0; gy<=5; gy++){ x.beginPath(); x.moveTo(ox, oy+gy*size); x.lineTo(ox+size*8, oy+gy*size); x.stroke(); }
+      x.fillStyle='#166534';
+      [[2,2],[3,2],[4,2],[4,3]].forEach(([cx,cy])=>x.fillRect(ox+cx*size+2, oy+cy*size+2, size-4, size-4));
+      x.fillStyle='#dc2626';
+      x.fillRect(ox+6*size+2, oy+1*size+2, size-4, size-4);
+    }
+    function drawRF(){
+      const c=document.getElementById('art-rf'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#ddd6fe'); g.addColorStop(1,'#c7d2fe'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='#312e81';
+      x.fillRect(0,H-70,W,70);
+      x.fillStyle='#64748b';
+      x.fillRect(W/2-80,H-170,60,90);
+      x.fillRect(W/2+20,H-170,60,90);
+      x.fillStyle='#1f2937';
+      x.fillRect(W/2-30,H-240,60,70);
+      x.fillStyle='#22d3ee';
+      x.fillRect(W/2-15,H-220,30,20);
+      x.fillStyle='#f43f5e';
+      x.beginPath(); x.arc(W/2+120,H-190,18,0,Math.PI*2); x.fill();
+      x.strokeStyle='#f43f5e'; x.lineWidth=6;
+      x.beginPath(); x.moveTo(W/2+35,H-200); x.lineTo(W/2+102,H-190); x.stroke();
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF();
+  </script>
+</body>
+</html>

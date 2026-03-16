@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Peg Triangle — Cracker Barrel Peg Game</title>
+  <style>
+    :root{
+      --bg: #f3efe7;
+      --panel: #ffffff;
+      --ink: #1d2540;
+      --muted: #6b7280;
+      --accent: #3b82f6;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --gold: #f59e0b;
+      --shadow: 0 6px 18px rgba(0,0,0,0.12);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 700px at 10% -20%, #fff 0%, #f7f4ee 70%, #ece7df 100%),
+        linear-gradient(160deg, #f7f3ea, #efe9df);
+      background-attachment: fixed;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: clamp(12px, 2.5vw, 28px);
+      display:flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vw, 18px);
+    }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    h1{
+      font-size: clamp(20px, 4.2vw, 34px);
+      margin:0;
+      letter-spacing: 0.2px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .badge{
+      font-size: .72em;
+      background: linear-gradient(180deg, #e9f2ff, #d8ecff);
+      color:#1e3a8a;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #cfe5ff;
+    }
+    .board-card{
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(10px, 2vw, 18px);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .board-shell{
+      position:relative;
+      border-radius: 14px;
+      background:
+        radial-gradient(60% 100% at 50% 0%, rgba(255,255,255,.8), rgba(255,255,255,0)),
+        conic-gradient(#f8efe0, #f3e6d2, #f8efe0);
+      border: 1px solid #eadfcf;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 -6px 20px rgba(0,0,0,.06);
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      max-width: 650px;
+      margin: 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    /* Responsive row: on larger screens, put controls beside board */
+    @media (min-width: 920px){
+      .board-card{ grid-template-columns: 1fr 360px; align-items: center; }
+      .board-shell{ max-width: 520px; }
+    }
+    svg{ width: 100%; height: 100%; }
+
+    .ui{
+      display:grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .panel{
+      background: #fff;
+      border:1px solid #eee7db;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 10px;
+      text-align:center;
+    }
+    .stat{
+      background: linear-gradient(180deg,#fff,#f9f6f0);
+      border:1px solid #eee7db;
+      border-radius: 12px;
+      padding: 10px 6px;
+    }
+    .stat .big{ font-weight:700; font-size: 1.25rem; }
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .controls .full{ grid-column: 1 / -1; }
+    button, input[type="color"]{
+      -webkit-appearance:none; appearance:none;
+      border: none;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      cursor: pointer;
+      background: linear-gradient(180deg, #eef5ff, #dff0ff);
+      border:1px solid #cfe5ff;
+      color: #0f2b61;
+      box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 1px 3px rgba(0,0,0,.05);
+      transition: transform .03s ease, box-shadow .2s ease;
+      touch-action: manipulation;
+    }
+    button:active{ transform: translateY(1px); }
+    .danger{ background: linear-gradient(180deg, #ffecec, #ffdede); border-color:#ffd1d1; color:#7f1d1d; }
+    .accent{ background: linear-gradient(180deg, #e7fff3, #d9ffed); border-color:#baf7d7; color:#065f46; }
+    .gold{ background: linear-gradient(180deg, #fff7e6, #ffefcb); border-color:#fbe1a4; color:#7a5200; }
+    .toggle{ background: linear-gradient(180deg, #f5f5ff, #ececff); border-color:#dfdcff; color:#2f2b7d; }
+
+    .help{
+      font-size: .95rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .help a{ color: var(--accent); font-weight:600; text-decoration: none; }
+    .help a:focus, .help a:hover{ text-decoration: underline; }
+
+    .hint-dot{
+      stroke: var(--gold);
+      stroke-width: 2.2;
+      fill: none;
+      stroke-dasharray: 1.5 3.5;
+      animation: dash 1.4s linear infinite;
+      opacity: .9;
+      pointer-events: none;
+    }
+    @keyframes dash{
+      to{ stroke-dashoffset: -10; }
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #111827;
+      color:#fff;
+      padding: 12px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      font-size: .95rem;
+      z-index: 40;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .24s ease, transform .24s ease;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-4px); }
+
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      z-index:50;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .2s ease;
+    }
+    .modal.show{ opacity:1; pointer-events:auto; }
+    .modal .box{
+      width: min(560px, 94vw);
+      border-radius: 16px;
+      padding: 20px;
+      background: linear-gradient(180deg,#fff,#fbfaf7);
+      border:1px solid #efe7da;
+      box-shadow: var(--shadow);
+      text-align:center;
+    }
+    .confetti{
+      position:absolute; inset:0; pointer-events:none; overflow:hidden;
+    }
+    .confetti i{
+      position:absolute; width:8px; height:12px;
+      background: var(--accent);
+      top: -10px;
+      animation: fall 1200ms linear forwards;
+    }
+    @keyframes fall{
+      to{ transform: translateY(110vh) rotate(520deg); opacity: 0.8; }
+    }
+    .footnote{ font-size: .88rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎯 Peg Triangle <span class="badge">mobile‑friendly</span></h1>
+      <div class="footnote" id="statusText" aria-live="polite"></div>
+    </header>
+
+    <section class="board-card" aria-label="Peg triangle game board">
+      <div class="board-shell">
+        <svg id="board" viewBox="0 0 100 100" role="application" aria-label="Peg board" tabindex="0"></svg>
+        <div class="confetti" id="confetti"></div>
+      </div>
+
+      <div class="ui">
+        <div class="panel stats">
+          <div class="stat" aria-label="Pegs Remaining"><div class="big" id="pegsLeft">14</div><div class="label">Pegs left</div></div>
+          <div class="stat" aria-label="Moves Made"><div class="big" id="movesMade">0</div><div class="label">Moves</div></div>
+          <div class="stat" aria-label="Best Score"><div class="big" id="bestScore">—</div><div class="label">Best (pegs)</div></div>
+        </div>
+
+        <div class="controls">
+          <button id="btnUndo" class="toggle" title="Undo last move (⌫)">↶ Undo</button>
+          <button id="btnHint" class="toggle" aria-pressed="false">Hints: Off</button>
+
+          <button id="btnReset" class="danger">Reset</button>
+          <button id="btnChooseStart" class="gold">Set Start Hole</button>
+
+          <button id="btnRandomStart" class="accent">Random Start</button>
+          <button id="btnDemo" class="accent full">👀 Watch a Classic Win</button>
+          <input type="color" id="pegColor" class="full" value="#77a7ff" aria-label="Choose peg color" />
+        </div>
+
+        <div class="panel help">
+          <strong>How to play:</strong> Tap a peg to select it, then tap a highlighted hole two spaces away to jump over one peg. The jumped peg is removed. Objective: finish with a single peg.
+          <br><br>
+          <em>Source & rules:</em> See Cracker Barrel’s guide to the peg game and a sample winning sequence. <a href="https://blog.crackerbarrel.com/how-to-beat-the-cracker-barrel-peg-game/" target="_blank" rel="noopener">Read the post</a>.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal" id="winModal" aria-hidden="true">
+    <div class="box">
+      <h2>🏆 You did it!</h2>
+      <p>Only one peg remains. That’s “genius” status.</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top: 12px;">
+        <button onclick="hideWin()">Close</button>
+        <button class="accent" onclick="resetGame()">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------- Geometry / Board Model ----------
+  const N = 5;           // rows
+  const HOLES = 15;      // 1..15 numbering
+  const boardSvg = document.getElementById('board');
+  let pegColor = '#77a7ff';
+  let pegGradStop = null;
+
+  // Map index (1..15) <-> (r,c) with rows 1..5 and columns 1..r
+  const idxToRC = {};
+  const rcToIdx = {};
+  let idx = 1;
+  for (let r=1; r<=N; r++){
+    for (let c=1; c<=r; c++){
+      idxToRC[idx] = {r,c};
+      rcToIdx[`${r}_${c}`] = idx;
+      idx++;
+    }
+  }
+
+  // Precompute legal moves as (from, over, to)
+  // Directions on triangular lattice: (0,±2),(±2,0),(±2,±2)
+  const dirs = [
+    {dr:0,  dc: 2},
+    {dr:0,  dc:-2},
+    {dr: 2, dc:0},
+    {dr:-2, dc:0},
+    {dr: 2, dc: 2},
+    {dr:-2, dc:-2},
+  ];
+  const overOf = (r1,c1, r2,c2) => ({r:(r1+r2)/2, c:(c1+c2)/2});
+
+  const MOVES = [];
+  for (let a=1; a<=HOLES; a++){
+    const {r:ra, c:ca} = idxToRC[a];
+    for (const {dr,dc} of dirs){
+      const rb = ra + dr;
+      const cb = ca + dc;
+      if (rb < 1 || rb > N) continue;
+      if (cb < 1 || cb > rb) continue; // c <= row
+      const over = overOf(ra,ca, rb,cb);
+      if (Number.isInteger(over.r) && Number.isInteger(over.c)){
+        const b = rcToIdx[`${rb}_${cb}`];
+        const o = rcToIdx[`${over.r}_${over.c}`];
+        if (b && o) MOVES.push({from:a, over:o, to:b});
+      }
+    }
+  }
+
+  // ---------- Layout / Rendering ----------
+  const s = 16; // spacing unit
+  const h = Math.sqrt(3)/2 * s;
+  const centerX = 50;
+  const topY = 8;
+
+  const pos = {}; // index -> {x,y}
+  for (let r=1; r<=N; r++){
+    const y = topY + (r-1)*h*1.2;   // vertical spacing with a bit more than perfect lattice
+    const rowWidth = (r-1)*s;
+    const x0 = centerX - rowWidth/2;
+    for (let c=1; c<=r; c++){
+      const i = rcToIdx[`${r}_${c}`];
+      const x = x0 + (c-1)*s;
+      pos[i] = {x, y};
+    }
+  }
+
+  // Draw triangle backdrop
+  const tri = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  tri.setAttribute('points', `${centerX},${topY-3} ${centerX - (N-1)*s/2 - 10},${topY + (N-1)*h*1.2 + 10} ${centerX + (N-1)*s/2 + 10},${topY + (N-1)*h*1.2 + 10}`);
+  tri.setAttribute('fill','url(#wood)');
+  tri.setAttribute('stroke','#ad8a57');
+  tri.setAttribute('stroke-width','1.2');
+  boardSvg.appendChild(tri);
+
+  // Gradients / defs
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.innerHTML = `
+    <radialGradient id="pegGrad" cx="35%" cy="30%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop id="pegGradStop" offset="100%" stop-color="${pegColor}"/>
+    </radialGradient>
+    <radialGradient id="pegGradSel" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </radialGradient>
+    <radialGradient id="holeGrad" cx="50%" cy="45%">
+      <stop offset="0%" stop-color="#dac6a8"/>
+      <stop offset="100%" stop-color="#cba777"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3e2c8"/>
+      <stop offset="100%" stop-color="#e5cda6"/>
+    </linearGradient>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="rgba(0,0,0,.25)"/>
+    </filter>
+  `;
+  boardSvg.appendChild(defs);
+  pegGradStop = defs.querySelector('#pegGradStop');
+
+  // Groups
+  const gHints = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const gLines = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const gHoles = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const gPegs  = document.createElementNS('http://www.w3.org/2000/svg','g');
+  gPegs.setAttribute('filter','url(#soft)');
+  boardSvg.appendChild(gHints);
+  boardSvg.appendChild(gLines);
+  boardSvg.appendChild(gHoles);
+  boardSvg.appendChild(gPegs);
+
+  // Create hole rings
+  const holeNodes = {};
+  for (let i=1; i<=HOLES; i++){
+    const {x,y} = pos[i];
+    const hole = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hole.setAttribute('cx', x);
+    hole.setAttribute('cy', y);
+    hole.setAttribute('r', 4.8);
+    hole.setAttribute('fill','url(#holeGrad)');
+    hole.setAttribute('stroke','#9a7b4e');
+    hole.setAttribute('stroke-width','1');
+    hole.setAttribute('data-idx', i);
+    hole.style.cursor = 'pointer';
+    hole.addEventListener('click', () => onHoleTap(i));
+    hole.addEventListener('touchend', (e) => { e.preventDefault(); onHoleTap(i); }, {passive:false});
+    gHoles.appendChild(hole);
+
+    // subtle outline for empty
+    const rim = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    rim.setAttribute('cx', x);
+    rim.setAttribute('cy', y);
+    rim.setAttribute('r', 6.8);
+    rim.setAttribute('fill','none');
+    rim.setAttribute('stroke','rgba(0,0,0,.06)');
+    gHoles.appendChild(rim);
+
+    holeNodes[i] = hole;
+  }
+
+  // Create pegs
+  const pegNodes = {};
+  function makePeg(i, selected=false){
+    const {x,y} = pos[i];
+    const peg = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    peg.setAttribute('cx', x);
+    peg.setAttribute('cy', y);
+    peg.setAttribute('r', 5.8);
+    peg.setAttribute('fill', selected ? 'url(#pegGradSel)' : 'url(#pegGrad)');
+    peg.setAttribute('stroke', selected ? '#16a34a' : '#1d4ed8');
+    peg.setAttribute('stroke-width','1.2');
+    peg.setAttribute('data-idx', i);
+    peg.style.cursor = 'pointer';
+    peg.addEventListener('click', () => onPegTap(i));
+    peg.addEventListener('touchend', (e) => { e.preventDefault(); onPegTap(i); }, {passive:false});
+    gPegs.appendChild(peg);
+    pegNodes[i] = peg;
+  }
+
+  // ---------- Game State ----------
+  let pieces = Array(HOLES+1).fill(false); // index 1..15
+  let selected = null;
+  const history = []; // stack of {from, over, to}
+  let choosingStart = false;
+  let hintOn = false;
+
+  function init(startEmpty=1){
+    // fill all then empty startEmpty
+    for (let i=1; i<=HOLES; i++){ pieces[i] = true; }
+    pieces[startEmpty] = false;
+    selected = null;
+    history.length = 0;
+    renderAll();
+    updateStats();
+    toast('Tap a peg to begin');
+  }
+
+  function pegsRemaining(){
+    let n=0; for (let i=1; i<=HOLES; i++) if (pieces[i]) n++;
+    return n;
+  }
+
+  function validMovesFrom(i){
+    if (!pieces[i]) return [];
+    const moves = [];
+    for (const m of MOVES){
+      if (m.from === i && pieces[m.over] && !pieces[m.to]) moves.push(m);
+    }
+    return moves;
+  }
+
+  function anyMovesExist(){
+    for (let i=1; i<=HOLES; i++){
+      if (validMovesFrom(i).length) return true;
+    }
+    return false;
+  }
+
+  // ---------- Interaction ----------
+  function onPegTap(i){
+    if (choosingStart){
+      if (!pieces[i]) { toast('Pick a hole that currently has a peg to remove.'); return; }
+      pieces[i] = false;
+      choosingStart = false;
+      renderAll();
+      updateStats();
+      toast('Start hole set. Game ready!');
+      return;
+    }
+    if (!pieces[i]) return;
+    if (selected === i){
+      selected = null;
+      renderAll();
+      return;
+    }
+    selected = i;
+    renderAll();
+  }
+
+  function onHoleTap(i){
+    if (choosingStart){
+      if (pieces[i]){
+        pieces[i] = false;
+        choosingStart = false;
+        renderAll();
+        updateStats();
+        toast('Start hole set. Good luck!');
+      }else{
+        toast('That hole is already empty. Choose a peg to remove.');
+      }
+      return;
+    }
+    if (selected == null) return;
+    const vm = validMovesFrom(selected);
+    const to = i;
+    const mv = vm.find(m => m.to === to);
+    if (!mv){
+      toast('Illegal move');
+      return;
+    }
+    // Execute move with a tiny animation
+    doMove(mv);
+  }
+
+  function doMove(mv){
+    const {from, over, to} = mv;
+    // animate
+    animatePeg(from, to, () => {
+      pieces[from] = false;
+      pieces[over] = false;
+      pieces[to] = true;
+      history.push(mv);
+      selected = null;
+      renderAll();
+      updateStats();
+      checkEnd();
+    });
+  }
+
+  function undo(){
+    const mv = history.pop();
+    if (!mv){ toast('Nothing to undo'); return; }
+    const {from, over, to} = mv;
+    pieces[from] = true;
+    pieces[over] = true;
+    pieces[to] = false;
+    selected = null;
+    renderAll();
+    updateStats();
+  }
+
+  function resetGame(){
+    hideWin();
+    const best = getBest();
+    init(best?.start ?? 1);
+  }
+
+  function setStartMode(){
+    choosingStart = true;
+    selected = null;
+    renderAll();
+    toast('Tap any peg to remove it as the starting empty hole.');
+  }
+
+  function randomStart(){
+    const r = 1 + Math.floor(Math.random()*HOLES);
+    init(r);
+    toast(`Random start: hole ${r} empty`);
+  }
+
+  // ---------- Rendering helpers ----------
+  function renderAll(){
+    // pegs
+    gPegs.innerHTML = '';
+    for (let i=1; i<=HOLES; i++){
+      if (pieces[i]) makePeg(i, i===selected);
+    }
+    // lines for selected peg
+    gLines.innerHTML = '';
+    if (selected != null){
+      const options = validMovesFrom(selected);
+      for (const m of options){
+        const p1 = pos[selected], p2 = pos[m.to];
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
+        line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
+        line.setAttribute('stroke', '#60a5fa');
+        line.setAttribute('stroke-width', '2.8');
+        line.setAttribute('stroke-linecap','round');
+        line.setAttribute('opacity','0.45');
+        gLines.appendChild(line);
+        // target pulse
+        const tgt = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        tgt.setAttribute('cx', p2.x); tgt.setAttribute('cy', p2.y);
+        tgt.setAttribute('r', 7.2);
+        tgt.setAttribute('fill','none');
+        tgt.setAttribute('stroke','#60a5fa');
+        tgt.setAttribute('stroke-width','1.8');
+        tgt.setAttribute('opacity','0.6');
+        gLines.appendChild(tgt);
+      }
+    }
+    // hints
+    gHints.innerHTML = '';
+    if (hintOn){
+      for (let i=1; i<=HOLES; i++){
+        if (!pieces[i]) continue;
+        const ms = validMovesFrom(i);
+        if (ms.length){
+          const {x,y} = pos[i];
+          const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+          ring.setAttribute('class','hint-dot');
+          ring.setAttribute('cx', x); ring.setAttribute('cy', y);
+          ring.setAttribute('r', 9.2);
+          gHints.appendChild(ring);
+        }
+      }
+    }
+  }
+
+  function animatePeg(from, to, done){
+    const peg = pegNodes[from];
+    if (!peg){ // if render hasn't created this specific node, just apply
+      done(); return;
+    }
+    const p1 = pos[from], p2 = pos[to];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    let t = 0;
+    const DURATION = 110; // ms
+    const start = performance.now();
+    function tick(now){
+      t = Math.min(1, (now - start) / DURATION);
+      const ease = t<.5 ? (2*t*t) : ( -1 + (4 - 2*t)*t ); // smooth-ish
+      peg.setAttribute('cx', p1.x + dx*ease);
+      peg.setAttribute('cy', p1.y + dy*ease);
+      if (t < 1){
+        requestAnimationFrame(tick);
+      }else{
+        done();
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Status / Stats ----------
+  const elPegs = document.getElementById('pegsLeft');
+  const elMoves = document.getElementById('movesMade');
+  const elBest  = document.getElementById('bestScore');
+  const statusText = document.getElementById('statusText');
+
+  function updateStats(){
+    elPegs.textContent = pegsRemaining();
+    elMoves.textContent = history.length;
+    const best = getBest();
+    elBest.textContent = best ? best.pegs : '—';
+    statusText.textContent = anyMovesExist()
+      ? 'Select a peg to see its legal jumps'
+      : 'No moves remain';
+  }
+
+  function logHighScore(pegs){
+    const name = prompt('High score! Enter your name:');
+    if(!name) return;
+    const scores = JSON.parse(localStorage.getItem('pegHighScores') || '[]');
+    scores.push({board: 'triangle', name, score: pegs, date: Date.now()});
+    localStorage.setItem('pegHighScores', JSON.stringify(scores));
+  }
+
+  function checkEnd(){
+    const left = pegsRemaining();
+    if (left === 1){
+      saveBest(left);
+      logHighScore(left);
+      win();
+    }else if (!anyMovesExist()){
+      saveBest(left);
+      toast(`No moves. Pegs left: ${left}`);
+    }
+  }
+
+  function win(){
+    showConfetti();
+    showWin();
+  }
+
+  // ---------- Hints Toggle ----------
+  const btnHint = document.getElementById('btnHint');
+  btnHint.addEventListener('click', () => {
+    hintOn = !hintOn;
+    btnHint.setAttribute('aria-pressed', String(hintOn));
+    btnHint.textContent = `Hints: ${hintOn ? 'On' : 'Off'}`;
+    renderAll();
+  });
+
+  // ---------- Controls ----------
+  document.getElementById('btnUndo').addEventListener('click', undo);
+  document.getElementById('btnReset').addEventListener('click', resetGame);
+  document.getElementById('btnChooseStart').addEventListener('click', setStartMode);
+  document.getElementById('btnRandomStart').addEventListener('click', randomStart);
+  const colorInput = document.getElementById('pegColor');
+  colorInput.value = pegColor;
+  colorInput.addEventListener('input', (e) => {
+    pegColor = e.target.value;
+    if (pegGradStop) pegGradStop.setAttribute('stop-color', pegColor);
+    renderPegs();
+  });
+
+  // Keyboard helpers
+  boardSvg.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape'){ selected = null; renderAll(); }
+    if (e.key === 'Backspace'){ e.preventDefault(); undo(); }
+  });
+
+  // ---------- Toast ----------
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+  }
+
+  // ---------- Win Modal & Confetti ----------
+  const winModal = document.getElementById('winModal');
+  window.hideWin = () => { winModal.classList.remove('show'); winModal.setAttribute('aria-hidden','true'); }
+  function showWin(){
+    winModal.classList.add('show');
+    winModal.setAttribute('aria-hidden','false');
+  }
+  const confetti = document.getElementById('confetti');
+  function showConfetti(){
+    confetti.innerHTML='';
+    const colors = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6'];
+    for (let i=0;i<90;i++){
+      const p = document.createElement('i');
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.background = colors[i%colors.length];
+      p.style.animationDelay = (Math.random()*0.6) + 's';
+      p.style.transform = `rotate(${Math.random()*360}deg)`;
+      confetti.appendChild(p);
+    }
+    setTimeout(()=>confetti.innerHTML='', 1800);
+  }
+
+  // ---------- Local Best ----------
+  function getBest(){
+    try{
+      const j = localStorage.getItem('pegBest');
+      return j ? JSON.parse(j) : null;
+    }catch(e){ return null; }
+  }
+  function saveBest(pegs){
+    const start = pieces.findIndex((v, i)=> i>0 && v===false) || 1;
+    const best = getBest();
+    if (!best || pegs < best.pegs){
+      localStorage.setItem('pegBest', JSON.stringify({pegs, start, date: Date.now()}));
+    }
+  }
+
+  // ---------- Demo solution (from blog: start with hole 1 empty) ----------
+  // Sequence uses 1..15 numbering.
+  const demoMoves = [
+    [4,1],[6,4],[1,6],
+    [7,2],[13,4],[2,7],
+    [10,8],[7,9],[15,13],[12,14],
+    [6,13],[14,12],[11,13]
+  ];
+  const btnDemo = document.getElementById('btnDemo');
+  btnDemo.addEventListener('click', playDemo);
+  let demoPlaying = false;
+
+  function playDemo(){
+    if (demoPlaying) return;
+    demoPlaying = true;
+    init(1); // ensure hole 1 empty
+    // Turn each pair [from,to] into a full move using our computed MOVES and current board state
+    let i = 0;
+    function step(){
+      if (i >= demoMoves.length){ demoPlaying = false; return; }
+      const [from,to] = demoMoves[i];
+      // find the legal mv matching current state
+      const vms = validMovesFrom(from);
+      const mv = vms.find(m => m.to === to);
+      if (!mv){ demoPlaying = false; toast('Demo interrupted'); return; }
+      doMove(mv);
+      i++;
+      setTimeout(step, 180);
+    }
+    setTimeout(step, 250);
+  }
+
+  // ---------- Boot ----------
+  init(1);
+})();</script>
+</body>
+</html>

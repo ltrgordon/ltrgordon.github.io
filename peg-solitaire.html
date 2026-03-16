@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Peg Solitaire — Multi Board</title>
+  <style>
+    :root{
+      --bg: #f3efe7;
+      --panel: #ffffff;
+      --ink: #1d2540;
+      --muted: #6b7280;
+      --accent: #3b82f6;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --gold: #f59e0b;
+      --shadow: 0 6px 18px rgba(0,0,0,0.12);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 700px at 10% -20%, #fff 0%, #f7f4ee 70%, #ece7df 100%),
+        linear-gradient(160deg, #f7f3ea, #efe9df);
+      background-attachment: fixed;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: clamp(12px, 2.5vw, 28px);
+      display:flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vw, 18px);
+    }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    h1{
+      font-size: clamp(20px, 4.2vw, 34px);
+      margin:0;
+      letter-spacing: 0.2px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .board-card{
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(10px, 2vw, 18px);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .board-shell{
+      position:relative;
+      border-radius: 14px;
+      background:
+        radial-gradient(60% 100% at 50% 0%, rgba(255,255,255,.8), rgba(255,255,255,0)),
+        conic-gradient(#f8efe0, #f3e6d2, #f8efe0);
+      border: 1px solid #eadfcf;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 -6px 20px rgba(0,0,0,.06);
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      max-width: 650px;
+      margin: 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    @media (min-width: 920px){
+      .board-card{ grid-template-columns: 1fr 360px; align-items: center; }
+      .board-shell{ max-width: 520px; }
+    }
+    svg{ width: 100%; height: 100%; }
+
+    .ui{
+      display:grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .panel{
+      background: #fff;
+      border:1px solid #eee7db;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 10px;
+      text-align:center;
+    }
+    .stat{
+      background: linear-gradient(180deg,#fff,#f9f6f0);
+      border:1px solid #eee7db;
+      border-radius: 12px;
+      padding: 10px 6px;
+    }
+    .stat .big{ font-weight:700; font-size: 1.25rem; }
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .controls .full{ grid-column: 1 / -1; }
+    button, select, input[type="color"]{
+      -webkit-appearance:none; appearance:none;
+      border: none;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      cursor: pointer;
+      background: linear-gradient(180deg, #eef5ff, #dff0ff);
+      border:1px solid #cfe5ff;
+      color: #0f2b61;
+      box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 1px 3px rgba(0,0,0,.05);
+      transition: transform .03s ease, box-shadow .2s ease;
+      touch-action: manipulation;
+    }
+    button:active{ transform: translateY(1px); }
+    .danger{ background: linear-gradient(180deg, #ffecec, #ffdede); border-color:#ffd1d1; color:#7f1d1d; }
+    .accent{ background: linear-gradient(180deg, #e7fff3, #d9ffed); border-color:#baf7d7; color:#065f46; }
+    .gold{ background: linear-gradient(180deg, #fff7e6, #ffefcb); border-color:#fbe1a4; color:#7a5200; }
+    .toggle{ background: linear-gradient(180deg, #f5f5ff, #ececff); border-color:#dfdcff; color:#2f2b7d; }
+
+    .help{
+      font-size: .95rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .help a{ color: var(--accent); font-weight:600; text-decoration: none; }
+    .help a:focus, .help a:hover{ text-decoration: underline; }
+
+    .hint-dot{
+      stroke: var(--gold);
+      stroke-width: 2.2;
+      fill: none;
+      stroke-dasharray: 1.5 3.5;
+      animation: dash 1.4s linear infinite;
+      opacity: .9;
+      pointer-events: none;
+    }
+    @keyframes dash{ to{ stroke-dashoffset: -10; } }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #111827;
+      color:#fff;
+      padding: 12px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      font-size: .95rem;
+      z-index: 40;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .24s ease, transform .24s ease;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-4px); }
+
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      z-index:50;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .2s ease;
+    }
+    .modal.show{ opacity:1; pointer-events:auto; }
+    .modal .box{
+      width: min(560px, 94vw);
+      border-radius: 16px;
+      background: #fff;
+      padding: 24px;
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Peg Solitaire</h1>
+    </header>
+
+    <section class="board-card" aria-label="Peg solitaire board">
+      <div class="board-shell">
+        <svg id="board" viewBox="0 0 100 100" role="application" aria-label="Peg board" tabindex="0"></svg>
+        <div class="confetti" id="confetti"></div>
+      </div>
+
+      <div class="ui">
+        <div class="panel stats">
+          <div class="stat" aria-label="Pegs Remaining"><div class="big" id="pegsLeft">0</div><div class="label">Pegs left</div></div>
+          <div class="stat" aria-label="Moves Made"><div class="big" id="movesMade">0</div><div class="label">Moves</div></div>
+          <div class="stat" aria-label="Best Score"><div class="big" id="bestScore">—</div><div class="label">Best (pegs)</div></div>
+        </div>
+
+        <div class="controls">
+          <select id="boardType" class="full" aria-label="Choose board">
+            <option value="triangle">Triangle (15)</option>
+            <option value="english">English (33)</option>
+            <option value="european">European (37)</option>
+          </select>
+
+          <button id="btnUndo" class="toggle" title="Undo last move (⌫)">↶ Undo</button>
+          <button id="btnHint" class="toggle" aria-pressed="false">Hints: Off</button>
+
+          <button id="btnReset" class="danger">Reset</button>
+          <button id="btnChooseStart" class="gold">Set Start Hole</button>
+
+          <button id="btnRandomStart" class="accent">Random Start</button>
+          <button id="btnDemo" class="accent full">👀 Watch a Classic Win</button>
+          <input type="color" id="pegColor" class="full" value="#77a7ff" aria-label="Choose peg color" />
+        </div>
+
+        <div class="panel help">
+          <strong>How to play:</strong> Tap a peg to select it, then tap a highlighted hole two spaces away to jump over one peg. The jumped peg is removed. Objective: finish with a single peg.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal" id="winModal" aria-hidden="true">
+    <div class="box">
+      <h2>🏆 You did it!</h2>
+      <p>Only one peg remains. That’s “genius” status.</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top: 12px;">
+        <button onclick="hideWin()">Close</button>
+        <button class="accent" onclick="resetGame()">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  let pegColor = '#77a7ff';
+  let pegGradStop = null;
+
+  const boardSvg = document.getElementById('board');
+  const boardTypeSel = document.getElementById('boardType');
+
+  const pegsLeftEl = document.getElementById('pegsLeft');
+  const movesMadeEl = document.getElementById('movesMade');
+  const bestScoreEl = document.getElementById('bestScore');
+
+  const btnUndo = document.getElementById('btnUndo');
+  const btnHint = document.getElementById('btnHint');
+  const btnReset = document.getElementById('btnReset');
+  const btnChooseStart = document.getElementById('btnChooseStart');
+  const btnRandomStart = document.getElementById('btnRandomStart');
+  const btnDemo = document.getElementById('btnDemo');
+  const colorInput = document.getElementById('pegColor');
+
+  colorInput.value = pegColor;
+  colorInput.addEventListener('input', (e) => {
+    pegColor = e.target.value;
+    if (pegGradStop) pegGradStop.setAttribute('stop-color', pegColor);
+    renderPegs();
+  });
+
+  let HOLES = 0;
+  let MOVES = [];
+  let pos = {};
+  let holeNodes = {};
+  let pegNodes = {};
+  let pieces = [];
+  let selected = null;
+  let history = [];
+  let choosingStart = false;
+  let hintOn = false;
+  let currentBoard = 'triangle';
+  const bestScores = {};
+  const demoSequences = {
+    triangle: [{from:1,over:2,to:4},{from:4,over:2,to:1}],
+    english: [
+      {from:5,over:10,to:17},{from:8,over:9,to:10},{from:1,over:4,to:9},{from:3,over:2,to:1},
+      {from:10,over:9,to:8},{from:7,over:8,to:9},{from:11,over:6,to:3},{from:13,over:12,to:11},
+      {from:16,over:9,to:4},{from:1,over:4,to:9},{from:14,over:15,to:16},{from:16,over:9,to:4},
+      {from:18,over:17,to:16},{from:20,over:19,to:18},{from:18,over:11,to:6},{from:3,over:6,to:11},
+      {from:23,over:16,to:9},{from:4,over:9,to:16},{from:21,over:22,to:23},{from:24,over:23,to:22},
+      {from:30,over:25,to:18},{from:27,over:26,to:25},{from:31,over:28,to:23},{from:16,over:23,to:28},
+      {from:33,over:32,to:31},{from:31,over:28,to:23},{from:22,over:23,to:24},{from:24,over:25,to:26},
+      {from:11,over:18,to:25},{from:26,over:25,to:24},{from:29,over:24,to:17}
+    ],
+    european: null // TODO
+  };
+
+  function buildTriangle(){
+    const N = 5; // rows
+    HOLES = 15;
+    pos = {};
+    MOVES = [];
+    const idxToRC = {}; const rcToIdx = {};
+    let idx = 1;
+    for (let r=1; r<=N; r++){
+      for (let c=1; c<=r; c++){
+        idxToRC[idx] = {r,c};
+        rcToIdx[`${r}_${c}`] = idx; idx++;
+      }
+    }
+    const dirs = [
+      {dr:0,dc:2},{dr:0,dc:-2},{dr:2,dc:0},{dr:-2,dc:0},{dr:2,dc:2},{dr:-2,dc:-2}
+    ];
+    const overOf = (r1,c1,r2,c2)=>({r:(r1+r2)/2,c:(c1+c2)/2});
+    for (let a=1;a<=HOLES;a++){
+      const {r:ra,c:ca}=idxToRC[a];
+      for (const {dr,dc} of dirs){
+        const rb=ra+dr, cb=ca+dc; if (rb<1||rb>N||cb<1||cb>rb) continue;
+        const over=overOf(ra,ca,rb,cb);
+        if (Number.isInteger(over.r)&&Number.isInteger(over.c)){
+          const b=rcToIdx[`${rb}_${cb}`];
+          const o=rcToIdx[`${over.r}_${over.c}`];
+          if (b&&o) MOVES.push({from:a,over:o,to:b});
+        }
+      }
+    }
+    const s=16; const h=Math.sqrt(3)/2*s; const centerX=50; const topY=8;
+    for (let r=1;r<=N;r++){
+      const y=topY+(r-1)*h*1.2;
+      const rowWidth=(r-1)*s;
+      const x0=centerX-rowWidth/2;
+      for (let c=1;c<=r;c++){
+        const i=rcToIdx[`${r}_${c}`];
+        const x=x0+(c-1)*s; pos[i]={x,y};
+      }
+    }
+    const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    tri.setAttribute('points', `${centerX},${topY-3} ${centerX - (N-1)*s/2 - 10},${topY + (N-1)*h*1.2 + 10} ${centerX + (N-1)*s/2 + 10},${topY + (N-1)*h*1.2 + 10}`);
+    tri.setAttribute('fill','url(#wood)');
+    tri.setAttribute('stroke','#ad8a57');
+    tri.setAttribute('stroke-width','1.2');
+    boardSvg.appendChild(tri);
+  }
+
+  function buildGridBoard(layout){
+    // layout: {rows:7, start:[...], end:[...]}
+    const rows=7; const start=layout.start; const end=layout.end;
+    HOLES=0; pos={}; MOVES=[];
+    const rcToIdx={}; const idxToRC={};
+    for(let r=0;r<rows;r++){
+      for(let c=start[r]; c<=end[r]; c++){
+        HOLES++; rcToIdx[`${r}_${c}`]=HOLES; idxToRC[HOLES]={r,c};
+      }
+    }
+    const dirs=[{dr:0,dc:2},{dr:0,dc:-2},{dr:2,dc:0},{dr:-2,dc:0}];
+    const overOf=(r1,c1,r2,c2)=>({r:(r1+r2)/2,c:(c1+c2)/2});
+    for(let a=1;a<=HOLES;a++){
+      const {r:ra,c:ca}=idxToRC[a];
+      for(const {dr,dc} of dirs){
+        const rb=ra+dr, cb=ca+dc; if(rb<0||rb>=rows) continue;
+        if(cb<start[rb]||cb>end[rb]) continue;
+        const over=overOf(ra,ca,rb,cb);
+        if(Number.isInteger(over.r)&&Number.isInteger(over.c)){
+          if(over.r>=0&&over.r<rows && over.c>=start[over.r] && over.c<=end[over.r]){
+            const b=rcToIdx[`${rb}_${cb}`];
+            const o=rcToIdx[`${over.r}_${over.c}`];
+            if(b&&o) MOVES.push({from:a,over:o,to:b});
+          }
+        }
+      }
+    }
+    const s=12; const offset=50-3*s;
+    for(let r=0;r<rows;r++){
+      for(let c=start[r]; c<=end[r]; c++){
+        const i=rcToIdx[`${r}_${c}`];
+        const x=offset+c*s; const y=offset+r*s; pos[i]={x,y};
+      }
+    }
+    if(layout.shape==='cross'){
+      const x0=offset - s/2, y0=offset - s/2;
+      const path=`M${x0+2*s},${y0} L${x0+5*s},${y0} L${x0+5*s},${y0+2*s} L${x0+7*s},${y0+2*s} L${x0+7*s},${y0+5*s} L${x0+5*s},${y0+5*s} L${x0+5*s},${y0+7*s} L${x0+2*s},${y0+7*s} L${x0+2*s},${y0+5*s} L${x0},${y0+5*s} L${x0},${y0+2*s} L${x0+2*s},${y0+2*s} Z`;
+      const shp=document.createElementNS('http://www.w3.org/2000/svg','path');
+      shp.setAttribute('d',path);
+      shp.setAttribute('fill','url(#wood)');
+      shp.setAttribute('stroke','#ad8a57');
+      shp.setAttribute('stroke-width','1.2');
+      boardSvg.appendChild(shp);
+    }else if(layout.shape==='circle'){
+      const cir=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      cir.setAttribute('cx',50); cir.setAttribute('cy',50); cir.setAttribute('r',38);
+      cir.setAttribute('fill','url(#wood)');
+      cir.setAttribute('stroke','#ad8a57');
+      cir.setAttribute('stroke-width','1.2');
+      boardSvg.appendChild(cir);
+    }
+  }
+
+  function buildBoard(type){
+    currentBoard = type;
+    boardSvg.innerHTML='';
+    const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+    defs.innerHTML=`
+      <radialGradient id="pegGrad" cx="35%" cy="30%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop id="pegGradStop" offset="100%" stop-color="${pegColor}"/>
+      </radialGradient>
+      <radialGradient id="pegGradSel" cx="30%" cy="30%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#22c55e"/>
+      </radialGradient>
+      <radialGradient id="holeGrad" cx="50%" cy="45%">
+        <stop offset="0%" stop-color="#dac6a8"/>
+        <stop offset="100%" stop-color="#cba777"/>
+      </radialGradient>
+      <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#f3e2c8"/>
+        <stop offset="100%" stop-color="#e5cda6"/>
+      </linearGradient>
+      <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="rgba(0,0,0,.25)"/>
+      </filter>`;
+    boardSvg.appendChild(defs);
+    pegGradStop = defs.querySelector('#pegGradStop');
+
+    if(type==='triangle') buildTriangle();
+    else if(type==='english') buildGridBoard({start:[2,2,0,0,0,2,2], end:[4,4,6,6,6,4,4], shape:'cross'});
+    else buildGridBoard({start:[2,1,0,0,0,1,2], end:[4,5,6,6,6,5,4], shape:'circle'});
+
+    holeNodes={}; pegNodes={};
+    const gHints=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const gLines=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const gHoles=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const gPegs=document.createElementNS('http://www.w3.org/2000/svg','g');
+    gPegs.setAttribute('filter','url(#soft)');
+    boardSvg.appendChild(gHints); boardSvg.appendChild(gLines); boardSvg.appendChild(gHoles); boardSvg.appendChild(gPegs);
+
+    for(let i=1;i<=HOLES;i++){
+      const {x,y}=pos[i];
+      const hole=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hole.setAttribute('cx',x); hole.setAttribute('cy',y); hole.setAttribute('r',4.8);
+      hole.setAttribute('fill','url(#holeGrad)'); hole.setAttribute('stroke','#9a7b4e'); hole.setAttribute('stroke-width','1');
+      hole.setAttribute('data-idx',i); hole.style.cursor='pointer';
+      hole.addEventListener('click',()=>onHoleTap(i));
+      hole.addEventListener('touchend',(e)=>{e.preventDefault();onHoleTap(i);},{passive:false});
+      gHoles.appendChild(hole);
+      const rim=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      rim.setAttribute('cx',x); rim.setAttribute('cy',y); rim.setAttribute('r',6.8);
+      rim.setAttribute('fill','none'); rim.setAttribute('stroke','rgba(0,0,0,.06)');
+      gHoles.appendChild(rim);
+      holeNodes[i]=hole;
+    }
+
+    function makePeg(i,selected=false){
+      const {x,y}=pos[i];
+      const peg=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      peg.setAttribute('cx',x); peg.setAttribute('cy',y); peg.setAttribute('r',5.8);
+      peg.setAttribute('fill', selected ? 'url(#pegGradSel)' : 'url(#pegGrad)');
+      peg.setAttribute('stroke', selected ? '#16a34a' : '#1d4ed8');
+      peg.setAttribute('stroke-width','1.2');
+      peg.setAttribute('data-idx',i); peg.style.cursor='pointer';
+      peg.addEventListener('click',()=>onPegTap(i));
+      peg.addEventListener('touchend',(e)=>{e.preventDefault();onPegTap(i);},{passive:false});
+      gPegs.appendChild(peg); pegNodes[i]=peg;
+    }
+    window.makePeg=makePeg; // used in renderPegs
+  }
+
+  function init(startEmpty){
+    pieces=Array(HOLES+1).fill(true);
+    if(startEmpty) pieces[startEmpty]=false; else pieces[defaultStart()]=false;
+    selected=null; history=[]; choosingStart=false; renderAll(); updateStats();
+    toast('Tap a peg to begin');
+  }
+
+  function defaultStart(){
+    if(currentBoard==='triangle') return 1;
+    // center hole
+    const center = Math.floor(HOLES/2)+1; // not exact but works for grid
+    if(currentBoard!=='triangle'){ // compute r=3,c=3 index
+      // find index where x,y at center
+      let idx=1; for(let i=1;i<=HOLES;i++){const {x,y}=pos[i]; if(Math.abs(x-50)<1e-6 && Math.abs(y-50)<1e-6){idx=i;break;}}
+      return idx;
+    }
+    return center;
+  }
+
+  function pegsRemaining(){ let n=0; for(let i=1;i<=HOLES;i++) if(pieces[i]) n++; return n; }
+
+  function validMovesFrom(i){ if(!pieces[i]) return []; const moves=[]; for(const m of MOVES){ if(m.from===i && pieces[m.over] && !pieces[m.to]) moves.push(m);} return moves; }
+
+  function anyMovesExist(){ for(let i=1;i<=HOLES;i++){ if(validMovesFrom(i).length) return true; } return false; }
+
+  function onPegTap(i){
+    if(choosingStart){ if(!pieces[i]){toast('Pick a hole that has a peg to remove.'); return;} pieces[i]=false; choosingStart=false; renderAll(); updateStats(); toast('Start hole set.'); return; }
+    if(!pieces[i]) return; if(selected===i){ selected=null; renderAll(); return; } selected=i; renderAll(); }
+
+  function onHoleTap(i){
+    if(choosingStart){ if(pieces[i]){ pieces[i]=false; choosingStart=false; renderAll(); updateStats(); toast('Start hole set.'); } else{ toast('That hole is already empty.'); } return; }
+    if(selected==null) return; const vm=validMovesFrom(selected); const mv=vm.find(m=>m.to===i); if(!mv){ toast('Illegal move'); return; } doMove(mv); }
+
+  function doMove(mv){ const {from,over,to}=mv; pieces[from]=false; pieces[over]=false; pieces[to]=true; history.push(mv); selected=null; renderAll(); updateStats(); checkWin(); }
+
+  function undo(){ const mv=history.pop(); if(!mv){ toast('Nothing to undo'); return;} pieces[mv.from]=true; pieces[mv.over]=true; pieces[mv.to]=false; selected=null; renderAll(); updateStats(); }
+
+  function resetGame(){
+    document.getElementById('winModal').classList.remove('show');
+    init(defaultStart());
+  }
+
+  function chooseStart(){ choosingStart=true; toast('Tap any peg to remove as starting hole.'); }
+
+  function randomStart(){ const r=Math.floor(Math.random()*HOLES)+1; init(r); toast(`Random start: hole ${r} empty`); }
+
+  function renderPegs(){ const gPegs=boardSvg.querySelector('g:last-child'); gPegs.innerHTML=''; for(let i=1;i<=HOLES;i++) if(pieces[i]) makePeg(i, i===selected); }
+
+  function renderHints(){
+    const gHints = boardSvg.querySelector('g');
+    gHints.innerHTML = '';
+    if (!hintOn) return;
+    for (let i = 1; i <= HOLES; i++) {
+      if (!pieces[i]) continue;
+      const moves = validMovesFrom(i);
+      if (moves.length) {
+        const { x, y } = pos[i];
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', x);
+        ring.setAttribute('cy', y);
+        ring.setAttribute('r', 8.5);
+        ring.setAttribute('class', 'hint-dot');
+        gHints.appendChild(ring);
+      }
+    }
+    if (selected != null) {
+      const vm = validMovesFrom(selected);
+      for (const m of vm) {
+        const { x, y } = pos[m.to];
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', 6);
+        dot.setAttribute('class', 'hint-dot');
+        gHints.appendChild(dot);
+      }
+    }
+  }
+
+  function renderLines(){ const gLines=boardSvg.querySelectorAll('g')[1]; gLines.innerHTML=''; }
+
+  function renderAll(){ renderPegs(); renderHints(); renderLines(); }
+
+  function updateStats(){ pegsLeftEl.textContent=pegsRemaining(); movesMadeEl.textContent=history.length; const best=bestScores[currentBoard]; if(best==null || pegsRemaining()<best){ bestScores[currentBoard]=pegsRemaining(); } bestScoreEl.textContent=bestScores[currentBoard]??'—'; }
+
+  function logHighScore(pegs){
+    const name = prompt('High score! Enter your name:');
+    if(!name) return;
+    const scores = JSON.parse(localStorage.getItem('pegHighScores') || '[]');
+    scores.push({board: currentBoard, name, score: pegs, date: Date.now()});
+    localStorage.setItem('pegHighScores', JSON.stringify(scores));
+  }
+
+  function checkWin(){
+    const left = pegsRemaining();
+    if(!anyMovesExist()){
+      if ((currentBoard === 'triangle' && left === 1) ||
+          ((currentBoard === 'english' || currentBoard === 'european') && left <= 5)) {
+        logHighScore(left);
+      }
+      if(left === 1){
+        bestScores[currentBoard] = 1;
+        showWin();
+      } else {
+        toast(`No moves. Pegs left: ${left}`);
+      }
+    }
+  }
+
+  function toggleHint(){ hintOn=!hintOn; btnHint.textContent = `Hints: ${hintOn?'On':'Off'}`; btnHint.setAttribute('aria-pressed', hintOn); renderHints(); }
+
+  function showWin(){ document.getElementById('winModal').classList.add('show'); }
+  window.hideWin = () => document.getElementById('winModal').classList.remove('show');
+
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),1400); }
+
+  function demo(){
+    const seq = demoSequences[currentBoard];
+    if(!seq){ toast('Demo not available for this board'); return; }
+    resetGame();
+    setTimeout(() => demoPlay(seq), 300);
+  }
+
+  function demoPlay(seq){ let i=0; function step(){ if(i>=seq.length){ return; } doMove(seq[i++]); setTimeout(step,400); } step(); }
+
+  // Event listeners
+  btnUndo.addEventListener('click', undo);
+  btnReset.addEventListener('click', resetGame);
+  btnChooseStart.addEventListener('click', chooseStart);
+  btnRandomStart.addEventListener('click', randomStart);
+  btnHint.addEventListener('click', toggleHint);
+  btnDemo.addEventListener('click', demo);
+  boardTypeSel.addEventListener('change', () => { buildBoard(boardTypeSel.value); resetGame(); });
+
+  // init
+  buildBoard(boardTypeSel.value);
+  init(defaultStart());
+})();
+</script>
+</body>
+</html>
+

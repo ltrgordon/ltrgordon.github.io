@@ -1,6 +1,6 @@
 import { buildLevelFromArrays, buildWorld, setLevel, LEVEL, H, W, tileAt, isSolid, groundTopAt, setEnemyConfigs, BASE, EXT } from './entities.js';
 import { createSpecialMoves } from './special-moves.js';
-import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep } from './input.js';
+import { initInput, keys, setWorld as inputSetWorld, setSpecialMoves, setHUD, unlockAudio, playBeep, consumeReturnToMenu } from './input.js';
 import { update as updatePhysics } from './physics.js';
 import { initRenderer, draw, fitCanvas, ellipsePath, setBackdrop } from './rendering.js';
 
@@ -28,9 +28,11 @@ try{
 
 // Global variables that will be initialized when DOM is ready
 let canvas, ctx, HUD;
-let menuEl, levelSelect, levelGrid, charGrid, charPreview, charPrevCtx, charSelect, startBtn, editorBtn, charPreviewWrap;
+let menuEl, worldGrid, levelSelect, levelGrid, levelPrompt, charGrid, charPreview, charPrevCtx, charSelect, startBtn, editorBtn, charPreviewWrap;
 let selectedLevelFile = 'level1.json';
+let selectedWorld = null;
 let selectedChar = 'lucy';
+let levelsByWorld = new Map();
 
 const CHARACTERS = [
   { id:'lucy', name:'Lucy', age:8, bio:'Gymnast', colors:{hat:'#c2385f', outfit:'#ff5fa2', hair:'#f2d16b', accent:'#7e1b3a'} },
@@ -120,17 +122,10 @@ async function discoverLevels(){
     console.log('Running from file system - using default levels');
     const list = [
       {file: 'level1.json', name: '1-1'},
-      {file: 'level2.json', name: '1-2'}
+      {file: 'level2.json', name: '1-2'},
+      {file: 'level2-1.json', name: '2-1'}
     ];
-    levelSelect.innerHTML = '';
-    for (const ent of list){ 
-      const opt=document.createElement('option'); 
-      opt.value=ent.file; 
-      opt.textContent=ent.name; 
-      levelSelect.appendChild(opt); 
-    }
-    buildLevelGrid(list);
-    selectedLevelFile = 'level1.json';
+    setupWorldLevelSelect(list);
     return;
   }
   
@@ -152,12 +147,61 @@ async function discoverLevels(){
     levelSelect.innerHTML = '';
     for (const ent of list){ const opt=document.createElement('option'); opt.value=ent.file; opt.textContent=ent.name; levelSelect.appendChild(opt); }
   }
-  buildLevelGrid(list);
-  selectedLevelFile = (list[0] && list[0].file) || 'level1.json';
+  setupWorldLevelSelect(list);
 }
+
+function setupWorldLevelSelect(list){
+  levelsByWorld = new Map();
+  list.forEach((ent)=>{
+    const match = String(ent.name || '').match(/^(\d+)-/);
+    const worldId = match ? match[1] : '1';
+    if (!levelsByWorld.has(worldId)) levelsByWorld.set(worldId, []);
+    levelsByWorld.get(worldId).push(ent);
+  });
+  buildWorldGrid([...levelsByWorld.keys()].sort((a,b)=>Number(a)-Number(b)));
+  selectedWorld = null;
+  buildLevelGrid([]);
+  if (levelPrompt) levelPrompt.textContent = 'Choose a world to view levels.';
+  if (levelGrid) levelGrid.classList.add('locked');
+  levelSelect.innerHTML = '';
+  selectedLevelFile = '';
+}
+
+function buildWorldGrid(worlds){
+  if (!worldGrid) return;
+  worldGrid.innerHTML = '';
+  worlds.forEach((worldId)=>{
+    const tile = document.createElement('button');
+    tile.className = 'world-tile';
+    tile.textContent = `World ${worldId}`;
+    tile.dataset.world = worldId;
+    tile.addEventListener('click', ()=>{
+      worldGrid.querySelectorAll('.world-tile').forEach(el=> el.classList.remove('active'));
+      tile.classList.add('active');
+      selectedWorld = worldId;
+      buildLevelGrid(levelsByWorld.get(worldId) || []);
+      if (levelPrompt) levelPrompt.textContent = `World ${worldId} levels`;
+      if (levelGrid) levelGrid.classList.remove('locked');
+      playBeep(540,0.06,0.06);
+    });
+    worldGrid.appendChild(tile);
+  });
+}
+
 function buildLevelGrid(entries){
   if (!levelGrid) return;
   levelGrid.innerHTML = '';
+  levelSelect.innerHTML = '';
+  if (!entries.length){
+    selectedLevelFile = '';
+    return;
+  }
+  entries.forEach((ent)=>{
+    const opt=document.createElement('option');
+    opt.value=ent.file;
+    opt.textContent=ent.name;
+    levelSelect.appendChild(opt);
+  });
   entries.forEach((ent, idx)=>{
     const tile = document.createElement('button');
     tile.className = 'level-tile' + (idx===0?' active':'');
@@ -172,9 +216,21 @@ function buildLevelGrid(entries){
     });
     levelGrid.appendChild(tile);
   });
+  selectedLevelFile = entries[0].file;
+  levelSelect.value = selectedLevelFile;
 }
 async function startFromMenu(){
   unlockAudio();
+  if (!selectedWorld){
+    if (levelPrompt) levelPrompt.textContent = 'Select a world first.';
+    playBeep(320,0.08,0.08);
+    return;
+  }
+  if (!selectedLevelFile){
+    if (levelPrompt) levelPrompt.textContent = `Select a level in World ${selectedWorld}.`;
+    playBeep(320,0.08,0.08);
+    return;
+  }
   const levelFile = selectedLevelFile || levelSelect.value || 'level1.json';
   
   // Try to load from JSON first, fallback to built-in data if that fails
@@ -228,7 +284,7 @@ function setupButtonEventListeners(){
     startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startFromMenu(); });
   }
   if (editorBtn){
-    const openEditor = ()=>{ window.location.href = 'editor.html'; };
+    const openEditor = ()=>{ window.location.href = 'level-editor/index.html'; };
     editorBtn.addEventListener('click', openEditor);
     editorBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); openEditor(); });
   }
@@ -245,12 +301,30 @@ function resetGame(){
   if (world && world.player) world.player.charId = selectedChar;
 }
 
+// Return to main menu -----------------------------------------------------
+function returnToMainMenu(){
+  if (world) {
+    world.state = 'menu';
+  }
+  HUD.msg.textContent = 'Select a level and character to play';
+  if (menuEl) {
+    menuEl.classList.remove('hidden');
+  }
+  playBeep(520,0.08,0.08);
+}
+
 // Main loop ---------------------------------------------------------------
 let last=0;
 function loop(ts){
   if (!last) last=ts;
   const dt = Math.min(1/60, (ts-last)/1000);
   last = ts;
+  
+  // Check for return to menu request
+  if (consumeReturnToMenu()) {
+    returnToMainMenu();
+  }
+  
   if (!menuEl || menuEl.classList.contains('hidden')){
     if (world) {
       updatePhysics(world, keys, HUD, dt, resetGame, SPECIAL_MOVES);
@@ -291,8 +365,10 @@ async function initMenu(){
 
   // Menu elements
   menuEl = document.getElementById('menu');
+  worldGrid = document.getElementById('worldGrid');
   levelSelect = document.getElementById('levelSelect');
   levelGrid = document.getElementById('levelGrid');
+  levelPrompt = document.getElementById('levelPrompt');
   charGrid = document.getElementById('charGrid');
   charPreview = document.getElementById('charPreview');
   charPrevCtx = charPreview ? charPreview.getContext('2d') : null;

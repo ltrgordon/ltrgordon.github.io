@@ -3,7 +3,9 @@ const {
   getLensRefractiveIndex,
   getLensMaterialDisplayName,
   getHandicapHeight,
-  getHandicapDisplayName
+  getHandicapDisplayName,
+  getPaddleSizeMultiplier,
+  getPaddleSizeDisplayName
 } = require('../beamer/utils.js');
 
 // Refractive index tests
@@ -28,3 +30,12 @@ assert.strictEqual(getHandicapDisplayName('extra_large'), 'Extra Large');
 assert.strictEqual(getHandicapDisplayName('unknown'), 'Standard');
 
 console.log('All utility tests passed.');
+
+// Paddle size options
+assert.strictEqual(getPaddleSizeMultiplier('compact'), 0.85);
+assert.strictEqual(getPaddleSizeMultiplier('standard'), 1.0);
+assert.strictEqual(getPaddleSizeMultiplier('huge'), 1.4);
+assert.strictEqual(getPaddleSizeMultiplier('unknown'), 1.0);
+
+assert.strictEqual(getPaddleSizeDisplayName('large'), 'Large');
+assert.strictEqual(getPaddleSizeDisplayName('unknown'), 'Standard');

@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="theme-color" content="#059669"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Abe’s Monster Truck – Tiny Racer</title>
+<style>
+  :root{
+    --ui-bg:#ffffffcc;
+    --btn-size:96px;
+  }
+  html,body{
+    margin:0;
+    padding:0;
+    height:100%;
+    background: linear-gradient(180deg,#7dd3fc 0%, #a7f3d0 60%, #fef08a 100%);
+    overflow:hidden;
+    font-family: "Arial Rounded MT Bold","Chalkboard SE","Comic Sans MS", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    touch-action: none; /* keep gestures from stealing input */
+  }
+  #game{
+    position:fixed;
+    inset:0;
+    width:100vw;height:100vh;
+    display:block;
+  }
+  #hud{
+    position:fixed; left:12px; top:12px;
+    background: var(--ui-bg);
+    border-radius:14px;
+    padding:8px 12px;
+    box-shadow: 0 4px 12px #00000022;
+    font-weight:700;
+    display:flex; gap:16px; align-items:center;
+    backdrop-filter: blur(4px);
+  }
+  #timerHud{
+    position:fixed; right:12px; top:12px;
+    background: var(--ui-bg);
+    border-radius:14px;
+    padding:8px 12px;
+    box-shadow: 0 4px 12px #00000022;
+    font-weight:700;
+    backdrop-filter: blur(4px);
+  }
+  #title{
+    position:fixed; top:10px; left:50%; transform:translateX(-50%);
+    font-weight:900; letter-spacing:1px;
+    color:#065f46; text-shadow:0 2px 0 #ffffff, 0 4px 10px #0003;
+    background:#ffffffaa; padding:6px 12px; border-radius:12px;
+  }
+  #controls{
+    position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
+    display:flex; gap:16px; align-items:center; justify-content:center;
+    background: var(--ui-bg);
+    padding:12px; border-radius:18px; box-shadow:0 6px 16px #00000033;
+  }
+  .btn{
+    width:var(--btn-size); height:var(--btn-size);
+    border-radius:18px; border:none; outline:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:42px; font-weight:900;
+    box-shadow: 0 6px 0 #00000033, inset 0 0 0 4px #ffffff88;
+    cursor:pointer; user-select:none;
+    transition: transform .03s ease;
+  }
+  .btn:active{ transform: translateY(2px) scale(0.98);}
+  .go{ background: radial-gradient(circle at 30% 30%, #34d399, #059669); color:#053b2d;}
+  .brake{ background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444); color:#5b0a0a;}
+  .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
+  .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
+  .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
+  #startOverlay, #crashOverlay, #winOverlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(180deg,#00000022,#00000055);
+    z-index:10; color:white; text-align:center; padding:20px;
+  }
+  .card{
+    background:#ffffffee; color:#062a61;
+    padding:18px 22px; border-radius:16px;
+    box-shadow:0 10px 24px #00000055; max-width:520px;
+  }
+  .card h1{ margin:0 0 8px 0; font-size:28px;}
+  .card p{ margin:8px 0; font-weight:600;}
+  .big{
+    font-size:22px; font-weight:900; margin-top:10px; padding:14px 18px; border-radius:12px; border:none; cursor:pointer;
+    background:linear-gradient(135deg, #34d399, #3b82f6); color:white; box-shadow:0 6px 0 #0003;
+  }
+  #landscapeHint{
+    position:fixed; right:10px; top:10px; background:#00000066; color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; display:none;
+  }
+  @media (max-width: 820px){
+    :root{ --btn-size:88px; }
+  }
+  @media (max-width: 640px){
+    :root{ --btn-size:80px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Abe's Monster Truck Game"></canvas>
+
+<div id="title">Abe’s Monster Truck – Tiny Racer</div>
+
+  <div id="hud">
+    <div>🏁 <span id="distance">0</span> m</div>
+    <div>⭐ <span id="stars">0</span></div>
+    <div>🌀 <span id="speed">0</span> m/s</div>
+    <div>❤️ <span id="health">10</span></div>
+  </div>
+  <div id="timerHud">⏳ <span id="time">60</span>s</div>
+
+<div id="controls" aria-label="On-screen controls">
+  <div style="text-align:center">
+    <button class="btn brake" id="btnBrake" aria-label="Brake">⛔</button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn jump" id="btnJump" aria-label="Jump">⤴️</button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn go" id="btnGo" aria-label="Accelerate">▶️</button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn horn" id="btnHorn" aria-label="Horn">📢</button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn reset" id="btnReset" aria-label="Reset">↻</button>
+  </div>
+</div>
+
+<div id="startOverlay" role="dialog" aria-modal="true">
+  <div class="card">
+    <h1>Welcome!</h1>
+    <p>Tap <b>▶️</b> to start the monster truck.</p>
+    <p>Use <b>⛔</b> to brake, <b>⤴️</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
+    <p>Grab health boxes to repair the truck after crashes.</p>
+    <button id="btnStart" class="big">Start Race</button>
+  </div>
+</div>
+
+<div id="crashOverlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="card">
+    <h1 style="color:#b91c1c;">Game Over!</h1>
+    <p id="gameOverReason">Time's up!</p>
+    <p><b>Time Survived:</b> <span id="scoreTime">0</span>s</p>
+    <p><b>Stars Collected:</b> <span id="scoreCoins">0</span></p>
+    <p><b>TNT Crates Hit:</b> <span id="scoreTnt">0</span></p>
+    <p><b>Bricks Collected:</b> <span id="scoreBricks">0</span></p>
+    <p><b>Distance Travelled:</b> <span id="scoreDistance">0</span> m</p>
+    <button id="btnPlayAgain" class="big">Restart</button>
+  </div>
+</div>
+
+<div id="winOverlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="card">
+    <h1 style="color:#15803d;">You Win!</h1>
+    <p>Stars collected: <span id="finalStars">0</span></p>
+    <p>Time: <span id="finalTime">0</span>s</p>
+    <p>Distance travelled: <span id="finalDistance">0</span> m</p>
+    <button id="btnWinAgain" class="big">Play Again</button>
+  </div>
+</div>
+
+<div id="landscapeHint">Best in landscape</div>
+
+<script>
+(()=>{
+  // ===== Canvas & DPI =====
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  let DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  function resize(){
+    DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    canvas.width  = Math.floor(innerWidth * DPR);
+    canvas.height = Math.floor(innerHeight * DPR);
+  }
+  resize(); addEventListener('resize', resize);
+
+  // ===== Simple RNG =====
+  let seed = 1337;
+  const rnd = ()=> (seed = (seed*16807)%2147483647) / 2147483647;
+
+  // ===== World State =====
+  const world = {
+    t:0,
+    scrollX:0,            // how far the world has moved left
+    // Keep the truck and terrain around the vertical middle of the screen so
+    // upcoming jumps are visible.
+    groundBase: () => canvas.height / DPR / 2,
+    gravity: 2300,        // px/s^2
+    maxSpeed: 900,        // px/s
+    accel: 1020,          // px/s^2
+    brake: 2000,          // px/s^2
+    friction: 750,        // px/s^2
+    reverseAccel: 900,    // px/s^2
+    reverseBrake: 1600,   // px/s^2
+    reverseMaxSpeed: 360, // px/s
+    jumpVel: 900,         // px/s
+    distance: 0,
+    stars: 0,
+    tntHit: 0,
+    bricksCollected: 0,
+    speed: 0,
+    damage: 0,
+    maxDamage: 16,
+    timeLeft: 60,
+    timeElapsed: 0,
+    playing: false,
+    crashed: false,
+    shake: 0,
+    flameBoostTimer: 0,
+    lowGravityTimer: 0,
+    invincibleTimer: 0,
+    bubbleTimer: 0,
+    cameraZoom: 1,
+    greenBricks: 0,
+    redBricks: 0,
+    blueBricks: 0,
+    baseMaxSpeed: 900
+  };
+
+  // ===== Input =====
+  const input = { go:false, brake:false, jump:false };
+  function setHold(btn,holding){
+    input[btn]=holding;
+    if(btn==='go' && holding) startGameIfNeeded();
+  }
+  // Keyboard
+  if(!('ontouchstart' in window)){
+    document.addEventListener('keydown', (e)=>{
+      if(e.repeat) return;
+      if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',true); }
+      if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',true); }
+      if(e.key===' ' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
+      if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
+      if(e.key==='r'){ resetGame(); }
+    });
+    document.addEventListener('keyup', (e)=>{
+      if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',false); }
+      if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',false); }
+    });
+  }
+
+  // Buttons (pointer-safe)
+  const bindHold = (el, key) => {
+    const down = e=>{ e.preventDefault(); setHold(key,true); ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); };
+    const up   = e=>{ e.preventDefault(); setHold(key,false); };
+    el.addEventListener('pointerdown', down, {passive:false});
+    window.addEventListener('pointerup', up, {passive:false});
+    el.addEventListener('pointerleave', up, {passive:false});
+    el.addEventListener('pointercancel', up, {passive:false});
+  };
+  bindHold(document.getElementById('btnGo'), 'go');
+  bindHold(document.getElementById('btnBrake'), 'brake');
+  document.getElementById('btnJump').addEventListener('pointerdown', (e)=>{ e.preventDefault(); input.jump=true; ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); });
+  document.getElementById('btnHorn').addEventListener('pointerdown', (e)=>{ e.preventDefault(); ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); playHorn(); });
+  document.getElementById('btnReset').addEventListener('click', resetGame);
+
+  const startOverlay = document.getElementById('startOverlay');
+  const crashOverlay = document.getElementById('crashOverlay');
+  const winOverlay = document.getElementById('winOverlay');
+  const timerEl = document.getElementById('time');
+  const finalStarsEl = document.getElementById('finalStars');
+  const finalTimeEl = document.getElementById('finalTime');
+  document.getElementById('btnStart').addEventListener('click', ()=>{ ensureAudio(); startGameIfNeeded(); });
+  document.getElementById('btnPlayAgain').addEventListener('click', ()=>{ crashOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
+  document.getElementById('btnWinAgain').addEventListener('click', ()=>{ winOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
+
+  function startGameIfNeeded(){
+    if(!world.playing){
+      startOverlay.style.display='none';
+      world.playing = true;
+      resumeAudio();
+      if(canvas.requestFullscreen){
+        canvas.requestFullscreen().then(()=>{
+          if(screen.orientation && screen.orientation.lock){
+            screen.orientation.lock('landscape').catch(()=>{});
+          }
+        }).catch(()=>{});
+      }
+    }
+  }
+
+  // ===== Simple Terrain =====
+  // Ground is a smooth sum of sines; obstacles and stars are spawned along x.
+  function groundY(x){
+    const base = world.groundBase();
+    // Use world-space coordinate
+    const k1=0.0015, k2=0.0033, k3=0.0007;
+    const duneProgress = Math.min(1.4, x / 12000);
+    const duneAmp = 25 + 75 * duneProgress;
+    const duneWave = duneAmp * Math.sin(0.0022 * (x + 1200));
+    const y = base
+      + 60*Math.sin(k1*(x+500))
+      + 25*Math.sin(k2*(x*1.2+1300))
+      + 35*Math.sin(k3*(x*0.85+700))
+      + duneWave;
+    return y;
+  }
+
+  function trackBaseY(x, width){
+    let base = groundY(x);
+    for(let i=1;i<=8;i++){
+      const sample = groundY(x + (width * i/8));
+      if(sample < base) base = sample;
+    }
+    return base;
+  }
+  function groundDY(x){
+    const eps=1; return (groundY(x+eps)-groundY(x-eps))*0.5/eps;
+  }
+
+  // ===== Entities: Obstacles & Stars =====
+  const obstacles = []; // {x, yTop, w, h, hue}
+  const stars = [];     // collectibles {x,y, r, taken}
+  const medkits = [];   // health pickups {x,y, size, taken}
+  const hourglasses = []; // time pickups {x,y,r,taken}
+  const flames = []; // speed boost pickups {x,y,r,taken}
+  const lowGravityOrbs = []; // low-gravity pickups {x,y,r,taken}
+  const rainbowPowerups = []; // invincible pickups {x,y,r,taken}
+  const bricks = []; // collectible bricks {x,y,size,color,taken}
+  const ramps = [];     // dirt ramps {x, baseY, w, h, landingW, used}
+  let lastSpawnX = 0;
+  let lastRampX = 0;
+  function spawnAhead(){
+    const rightEdge = world.scrollX + canvas.width/DPR + 1200;
+    while(lastSpawnX < rightEdge){
+      // Vary obstacle spacing - mostly long, sometimes shorter
+      const spacing = (rnd() < 0.3 ? 620 + rnd()*420 : 1250 + rnd()*850);
+      lastSpawnX += spacing;
+      const gy = groundY(lastSpawnX);
+      let w, h, type, hue;
+      const oType = rnd();
+      if(oType < 0.26){
+        type = 'crate';
+        h = 40 + rnd()*70;
+        w = 50 + rnd()*50;
+        hue = 10+Math.floor(rnd()*40);
+      } else if(oType < 0.42){
+        type = 'cone';
+        w = 60;
+        h = 60 + rnd()*30;
+      } else if(oType < 0.6){
+        type = 'barrel';
+        w = 50;
+        h = 80 + rnd()*40;
+      } else if(oType < 0.72){
+        type = 'garbage';
+        w = 58;
+        h = 78;
+      } else if(oType < 0.84) {
+        type = 'tnt';
+        w = 62;
+        h = 62;
+      } else if(oType < 0.94){
+        type = 'car';
+        w = 150;
+        h = 62;
+      } else {
+        type = 'wall';
+        w = 160 + rnd()*70;
+        h = 180 + rnd()*80;
+      }
+      obstacles.push({x:lastSpawnX, yTop:gy - h, w, h, hue, type});
+      if(rnd() < 0.45){
+        const sy = gy - h - (70 + rnd()*55);
+        stars.push({x:lastSpawnX + w*0.5, y: sy, r: 19, taken:false});
+      }
+      // Occasionally spawn a health box
+      if(rnd() < 0.12){
+        const hy = gy - h - (140 + rnd()*160);
+        medkits.push({x:lastSpawnX + w*0.5, y: hy, size: 64, taken:false});
+      }
+      // Occasionally spawn a hourglass
+      if(rnd() < 0.09){
+        const gy2 = gy - h - (60 + rnd()*140);
+        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:40, taken:false});
+      }
+      if(rnd() < 0.12){
+        const ry = gy - h - (75 + rnd()*75);
+        flames.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:42, taken:false});
+      }
+      if(rnd() < 0.07){
+        const by = gy - h - (85 + rnd()*85);
+        lowGravityOrbs.push({x:lastSpawnX + w*0.5 + (rnd()*120-60), y: by, r:44, taken:false});
+      }
+      if(rnd() < 0.08){
+        const ry = gy - h - (80 + rnd()*70);
+        rainbowPowerups.push({x:lastSpawnX + w*0.5 + (rnd()*100-50), y: ry, r:38, taken:false});
+      }
+      if(rnd() < 0.65){
+        const colors = ['green','red','blue'];
+        const color = colors[Math.floor(rnd()*colors.length)];
+        const by = gy - h - (38 + rnd()*36);
+        bricks.push({x:lastSpawnX + w*0.5 + (rnd()*70-35), y:by, size:54, color, taken:false});
+      }
+    }
+    while(lastRampX < rightEdge){
+      lastRampX += 1300 + rnd()*1000;
+      const gy = groundY(lastRampX);
+      let w = 140 + rnd()*80;
+      let h = 80 + rnd()*40;
+      if(rnd() < 0.35){
+        w = 220 + rnd()*120;
+        h = 160 + rnd()*80;
+      }
+      const landingW = 130 + rnd()*90;
+      const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false};
+      ramps.push(ramp);
+      const rampSlope = ramp.h / ramp.w;
+      const launchSpeed = Math.max(640, world.maxSpeed * 0.96);
+      const vx = launchSpeed * Math.cos(Math.atan(rampSlope));
+      const vy = launchSpeed * Math.sin(Math.atan(rampSlope));
+      const count = 10;
+      for(let i=0;i<count;i++){
+        const flightT = 0.16 + i*0.09;
+        const cx = ramp.x + ramp.w + vx * flightT;
+        const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * world.gravity * flightT * flightT;
+        const ground = groundY(cx);
+        const cy = Math.min(jumpY - 72, ground - 170);
+        stars.push({x:cx, y:cy, r:18, taken:false});
+      }
+      for(let i=obstacles.length-1;i>=0;i--){
+        const o = obstacles[i];
+        if(o.x < ramp.x + ramp.w + ramp.landingW && o.x + o.w > ramp.x - 140){
+          obstacles.splice(i,1);
+        }
+      }
+    }
+    // Cull old
+    const minX = world.scrollX - 300;
+    while(obstacles.length && obstacles[0].x + obstacles[0].w < minX) obstacles.shift();
+    while(stars.length && stars[0].x + 40 < minX) stars.shift();
+    while(medkits.length && medkits[0].x + 40 < minX) medkits.shift();
+    while(hourglasses.length && hourglasses[0].x + 40 < minX) hourglasses.shift();
+    while(flames.length && flames[0].x + 40 < minX) flames.shift();
+    while(lowGravityOrbs.length && lowGravityOrbs[0].x + 40 < minX) lowGravityOrbs.shift();
+    while(rainbowPowerups.length && rainbowPowerups[0].x + 40 < minX) rainbowPowerups.shift();
+    while(bricks.length && bricks[0].x + 40 < minX) bricks.shift();
+    while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
+  }
+
+  // ===== Truck =====
+  const truck = {
+    // Use CSS pixel dimensions (divide by devicePixelRatio) so the truck is
+    // slightly left of center to see farther ahead.
+    baseX: canvas.width / DPR * 0.35,
+    y: 0,        // axle Y (screen coords)
+    vy: 0,
+    onGround: false,
+    wheelR: 34,
+    bodyW: 220,
+    bodyH: 88,
+    angle: 0,
+    spin: 0,
+  };
+  addEventListener('resize', ()=>{ truck.baseX = canvas.width / DPR * 0.35; });
+
+
+  function hasFlameBoost(){
+    return world.flameBoostTimer > 0;
+  }
+
+  function hasLowGravityBoost(){
+    return world.lowGravityTimer > 0 || world.bubbleTimer > 0;
+  }
+
+  function isInvincible(){
+    return world.invincibleTimer > 0;
+  }
+
+  function rampYAt(ramp, x){
+    if(x < ramp.x || x > ramp.x + ramp.w + ramp.landingW) return null;
+    if(x <= ramp.x + ramp.w){
+      const t = (x - ramp.x) / ramp.w;
+      return ramp.baseY - ramp.h * t;
+    }
+    const t = (x - (ramp.x + ramp.w)) / ramp.landingW;
+    const landingGround = groundY(ramp.x + ramp.w + ramp.landingW);
+    return (ramp.baseY - ramp.h) * (1 - t) + landingGround * t;
+  }
+
+  function trackY(x){
+    let y = groundY(x);
+    for(const ramp of ramps){
+      const ry = rampYAt(ramp, x);
+      if(ry !== null) y = Math.min(y, ry);
+    }
+    return y;
+  }
+
+  function trackDY(x){
+    let bestY = groundY(x);
+    let dy = groundDY(x);
+    for(const ramp of ramps){
+      const ry = rampYAt(ramp, x);
+      if(ry !== null && ry < bestY){
+        bestY = ry;
+        if(x <= ramp.x + ramp.w) dy = -ramp.h / ramp.w;
+        else {
+          const landingGround = groundY(ramp.x + ramp.w + ramp.landingW);
+          dy = (landingGround - (ramp.baseY - ramp.h)) / ramp.landingW;
+        }
+      }
+    }
+    return dy;
+  }
+
+  // ===== Particles (confetti) =====
+  const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
+  function spawnConfetti(cx, cy, n=120){
+    for(let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2;
+      const s = 200 + Math.random()*600;
+      puffs.push({
+        x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-200,
+        life:0, ttl: 0.9+Math.random()*0.7,
+        color:`hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`,
+        size: 4 + Math.random()*6
+      });
+    }
+  }
+
+  // ===== Audio (WebAudio, no external assets) =====
+  let audioCtx=null, engineOsc=null, engineGain=null, engineSubOsc=null, engineSubGain=null;
+  function ensureAudio(){
+    if(audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Engine
+    engineOsc = audioCtx.createOscillator();
+    engineOsc.type = 'sawtooth';
+    engineSubOsc = audioCtx.createOscillator();
+    engineSubOsc.type = 'triangle';
+    engineGain = audioCtx.createGain();
+    engineSubGain = audioCtx.createGain();
+    engineGain.gain.value = 0;
+    engineSubGain.gain.value = 0;
+    const lowPass = audioCtx.createBiquadFilter();
+    lowPass.type = 'lowpass';
+    lowPass.frequency.value = 650;
+    engineOsc.connect(engineGain).connect(lowPass);
+    engineSubOsc.connect(engineSubGain).connect(lowPass);
+    lowPass.connect(audioCtx.destination);
+    engineOsc.start();
+    engineSubOsc.start();
+  }
+  function resumeAudio(){ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+  function setEngine(vol, freq){
+    if(!engineGain || !engineSubGain) return;
+    const mainVol = Math.max(0, Math.min(0.09, vol));
+    const subVol = mainVol * 0.8;
+    const target = Math.max(45, Math.min(500, freq));
+    engineGain.gain.setTargetAtTime(mainVol, audioCtx.currentTime, 0.04);
+    engineSubGain.gain.setTargetAtTime(subVol, audioCtx.currentTime, 0.06);
+    engineOsc.frequency.setTargetAtTime(target, audioCtx.currentTime, 0.05);
+    engineSubOsc.frequency.setTargetAtTime(target * 0.52, audioCtx.currentTime, 0.05);
+  }
+  function playBeep(){
+    if(!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type='triangle'; o.frequency.value=500;
+    g.gain.value=0.06;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime+0.15);
+  }
+  function playCrash(){
+    if(!audioCtx) return;
+    const dur=0.35;
+    const buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate*dur), audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++){ data[i] = (Math.random()*2-1) * Math.exp(-i/data.length*3); }
+    const src = audioCtx.createBufferSource(); src.buffer=buffer;
+    const g = audioCtx.createGain(); g.gain.value=0.25;
+    src.connect(g).connect(audioCtx.destination);
+    src.start();
+  }
+  function playHorn(){
+    if(!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type='square'; o.frequency.value=300;
+    g.gain.value=0.08;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime+0.3);
+  }
+
+  // ===== Game Control =====
+  function resetGame(){
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
+    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; puffs.length=0;
+    // Start spawning obstacles ahead of the truck's world position so the
+    // player has time to react to upcoming jumps.
+    lastSpawnX = truck.baseX;
+    lastRampX = truck.baseX;
+    truck.y = groundY(truck.baseX) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
+    spawnAhead();
+    crashOverlay.style.display='none';
+    winOverlay.style.display='none';
+  }
+  resetGame();
+
+  // ===== Orientation Helper =====
+  const landscapeHint = document.getElementById('landscapeHint');
+  function updateOrientationHint(){
+    const isPortrait = innerHeight > innerWidth;
+    landscapeHint.style.display = isPortrait ? 'block' : 'none';
+  }
+  updateOrientationHint();
+  addEventListener('resize', updateOrientationHint);
+
+  // ===== Main Loop =====
+  let last = performance.now();
+  function loop(ts){
+    const dt = Math.min(0.035, (ts - last)/1000); last = ts;
+    // Advance regardless so animations run behind overlays
+    world.t += dt;
+
+    // Physics only if playing & not crashed
+    if(world.playing && !world.crashed){
+      world.timeLeft -= dt;
+      world.timeElapsed += dt;
+      if(world.timeLeft <= 0){
+        world.timeLeft = 0;
+        finishGame(false);
+        return;
+      }
+      // Input to speed
+      if(input.go){
+        if(world.speed < 0) world.speed += world.reverseBrake * dt;
+        else world.speed += world.accel * dt;
+      } else if(input.brake){
+        if(world.speed > 0) world.speed -= world.brake * dt;
+        else world.speed -= world.reverseAccel * dt;
+      } else {
+        if(world.speed > 0) world.speed = Math.max(0, world.speed - world.friction * dt);
+        else if(world.speed < 0) world.speed = Math.min(0, world.speed + world.friction * dt);
+      }
+      world.speed = Math.max(-world.reverseMaxSpeed, Math.min(world.maxSpeed, world.speed));
+
+      const gravityScale = hasLowGravityBoost() ? 0.56 : 1;
+
+      // Jump
+      if(input.jump){
+        if(truck.onGround){
+          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (hasLowGravityBoost() ? 1.25 : 1);
+          playBeep();
+        }
+        input.jump=false;
+      }
+
+      // Vertical motion
+      truck.vy += world.gravity*gravityScale*dt;
+      truck.y  += truck.vy*dt;
+
+      // World scrolls left
+      world.scrollX += world.speed*dt;
+      world.distance += Math.abs(world.speed)*dt/40; // scale to meters-ish
+
+      // Ground collision
+      const worldX = world.scrollX + truck.baseX;
+      const gy = trackY(worldX);
+      const surfaceDY = trackDY(worldX);
+      if(truck.y >= gy - truck.wheelR){
+        truck.y = gy - truck.wheelR;
+        truck.vy = surfaceDY * world.speed;
+        truck.onGround = true;
+      }else{
+        truck.onGround = false;
+      }
+
+      // Angle follows slope a bit
+      const slope = Math.atan2(surfaceDY, 1);
+      truck.angle += (slope - truck.angle)*Math.min(1, dt*8);
+
+      // Spawn ahead / cull
+      spawnAhead();
+      
+      // Collect stars
+      for(const s of stars){
+        if(s.taken) continue;
+        const sx = s.x - world.scrollX;
+        if(Math.abs(sx - truck.baseX) < 52 && Math.abs(s.y - (truck.y - truck.bodyH)) < 64){
+          s.taken = true; world.stars++; playBeep();
+          if(world.stars % 10 === 0){
+            world.maxSpeed = Math.min(world.maxSpeed + 90, 1600);
+            world.speed = Math.min(world.speed + 120, world.maxSpeed);
+          }
+          for(let i=0;i<12;i++){
+            puffs.push({x:sx, y:s.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.2)*200, life:0, ttl:0.5+Math.random()*0.4, color:'#ffd54a', size:3+Math.random()*3});
+          }
+        }
+      }
+
+      // Collect health boxes
+      for(const h of medkits){
+        if(h.taken) continue;
+        const hx = h.x - world.scrollX;
+        if(Math.abs(hx - truck.baseX) < 88 && Math.abs(h.y - (truck.y - truck.bodyH)) < 88){
+          h.taken = true; if(world.damage>0) world.damage--; playBeep();
+          for(let i=0;i<10;i++){
+            puffs.push({x:hx, y:h.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#ffffff', size:3+Math.random()*3});
+          }
+        }
+      }
+
+      // Collect hourglasses
+      for(const g of hourglasses){
+        if(g.taken) continue;
+        const gx = g.x - world.scrollX;
+        if(Math.abs(gx - truck.baseX) < 88 && Math.abs(g.y - (truck.y - truck.bodyH)) < 88){
+          g.taken = true; world.timeLeft += 5; playBeep();
+          for(let i=0;i<10;i++){
+            puffs.push({x:gx, y:g.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#fde047', size:3+Math.random()*3});
+          }
+        }
+      }
+
+      // Collect flame speed boost
+      for(const f of flames){
+        if(f.taken) continue;
+        const fx = f.x - world.scrollX;
+        if(Math.abs(fx - truck.baseX) < 96 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 98){
+          f.taken = true;
+          world.flameBoostTimer = 4;
+          world.speed = Math.min(world.speed + 260, world.maxSpeed + 300);
+          playBeep();
+          for(let i=0;i<28;i++){
+            puffs.push({x:fx, y:f.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.1)*220, life:0, ttl:0.5+Math.random()*0.4, color:Math.random()<0.5?'#fb923c':'#facc15', size:5+Math.random()*6});
+          }
+        }
+      }
+
+      // Collect low-gravity orbs
+      for(const orb of lowGravityOrbs){
+        if(orb.taken) continue;
+        const ox = orb.x - world.scrollX;
+        if(Math.abs(ox - truck.baseX) < 98 && Math.abs(orb.y - (truck.y - truck.bodyH*0.6)) < 98){
+          orb.taken = true;
+          world.lowGravityTimer = 15;
+          playBeep();
+          for(let i=0;i<32;i++){
+            puffs.push({x:ox, y:orb.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.15)*220, life:0, ttl:0.55+Math.random()*0.5, color:Math.random()<0.5?'#38bdf8':'#60a5fa', size:6+Math.random()*8});
+          }
+        }
+      }
+
+      // Collect rainbow invincible power-up
+      for(const rainbow of rainbowPowerups){
+        if(rainbow.taken) continue;
+        const rx = rainbow.x - world.scrollX;
+        if(Math.abs(rx - truck.baseX) < 98 && Math.abs(rainbow.y - (truck.y - truck.bodyH*0.6)) < 98){
+          rainbow.taken = true;
+          world.invincibleTimer = 10;
+          playBeep();
+          for(let i=0;i<40;i++){
+            puffs.push({x:rx, y:rainbow.y, vx:(Math.random()*2-1)*240, vy:(Math.random()*-1-0.15)*220, life:0, ttl:0.6+Math.random()*0.5, color:["#ef4444", "#f59e0b", "#eab308", "#22c55e", "#3b82f6", "#a855f7"][Math.floor(Math.random()*6)], size:5+Math.random()*7});
+          }
+        }
+      }
+
+      // Collect colored bricks (larger than before)
+      for(const b of bricks){
+        if(b.taken) continue;
+        const bx = b.x - world.scrollX;
+        if(Math.abs(bx - truck.baseX) < 82 && Math.abs(b.y - (truck.y - truck.bodyH*0.7)) < 88){
+          b.taken = true;
+          world.bricksCollected += 1;
+          if(b.color === 'green'){
+            world.greenBricks += 1;
+            if(world.greenBricks % 3 === 0) world.damage = Math.max(0, world.damage - 2);
+          } else if(b.color === 'red'){
+            world.redBricks += 1;
+            if(world.redBricks % 3 === 0){
+              world.flameBoostTimer = Math.max(world.flameBoostTimer, 4);
+              world.speed = Math.min(world.speed + 180, world.maxSpeed + 300);
+            }
+          } else if(b.color === 'blue'){
+            world.blueBricks += 1;
+            if(world.blueBricks % 3 === 0) world.bubbleTimer = Math.max(world.bubbleTimer, 8);
+          }
+          playBeep();
+          for(let i=0;i<16;i++){
+            const color = b.color === 'green' ? '#22c55e' : b.color === 'red' ? '#ef4444' : '#3b82f6';
+            puffs.push({x:bx, y:b.y, vx:(Math.random()*2-1)*180, vy:(Math.random()*-1-0.2)*210, life:0, ttl:0.45+Math.random()*0.4, color, size:4+Math.random()*5});
+          }
+        }
+      }
+
+      if(world.flameBoostTimer > 0){
+        world.flameBoostTimer = Math.max(0, world.flameBoostTimer - dt);
+      }
+      if(world.lowGravityTimer > 0){
+        world.lowGravityTimer = Math.max(0, world.lowGravityTimer - dt);
+      }
+      if(world.invincibleTimer > 0){
+        world.invincibleTimer = Math.max(0, world.invincibleTimer - dt);
+      }
+      if(world.bubbleTimer > 0){
+        world.bubbleTimer = Math.max(0, world.bubbleTimer - dt);
+      }
+
+      const truckTopVisual = truck.y - (truck.bodyH + 10);
+      const zoomTarget = truckTopVisual < 70 ? 0.78 : 1;
+      world.cameraZoom += (zoomTarget - world.cameraZoom) * Math.min(1, dt * 6);
+
+      // Obstacle collisions (simple AABB with truck front)
+      for(const o of obstacles){
+        const ox = o.x - world.scrollX;
+        if(ox + o.w < truck.baseX - 70 || ox > truck.baseX + 80) continue;
+        const truckTop = truck.y - (truck.bodyH + 10);
+        const truckBottom = truck.y + truck.wheelR;
+        const truckFront = truck.baseX + 70;
+        const truckBack  = truck.baseX - 80;
+
+        const overlapX = !(truckFront < ox || truckBack > ox + o.w);
+        const overlapY = !(truckTop > o.yTop + o.h || truckBottom < o.yTop);
+        if(overlapX && overlapY){
+          if(isInvincible()){
+            const idx = obstacles.indexOf(o);
+            if(idx >= 0) obstacles.splice(idx,1);
+            spawnConfetti(ox + o.w*0.5, o.yTop + o.h*0.5, 65);
+          } else {
+            hitObstacle(o, ox + o.w*0.5, o.yTop + o.h*0.5);
+          }
+          break;
+        }
+      }
+
+      // Engine audio
+      const speedCap = world.maxSpeed + (hasFlameBoost() ? 300 : 0);
+      world.speed = Math.max(-world.reverseMaxSpeed, Math.min(speedCap, world.speed));
+      const speedMag = Math.abs(world.speed);
+      const engineVol = speedMag>5 ? (0.022 + speedMag/speedCap*0.055) : 0;
+      const engineHz  = 50 + speedMag*0.2 + (hasFlameBoost() ? 20 : 0);
+      setEngine(engineVol, engineHz);
+    } else {
+      // When not playing or crashed, fade engine
+      setEngine(0, 0);
+    }
+
+    // Update HUD
+    document.getElementById('distance').textContent = Math.floor(world.distance);
+    document.getElementById('stars').textContent    = world.stars;
+    document.getElementById('speed').textContent    = Math.floor(world.speed);
+    document.getElementById('health').textContent   = Math.ceil(world.maxDamage - world.damage);
+    timerEl.textContent = Math.ceil(world.timeLeft);
+
+    // Render
+    draw();
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ===== Crash =====
+  function hitObstacle(o, cx, cy){
+    const idx = obstacles.indexOf(o);
+    if(idx >= 0) obstacles.splice(idx,1);
+    const boom = o.type === 'tnt';
+    const garbageBurst = o.type === 'garbage';
+    const carCrash = o.type === 'car';
+    const wallHit = o.type === 'wall';
+    world.shake = boom ? 20 : 10;
+    if(boom){
+      world.tntHit += 1;
+      for(let i=0;i<160;i++){
+        const a = Math.random()*Math.PI*2;
+        const s = 220 + Math.random()*900;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-240, life:0, ttl:0.5+Math.random()*0.7, color:Math.random()<0.55?'#fb923c':'#1f2937', size:5+Math.random()*8});
+      }
+      world.speed = Math.max(0, world.speed - 180);
+      world.damage += 2;
+    } else if(garbageBurst){
+      for(let i=0;i<90;i++){
+        const a = Math.random()*Math.PI*1.5 - Math.PI*1.25;
+        const s = 140 + Math.random()*460;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-120, life:0, ttl:0.8+Math.random()*0.8, color:['#84cc16','#6b7280','#f97316','#22c55e'][Math.floor(Math.random()*4)], size:4+Math.random()*6});
+      }
+      world.damage += 1;
+    } else if(carCrash){
+      for(let i=0;i<120;i++){
+        const a = Math.random()*Math.PI*2;
+        const s = 180 + Math.random()*520;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-130, life:0, ttl:0.55+Math.random()*0.6, color:['#ef4444','#f59e0b','#6b7280','#1f2937'][Math.floor(Math.random()*4)], size:4+Math.random()*7});
+      }
+      world.speed = Math.max(0, world.speed - 90);
+      world.damage += 1;
+    } else if(wallHit){
+      for(let i=0;i<140;i++){
+        const a = Math.random()*Math.PI*2;
+        const s = 200 + Math.random()*600;
+        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-180, life:0, ttl:0.6+Math.random()*0.8, color:['#b45309','#92400e','#78350f','#f59e0b'][Math.floor(Math.random()*4)], size:5+Math.random()*7});
+      }
+      world.speed = Math.max(0, world.speed - 150);
+      world.damage += 2;
+    } else {
+      spawnConfetti(cx, cy, 80);
+      world.damage += 1;
+    }
+    if(hasFlameBoost()) world.speed = Math.min(world.maxSpeed + 300, world.speed + 35);
+    playCrash();
+    if(world.damage >= world.maxDamage){
+      finishGame(false, cx, cy);
+    }
+  }
+
+  function finishGame(win, cx, cy){
+    if(world.crashed) return;
+    world.crashed = true;
+    world.speed = 0;
+    world.shake = 14;
+    if(navigator.vibrate) navigator.vibrate(200);
+    spawnConfetti(truck.baseX, truck.y - truck.bodyH/2);
+    if(cx !== undefined && cy !== undefined) spawnConfetti(cx, cy);
+    playCrash();
+    if(win){
+      finalStarsEl.textContent = world.stars;
+      finalTimeEl.textContent = Math.floor(world.timeElapsed);
+      document.getElementById('finalDistance').textContent = Math.floor(world.distance);
+      setTimeout(()=>{ winOverlay.style.display='flex'; }, 550);
+    }else{
+      document.getElementById('gameOverReason').textContent = world.damage >= world.maxDamage ? 'Too much damage!' : "Time's up!";
+      document.getElementById('scoreTime').textContent = Math.floor(world.timeElapsed);
+      document.getElementById('scoreCoins').textContent = world.stars;
+      document.getElementById('scoreTnt').textContent = world.tntHit;
+      document.getElementById('scoreBricks').textContent = world.bricksCollected;
+      document.getElementById('scoreDistance').textContent = Math.floor(world.distance);
+      setTimeout(()=>{ crashOverlay.style.display='flex'; }, 550);
+    }
+  }
+
+  // ===== Drawing =====
+  function draw(){
+    const W = canvas.width, H = canvas.height;
+    ctx.save();
+    ctx.scale(DPR, DPR);
+
+    // Camera shake
+    let shakeX=0, shakeY=0;
+    if(world.shake>0){
+      shakeX = (Math.random()*2-1) * world.shake;
+      shakeY = (Math.random()*2-1) * world.shake;
+      world.shake *= 0.9;
+      if(world.shake<0.5) world.shake=0;
+    }
+    ctx.translate(shakeX, shakeY);
+
+    const zoom = world.cameraZoom || 1;
+    if(Math.abs(zoom - 1) > 0.001){
+      const viewW = W / DPR;
+      const viewH = H / DPR;
+      const anchorX = truck.baseX;
+      const anchorY = truck.y - truck.bodyH * 0.5;
+      ctx.translate(anchorX, anchorY);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-anchorX, -anchorY);
+    }
+
+    // Sky (parallax clouds & sun)
+    ctx.clearRect(0,0,W/DPR,H/DPR);
+    const t = world.t;
+    drawSun();
+    drawClouds(t);
+
+    // Background hills
+    drawHills();
+
+      // Track
+      drawGround();
+
+      // Ramps
+      for(const r of ramps){
+        const x = r.x - world.scrollX;
+        drawRamp(x, r.baseY, r.w, r.h, r.landingW);
+      }
+
+      // Stars
+      for(const s of stars){
+        if(s.taken) continue;
+      const x = s.x - world.scrollX;
+      drawStar(x, s.y, s.r);
+    }
+
+    // Hearts
+    for(const h of medkits){
+      if(h.taken) continue;
+      const x = h.x - world.scrollX;
+      drawHealthBox(x, h.y, h.size);
+    }
+
+    // Hourglasses
+    for(const g of hourglasses){
+      if(g.taken) continue;
+      const x = g.x - world.scrollX;
+      drawHourglass(x, g.y, g.r);
+    }
+
+    // Flame pickups
+    for(const f of flames){
+      if(f.taken) continue;
+      const x = f.x - world.scrollX;
+      drawFlamePickup(x, f.y, f.r);
+    }
+
+    for(const orb of lowGravityOrbs){
+      if(orb.taken) continue;
+      const x = orb.x - world.scrollX;
+      drawLowGravityOrb(x, orb.y, orb.r);
+    }
+
+    for(const rainbow of rainbowPowerups){
+      if(rainbow.taken) continue;
+      const x = rainbow.x - world.scrollX;
+      drawRainbowPowerup(x, rainbow.y, rainbow.r);
+    }
+
+    for(const b of bricks){
+      if(b.taken) continue;
+      const x = b.x - world.scrollX;
+      drawCollectibleBrick(x, b.y, b.size, b.color);
+    }
+
+    // Obstacles (colorful boxes / cones)
+    for(const o of obstacles){
+      const x = o.x - world.scrollX;
+      drawObstacle(x, o.yTop, o.w, o.h, o.hue, o.type);
+    }
+
+    // Truck
+    drawTruck();
+
+    // Particles
+    updateParticles();
+
+    ctx.restore();
+  }
+
+  function drawSun(){
+    const cx = (canvas.width/DPR) - 120, cy = 100;
+    const grd = ctx.createRadialGradient(cx,cy,10, cx,cy,120);
+    grd.addColorStop(0,'#fde68a');
+    grd.addColorStop(1,'#f59e0b00');
+    ctx.fillStyle=grd;
+    ctx.beginPath(); ctx.arc(cx,cy,120,0,Math.PI*2); ctx.fill();
+  }
+
+  function drawClouds(t){
+    ctx.globalAlpha = 0.9;
+    for(let i=0;i<5;i++){
+      const y = 60 + i*30;
+      const x = ( (t*20*(i+1)) % (canvas.width/DPR+300) ) - 150;
+      drawCloud(x, y, 100 + i*20);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawCloud(x,y,w){
+    ctx.fillStyle='#ffffffcc';
+    ctx.beginPath();
+    ctx.ellipse(x,y,w*0.5, w*0.22, 0, 0, Math.PI*2);
+    ctx.ellipse(x-w*0.3,y+5,w*0.35,w*0.18,0,0,Math.PI*2);
+    ctx.ellipse(x+w*0.3,y+8,w*0.35,w*0.2,0,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawHills(){
+    const baseY = world.groundBase()+40;
+    const w = canvas.width/DPR;
+    ctx.fillStyle = '#86efac';
+    ctx.beginPath();
+    ctx.moveTo(0, baseY+200);
+    for(let x=0; x<=w; x+=6){
+      const wx = x + world.scrollX*0.3;
+      const y = baseY + 30*Math.sin(wx*0.0012) + 20*Math.sin(wx*0.0006+1.2);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, baseY+200); ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath();
+    ctx.moveTo(0, baseY+260);
+    for(let x=0; x<=w; x+=6){
+      const wx = x + world.scrollX*0.15;
+      const y = baseY+50 + 40*Math.sin(wx*0.0007) + 15*Math.sin(wx*0.001+2.1);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, baseY+260); ctx.closePath(); ctx.fill();
+  }
+
+  function drawGround(){
+    const w = canvas.width/DPR, h=canvas.height/DPR;
+    const topColor = '#065f46';
+    const dirt = ctx.createLinearGradient(0,0,0,h);
+    dirt.addColorStop(0.0,'#10b981');
+    dirt.addColorStop(0.2,'#22c55e');
+    dirt.addColorStop(0.28,'#84cc16');
+    dirt.addColorStop(0.35,'#f59e0b');
+    dirt.addColorStop(0.5,'#eab308');
+    dirt.addColorStop(1.0,'#92400e');
+
+    ctx.beginPath();
+    ctx.moveTo(0,h);
+    for(let x=0; x<=w; x+=4){
+      const y = groundY(x + world.scrollX);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w,h);
+    ctx.closePath();
+    ctx.fillStyle = dirt; ctx.fill();
+
+    // Track edge
+    ctx.lineWidth = 6; ctx.strokeStyle = topColor;
+    ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const y = groundY(x + world.scrollX);
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // Dotted lane line
+    ctx.setLineDash([16,18]); ctx.lineDashOffset = (world.scrollX*0.5)%34;
+    ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    for(let x=0; x<=w; x+=6){
+      const y = groundY(x + world.scrollX) - 28;
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawRamp(x, baseY, w, h, landingW){
+    const segments = 14;
+    ctx.save();
+    ctx.fillStyle = '#b45309';
+    ctx.strokeStyle = '#92400e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, groundY(x + world.scrollX));
+    for(let i=0;i<=segments;i++){
+      const px = x + (w * i / segments);
+      const py = baseY - h * (i / segments);
+      ctx.lineTo(px, py);
+    }
+    const landingEndX = x + w + landingW;
+    const landingEndY = groundY(landingEndX + world.scrollX);
+    for(let i=1;i<=segments;i++){
+      const t = i / segments;
+      const px = x + w + landingW * t;
+      const py = (baseY - h) * (1 - t) + landingEndY * t;
+      ctx.lineTo(px, py);
+    }
+    for(let i=segments;i>=0;i--){
+      const px = x + ((w + landingW) * i / segments);
+      ctx.lineTo(px, groundY(px + world.scrollX));
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawObstacle(x, yTop, w, h, hue, type){
+    ctx.save();
+    ctx.translate(x, yTop);
+    switch(type){
+      case 'cone':
+        ctx.fillStyle = '#f97316';
+        ctx.strokeStyle = '#9a3412';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0,h);
+        ctx.lineTo(w/2,0);
+        ctx.lineTo(w,h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      case 'barrel':
+        ctx.fillStyle = '#9ca3af';
+        ctx.strokeStyle = '#4b5563';
+        ctx.lineWidth = 3;
+        ctx.fillRect(0,0,w,h);
+        ctx.strokeRect(0,0,w,h);
+        ctx.fillStyle = '#6b7280';
+        ctx.fillRect(0, h*0.33-2, w,4);
+        ctx.fillRect(0, h*0.66-2, w,4);
+        break;
+      case 'garbage':
+        ctx.fillStyle = '#4b5563';
+        roundRect(ctx, 0, 0, w, h, 10, true, false);
+        ctx.fillStyle = '#9ca3af';
+        roundRect(ctx, 6, -8, w-12, 12, 4, true, false);
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(w*0.2, h*0.35, w*0.18, h*0.2);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(w*0.52, h*0.42, w*0.22, h*0.14);
+        break;
+      case 'tnt':
+        ctx.fillStyle = '#dc2626';
+        roundRect(ctx, 0, 0, w, h, 6, true, false);
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(0,0,w,h);
+        ctx.fillStyle = '#fee2e2';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign='center';
+        ctx.fillText('TNT', w/2, h*0.58);
+        break;
+      case 'car':
+        ctx.fillStyle = '#dc2626';
+        roundRect(ctx, 6, h*0.22, w-12, h*0.58, 10, true, false);
+        ctx.fillStyle = '#991b1b';
+        roundRect(ctx, w*0.24, 0, w*0.52, h*0.38, 10, true, false);
+        ctx.fillStyle = '#93c5fd';
+        roundRect(ctx, w*0.3, h*0.06, w*0.16, h*0.19, 4, true, false);
+        roundRect(ctx, w*0.55, h*0.06, w*0.16, h*0.19, 4, true, false);
+        ctx.fillStyle = '#111827';
+        ctx.beginPath(); ctx.arc(w*0.22, h*0.84, h*0.18, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(w*0.78, h*0.84, h*0.18, 0, Math.PI*2); ctx.fill();
+        break;
+      case 'wall':
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 2;
+        const brickH = 22;
+        const brickW = 36;
+        for(let yy=0; yy<h; yy+=brickH){
+          const offset = ((yy/brickH)%2) * (brickW/2);
+          for(let xx=-offset; xx<w; xx+=brickW){
+            ctx.strokeRect(xx, yy, brickW, brickH);
+          }
+        }
+        break;
+      default:
+        ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#00000033'; ctx.lineWidth=4; ctx.strokeRect(0,0,w,h);
+        ctx.strokeStyle = '#00000011'; ctx.lineWidth=5;
+        ctx.beginPath(); ctx.moveTo(6,6); ctx.lineTo(w-6,h-6); ctx.moveTo(w-6,6); ctx.lineTo(6,h-6); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawCollectibleBrick(x, y, size, color){
+    const palette = {
+      red: ['#ef4444','#991b1b'],
+      blue: ['#3b82f6','#1e3a8a'],
+      green: ['#22c55e','#166534']
+    };
+    const [fill, stroke] = palette[color] || palette.green;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = fill;
+    roundRect(ctx, -size/2, -size/2, size, size, 8, true, false);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.strokeRect(-size*0.34, -size*0.18, size*0.68, size*0.36);
+    ctx.restore();
+  }
+
+  function drawRainbowPowerup(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    const bands = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6'];
+    for(let i=0;i<bands.length;i++){
+      ctx.strokeStyle = bands[i];
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0,0,r-(i*4),0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(0,0,r*0.22,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStar(x, y, r){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const spikes=5;
+    let rot = Math.PI/2*3, step = Math.PI/spikes;
+    ctx.moveTo(0,-r);
+    for(let i=0;i<spikes;i++){
+      ctx.lineTo(Math.cos(rot)*r, Math.sin(rot)*r); rot += step;
+      ctx.lineTo(Math.cos(rot)*(r*0.5), Math.sin(rot)*(r*0.5)); rot += step;
+    }
+    ctx.lineTo(0,-r); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFlamePickup(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    const flicker = 0.8 + Math.sin(world.t*24 + x*0.02)*0.2;
+    const inner = r * flicker;
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(0,-inner);
+    ctx.quadraticCurveTo(inner*0.7,-inner*0.1,0,inner);
+    ctx.quadraticCurveTo(-inner*0.7,-inner*0.1,0,-inner);
+    ctx.fill();
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(0,-inner*0.6);
+    ctx.quadraticCurveTo(inner*0.35,0,0,inner*0.55);
+    ctx.quadraticCurveTo(-inner*0.35,0,0,-inner*0.6);
+    ctx.fill();
+    ctx.strokeStyle = '#7c2d12';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-r*0.45, r*0.62, r*0.9, r*0.28);
+    ctx.restore();
+  }
+
+  function drawHealthBox(x, y, size){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 3;
+    roundRect(ctx, -size/2, -size/2, size, size, 6, true, true);
+    const crossW = size * 0.62;
+    const arm = size * 0.2;
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-crossW/2, -arm/2, crossW, arm);
+    ctx.fillRect(-arm/2, -crossW/2, arm, crossW);
+    ctx.restore();
+  }
+
+  function drawHourglass(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.fillStyle = '#fde68a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-r, -r);
+    ctx.lineTo(r, -r);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-r, r);
+    ctx.lineTo(r, r);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawLowGravityOrb(x, y, r){
+    ctx.save();
+    ctx.translate(x, y);
+    const pulse = 0.88 + 0.12*Math.sin(world.t*7 + x*0.02);
+    const glow = ctx.createRadialGradient(0, 0, r*0.2, 0, 0, r*1.65);
+    glow.addColorStop(0, '#dbeafeee');
+    glow.addColorStop(0.45, '#60a5fadd');
+    glow.addColorStop(1, '#2563eb00');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, r*1.65, 0, Math.PI*2);
+    ctx.fill();
+    const sphere = ctx.createRadialGradient(-r*0.35, -r*0.35, r*0.18, 0, 0, r);
+    sphere.addColorStop(0, '#eff6ff');
+    sphere.addColorStop(0.55, '#38bdf8');
+    sphere.addColorStop(1, '#1d4ed8');
+    ctx.fillStyle = sphere;
+    ctx.beginPath();
+    ctx.arc(0, 0, r*pulse, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#bfdbfe';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTruck(){
+    const x = truck.baseX;
+    const axleY = truck.y;
+    const r = truck.wheelR;
+
+    // Wheels
+    function wheel(wx,wy){
+      ctx.save();
+      ctx.translate(wx, wy);
+      // Tire
+      ctx.fillStyle='#111827';
+      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+      // Rim
+      ctx.fillStyle='#9ca3af';
+      ctx.beginPath(); ctx.arc(0,0,r*0.55,0,Math.PI*2); ctx.fill();
+      // Lugs
+      ctx.strokeStyle='#6b7280'; ctx.lineWidth=3;
+      for(let i=0;i<6;i++){
+        const a = i * Math.PI*2/6 + world.t*6;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.lineTo(Math.cos(a)*r*0.45, Math.sin(a)*r*0.45); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    wheel(x-78, axleY);
+    wheel(x+78, axleY);
+
+    // Body
+    ctx.save();
+    ctx.translate(x, axleY - r - 10);
+    ctx.rotate(truck.angle*0.6);
+    const bw = truck.bodyW, bh = truck.bodyH;
+
+    // Shadow
+    ctx.fillStyle='#00000022';
+    ctx.beginPath(); ctx.ellipse(0, bh+18, bw*0.6, 10, 0, 0, Math.PI*2); ctx.fill();
+
+    // Chassis base
+    ctx.fillStyle = '#064e3b';
+    ctx.fillRect(-bw/2, -10, bw, 16);
+
+    // Main body (GREEN)
+    const grd = ctx.createLinearGradient(-bw/2,0,bw/2,0);
+    grd.addColorStop(0,'#34d399');
+    grd.addColorStop(1,'#059669');
+    ctx.fillStyle = grd;
+    roundRect(ctx, -bw/2, -bh, bw, bh, 14, true, false);
+
+    // Cab window
+    ctx.fillStyle = '#e0f2fe';
+    roundRect(ctx, -bw/2+18, -bh+12, 96, 42, 10, true, false);
+
+    // Monster fenders
+    ctx.fillStyle = '#10b981';
+    roundRect(ctx, -bw/2+12, -24, 86, 32, 12, true, false);
+    roundRect(ctx,  bw/2-98, -24, 86, 32, 12, true, false);
+
+    // Name "ABE" – BIG letters
+    ctx.save();
+    ctx.fillStyle = '#064e3b';
+    ctx.font = 'bold 44px "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.translate(0, -bh/2+8);
+    ctx.rotate(-0.03);
+    ctx.fillText('ABE', 0, 0);
+    if(hasFlameBoost()){
+      ctx.globalAlpha = 0.9;
+      for(let i=0;i<4;i++){
+        const fx = -bw/2 - 20 - i*14;
+        const flameH = 16 + Math.sin(world.t*30 + i*0.8)*10 + i*8;
+        ctx.fillStyle = i % 2 ? '#fb923c' : '#facc15';
+        ctx.beginPath();
+        ctx.moveTo(fx, -22);
+        ctx.quadraticCurveTo(fx-16, -22 + flameH*0.5, fx, -22 + flameH);
+        ctx.quadraticCurveTo(fx+10, -22 + flameH*0.5, fx, -22);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // Headlight
+    ctx.fillStyle='#fde68a';
+    ctx.beginPath(); ctx.arc(bw/2-10,-bh+22,8,0,Math.PI*2); ctx.fill();
+
+    // Exhaust puff (cute)
+    if(world.playing && !world.crashed && world.speed>50 && Math.random()<0.3){
+      puffs.push({
+        x: (x - bw/2 - 14), y:(axleY - r - bh + 35),
+        vx: -60 - Math.random()*60, vy: -10 - Math.random()*30,
+        life:0, ttl:0.8, color:'#9ca3afaa', size: 8+Math.random()*8
+      });
+    }
+
+    if(world.damage>0){
+      ctx.globalAlpha = Math.min(0.7, world.damage/world.maxDamage*0.7);
+      ctx.fillStyle = '#b91c1c';
+      roundRect(ctx, -bw/2, -bh, bw, bh, 14, true, false);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r, fill, stroke){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+  }
+
+  function updateParticles(){
+    const g = 900;
+    const dt = 1/60;
+    for(let i=puffs.length-1;i>=0;i--){
+      const p = puffs[i];
+      p.life += dt;
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.vy += g*dt*0.35;
+      const alpha = Math.max(0, 1 - p.life/p.ttl);
+      if(alpha<=0){ puffs.splice(i,1); continue; }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x- p.size/2, p.y- p.size/2, p.size, p.size);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ===== Utility =====
+  // (none extra)
+
+  // ===== Start Passive Interactions to enable audio on first input =====
+  ['pointerdown','keydown','touchstart'].forEach(ev=>{
+    window.addEventListener(ev, ensureAudio, {once:true, passive:true});
+  });
+
+})();
+</script>
+</body>
+</html>

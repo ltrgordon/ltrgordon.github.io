@@ -1,5 +1,5 @@
 import { TILE, COL } from './config.js';
-import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly } from './entities.js';
+import { LEVEL, H, W, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Monkey, GiantMonkey, Banana, Sunflower, Butterfly, RedTrampoline } from './entities.js';
 
 let canvas, ctx;
 let backdrop = 'hills';
@@ -74,11 +74,76 @@ function drawFlowers(camX){
   ctx.restore();
 }
 
+
+function drawValentine(camX){
+  const w = canvas.width / (window.devicePixelRatio||1);
+  const t = performance.now()/1000;
+  // hearts in the sky
+  ctx.save();
+  for(let i=0;i<8;i++){
+    const x = ((i*160 + t*30) - camX*0.2) % (w+200) - 100;
+    const y = 60 + (i%3)*40;
+    ctx.fillStyle = '#ff69b4';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x-10, y-15, x-40, y+5, x, y+25);
+    ctx.bezierCurveTo(x+40, y+5, x+10, y-15, x, y);
+    ctx.fill();
+  }
+  ctx.restore();
+  // roses along the ground
+  ctx.save();
+  for(let i=0;i<6;i++){
+    const x = -camX*0.3 + i*200;
+    ctx.fillStyle = '#228b22';
+    ctx.fillRect(x+38,160,8,180);
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath(); ellipsePath(x+42,160,24,24,ctx); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawVolcano(camX){
+  ctx.save();
+  for(let i=0;i<3;i++){
+    const x = -camX*0.2 + i*400;
+    ctx.fillStyle = '#8d6e63';
+    ctx.beginPath();
+    ctx.moveTo(x,280);
+    ctx.lineTo(x+200,120);
+    ctx.lineTo(x+400,280);
+    ctx.fill();
+    ctx.fillStyle = '#f44336';
+    ctx.fillRect(x+190,120,20,40);
+  }
+  ctx.restore();
+}
+
+function drawCastle(camX){
+  ctx.save();
+  for(let i=0;i<4;i++){
+    const x = -camX*0.25 + i*220;
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(x,160,80,180);
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(x,160,80,20);
+    ctx.fillStyle = '#78909c';
+    for(let j=0;j<3;j++) ctx.fillRect(x+18+j*18,200,10,20);
+  }
+  ctx.restore();
+}
+
 function drawBackdrop(camX){
   // Draw sky background
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, '#87CEEB'); // Sky blue
-  gradient.addColorStop(1, '#C2E9FB'); // Light blue
+  if (backdrop === 'volcano-castle'){
+    gradient.addColorStop(0, '#6b0f1a');
+    gradient.addColorStop(0.5, '#b22222');
+    gradient.addColorStop(1, '#2f1b12');
+  } else {
+    gradient.addColorStop(0, '#87CEEB'); // Sky blue
+    gradient.addColorStop(1, '#C2E9FB'); // Light blue
+  }
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
@@ -94,6 +159,17 @@ function drawBackdrop(camX){
   } else if (backdrop === 'flowers'){
     drawClouds(camX);
     drawFlowers(camX);
+  } else if (backdrop === 'valentine'){
+    drawValentine(camX);
+  } else if (backdrop === 'volcano'){
+    drawClouds(camX);
+    drawVolcano(camX);
+  } else if (backdrop === 'castle'){
+    drawClouds(camX);
+    drawCastle(camX);
+  } else if (backdrop === 'volcano-castle'){
+    drawVolcano(camX);
+    drawCastle(camX);
   }
 }
 
@@ -201,6 +277,28 @@ function drawMushroom(x,y){
   }
   ctx.restore();
 }
+function drawProjectile(x,y,type){
+  ctx.save();
+  if(type==='rainbow'){
+    const colors=['#ff0000','#ffa500','#ffff00','#00ff00','#0000ff','#4b0082','#ee82ee'];
+    for(let i=0;i<colors.length;i++){
+      ctx.fillStyle=colors[i];
+      ctx.fillRect(x+i%3, y+i/3|0,1,1);
+    }
+  } else if(type==='shuriken'){
+    ctx.fillStyle='#888';
+    ctx.fillRect(x+3,y,2,8);
+    ctx.fillRect(x,y+3,8,2);
+  } else if(type==='balloon'){
+    ctx.fillStyle='#4fc3f7';
+    ctx.beginPath(); ellipsePath(x+4,y+4,4,4,ctx); ctx.fill();
+  } else if(type==='diaper'){
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ellipsePath(x+4,y+4,4,3,ctx); ctx.fill();
+    ctx.strokeStyle='#ccc'; ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawPlatform(x,y,w){
   ctx.save(); ctx.fillStyle='#888'; ctx.fillRect(x,y,w,8); ctx.restore();
 }
@@ -211,8 +309,8 @@ function drawPlayer(x,y,p){
   ctx.translate(x + p.w/2, y + p.h);
   if (p.facing<0) ctx.scale(-1,1);
   ctx.translate(0, -p.h/2);
-  if (p.action==='flip') ctx.rotate(p.flip||0);
-  if (p.action==='spinJump') ctx.rotate(p.spinRotation||0);
+  if (p.action==='flip' || p.action==='backflip') ctx.rotate(p.flip||0);
+  if (p.action==='spinJump' || p.action==='spinDash') ctx.rotate(p.spinRotation||0);
   if (p.action==='cartwheel') ctx.rotate(p.cartRot||0);
   ctx.translate(-p.w/2, -p.h/2);
   if (p.rainbow>0){
@@ -238,6 +336,7 @@ function drawPlayer(x,y,p){
       break;
     case 'abe':
       suit='#a7e0ff'; accent='#e63946'; head='#e76f51';
+      if(p.berserk>0){ suit='#ff4d4d'; accent='#880000'; }
       break;
     case 'leo':
       suit='#ffffff'; accent='#ffd166'; head=skin;
@@ -501,6 +600,28 @@ function drawSunflower(x,y){
   ctx.restore();
 }
 
+function drawRedTrampoline(x,y){
+  const t = performance.now()/1000;
+  const bounce = Math.abs(Math.sin(t*3 + x*0.1))*2; // Gentle bounce animation
+  ctx.save();
+  ctx.translate(x+12, y+32-bounce);
+  // stem - darker green
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(-2,-32,4,32);
+  // outer petals - bright red
+  ctx.fillStyle = '#d32f2f';
+  ctx.beginPath(); ellipsePath(0,-40,14,14,ctx); ctx.fill();
+  // inner center - darker red
+  ctx.fillStyle = '#b71c1c';
+  ctx.beginPath(); ellipsePath(0,-40,7,7,ctx); ctx.fill();
+  // Add some sparkle effect to indicate it's special
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillRect(-1,-42,2,2);
+  ctx.fillRect(4,-44,1,1);
+  ctx.fillRect(-5,-38,1,1);
+  ctx.restore();
+}
+
 function drawButterfly(x,y){
   const t = performance.now()/1000;
   const flap = Math.sin(t*10 + x*0.1)*6;
@@ -552,6 +673,27 @@ function drawGiantMonkey(x,y,e){
   ctx.fillStyle='#8b5a2b';
   ctx.fillRect(-4,14,8,16); ctx.fillRect(28,14,8,16);
   ctx.fillRect(8,36,8,12); ctx.fillRect(16,36,8,12);
+  ctx.restore();
+}
+
+function drawMonkey(x,y){
+  const t = performance.now()/1000;
+  const bob = Math.sin(t*6 + x*0.1)*1.5;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  // Body - smaller than giant monkey
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(2,8,16,16);
+  // Head
+  ctx.fillStyle='#c89f7a';
+  ctx.fillRect(4,0,12,10);
+  // Eyes
+  ctx.fillStyle='#000';
+  ctx.fillRect(7,3,2,2); ctx.fillRect(11,3,2,2);
+  // Arms and legs - smaller
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(-2,10,4,10); ctx.fillRect(18,10,4,10);
+  ctx.fillRect(4,24,4,8); ctx.fillRect(12,24,4,8);
   ctx.restore();
 }
 
@@ -655,6 +797,7 @@ export function draw(world){
     else if (it.type==='rainbow') drawRainbow(it.x - camX, it.y - camY);
     else if (it.type==='mushroom') drawMushroom(it.x - camX, it.y - camY);
   }
+  for (const pr of world.projectiles){ drawProjectile(pr.x - camX, pr.y - camY, pr.type); }
   for (const e of world.enemies){
     if (e.remove) continue;
     if (e instanceof Hellmonk) drawHellmonk(e.x - camX, e.y, e);
@@ -664,7 +807,9 @@ export function draw(world){
     else if (e instanceof Bird) drawBird(e.x - camX, e.y);
     else if (e instanceof Butterfly) drawButterfly(e.x - camX, e.y);
     else if (e instanceof Sunflower) drawSunflower(e.x - camX, e.y);
+    else if (e instanceof RedTrampoline) drawRedTrampoline(e.x - camX, e.y);
     else if (e instanceof Skeleton) drawSkeleton(e.x - camX, e.y, e);
+    else if (e instanceof Monkey) drawMonkey(e.x - camX, e.y);
     else if (e instanceof GiantMonkey) drawGiantMonkey(e.x - camX, e.y, e);
     else if (e instanceof Banana) drawBanana(e.x - camX, e.y);
     else drawGoomba(e.x - camX, e.y);

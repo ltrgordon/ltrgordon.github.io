@@ -4,6 +4,7 @@ import { JUMP_BUFFER } from './config.js';
 export const keys = {left:false,right:false,jump:false,dash:false,up:false,down:false};
 
 let restartRequested = false;
+let returnToMenuRequested = false;
 let worldRef = null;
 let specialMoves = null;
 let hudRef = null;
@@ -55,6 +56,8 @@ function triggerSpecial(which){
   }
   if (which==='s1' && ability.s1) ability.s1(p, worldRef);
   if (which==='s2' && ability.s2) ability.s2(p, worldRef);
+  if (which==='s3' && ability.s3) ability.s3(p, worldRef);
+  if (which==='s4' && ability.s4) ability.s4(p, worldRef);
 }
 
 export function initInput(){
@@ -62,15 +65,17 @@ export function initInput(){
     if (k==='arrowleft'||k==='a') setKey('left',true);
     if (k==='arrowright') setKey('right',true);
     if (k==='d') setKey('dash',true);
-    if (k===' '||k==='z'){ setKey('jump',true); bufferJump(); }
+    if (k===' '||k==='z'||k==='arrowup'){ setKey('jump',true); bufferJump(); }
     if (k==='arrowup'||k==='w') setKey('up',true);
-    if (k==='arrowdown') setKey('down',true);
+    if (k==='arrowdown') { setKey('down',true); triggerSpecial('s3'); }
     if (k==='s') triggerSpecial('s1');
     if (k==='f') triggerSpecial('s2');
+    if (k==='e') triggerSpecial('s3');
+    if (k==='c') triggerSpecial('s4');
     if (k==='p' && worldRef && hudRef){
       if (worldRef.state==='play'){
         worldRef.state='pause';
-        hudRef.msg.textContent='Paused — press P to resume';
+        hudRef.msg.textContent='Paused — press P to resume, ESC for menu';
         playBeep(440,0.06,0.06);
       } else if (worldRef.state==='pause'){
         worldRef.state='play';
@@ -78,13 +83,18 @@ export function initInput(){
         playBeep(520,0.06,0.06);
       }
     }
+    if (k==='escape' && worldRef && worldRef.state==='pause'){
+      // Request return to main menu
+      returnToMenuRequested = true;
+      playBeep(380,0.08,0.08);
+    }
     if (k==='r'){ restartRequested = true; }
   });
   addEventListener('keyup', e=>{ const k=e.key.toLowerCase();
     if (k==='arrowleft'||k==='a') setKey('left',false);
     if (k==='arrowright') setKey('right',false);
     if (k==='d') setKey('dash',false);
-    if (k===' '||k==='z') setKey('jump',false);
+    if (k===' '||k==='z'||k==='arrowup') setKey('jump',false);
     if (k==='arrowup'||k==='w') setKey('up',false);
     if (k==='arrowdown') setKey('down',false);
   });
@@ -112,3 +122,6 @@ function bindButton(id, name){
 
 // Exposed helper for physics to consume restart requests
 export function consumeRestart(){ const r = restartRequested; restartRequested = false; return r; }
+
+// Exposed helper for game to consume return to menu requests
+export function consumeReturnToMenu(){ const r = returnToMenuRequested; returnToMenuRequested = false; return r; }

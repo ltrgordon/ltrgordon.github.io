@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Animal Soundboard — 15 Animal Tiles</title>
+<meta name="theme-color" content="#50d5ff" />
+<style>
+  :root{
+    --gap: clamp(8px,2vw,14px);
+    --tile-radius: 18px;
+    --shadow: 0 8px 20px rgba(0,0,0,.18);
+    --press: 0 4px 10px rgba(0,0,0,.25);
+    --fg: #07223a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", sans-serif;
+    background:
+      radial-gradient(1200px 800px at -10% -10%, #c9f0ff 0%, transparent 60%),
+      radial-gradient(1000px 1000px at 110% 10%, #ffe1f7 0%, transparent 60%),
+      linear-gradient(180deg,#e7faff 0%, #f9fbff 50%, #fff 100%);
+    color:var(--fg);
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+  header{
+    padding: clamp(10px, 2.5vw, 22px) env(safe-area-inset-right) clamp(8px, 2vw, 18px) env(safe-area-inset-left);
+    text-align:center;
+  }
+  h1{
+    margin:.2rem 0 .4rem;
+    font-size:clamp(20px, 4.5vw, 30px);
+    letter-spacing:.3px;
+  }
+  .subtitle{
+    font-size:clamp(12px,2.8vw,14px);
+    opacity:.75;
+  }
+  .controls{
+    display:flex; gap:.75rem; justify-content:center; align-items:center;
+    margin:.4rem 0 0;
+    flex-wrap:wrap;
+  }
+  .volume{
+    display:flex; align-items:center; gap:.5rem; font-size:14px;
+    background:#ffffffcc; padding:.4rem .6rem; border-radius:999px; box-shadow:var(--shadow);
+  }
+  .volume input[type="range"]{ width:min(50vw,260px); }
+  main{
+    padding: var(--gap);
+    flex:1;
+    display:grid;
+    gap:var(--gap);
+    grid-template-columns: repeat(5, 1fr);
+    grid-auto-rows: 1fr;
+    align-content:center;
+  }
+  .tile{
+    position:relative;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius:var(--tile-radius);
+    box-shadow:var(--shadow);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:.6rem .4rem;
+    aspect-ratio: 1 / 1;
+    background: linear-gradient(160deg, var(--c1), var(--c2));
+    color:#07223a;
+    transition: transform .06s ease, box-shadow .06s ease, filter .06s ease;
+    outline: none;
+    border: none;
+    touch-action: manipulation;
+  }
+  .tile:active, .tile.playing{ transform: translateY(1px) scale(.98); box-shadow: var(--press); filter: saturate(1.2) brightness(1.02); }
+  .emoji{ font-size: clamp(32px, 7.2vw, 54px); line-height: 1; }
+  .label{ margin-top:.35rem; font-weight:700; font-size: clamp(12px, 2.8vw, 16px); text-shadow: 0 1px 0 rgba(255,255,255,.7); letter-spacing:.2px; }
+  footer{ text-align:center; font-size:12px; padding: .6rem .75rem calc(.6rem + env(safe-area-inset-bottom)); opacity:.7; }
+
+  @media (max-width: 780px){ main{ grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 420px){ .emoji{ font-size: clamp(28px, 12vw, 48px); } }
+
+  .tile:focus-visible{ outline: 3px solid rgba(255,255,255,.9); box-shadow: 0 0 0 4px rgba(0,0,0,.2), var(--shadow); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Animal Soundboard</h1>
+    <div class="subtitle">Tap a tile to hear the animal. Works offline. (Ensure phone isn’t muted.)</div>
+    <div class="controls">
+      <div class="volume" aria-label="Volume">
+        🔊 Volume
+        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.9" />
+      </div>
+    </div>
+  </header>
+
+  <main id="grid" role="grid" aria-label="Animal grid (5 by 3)"></main>
+
+  <footer>Tip: iOS Silent Mode mutes media sounds—toggle the side switch or use Control Center.</footer>
+
+<script>
+(() => {
+  // ---------- Lightweight WAV Synth (HTMLAudio-based) ----------
+  const SR = 44100; // sample rate
+  const TAU = Math.PI * 2;
+
+  const clamp = (x, lo=-1, hi=1) => Math.max(lo, Math.min(hi, x));
+
+  function toWavURL(float32, sr=SR){
+    // 16-bit PCM mono WAV
+    const n = float32.length;
+    const buf = new ArrayBuffer(44 + n*2);
+    const view = new DataView(buf);
+
+    // RIFF header
+    writeStr(view, 0, 'RIFF');
+    view.setUint32(4, 36 + n*2, true);
+    writeStr(view, 8, 'WAVE');
+    writeStr(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);             // fmt chunk size
+    view.setUint16(20, 1, true);              // PCM
+    view.setUint16(22, 1, true);              // mono
+    view.setUint32(24, sr, true);             // sample rate
+    view.setUint32(28, sr*2, true);           // byte rate
+    view.setUint16(32, 2, true);              // block align
+    view.setUint16(34, 16, true);             // bits per sample
+    writeStr(view, 36, 'data');
+    view.setUint32(40, n*2, true);
+
+    // PCM data
+    let offset = 44;
+    for (let i=0;i<n;i++){
+      const s = clamp(float32[i]) * 0x7FFF;
+      view.setInt16(offset, s|0, true);
+      offset += 2;
+    }
+    return URL.createObjectURL(new Blob([view], {type:'audio/wav'}));
+  }
+  function writeStr(view, offset, str){ for (let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); }
+
+  // Basic oscillators (phase in radians)
+  const waves = {
+    sine: (ph)=> Math.sin(ph),
+    tri:  (ph)=> 2/Math.PI * Math.asin(Math.sin(ph)),
+    saw:  (ph)=> (ph/Math.PI) - 1 - 2*Math.floor(ph/(2*Math.PI) - 0.5),
+    sq:   (ph)=> Math.sign(Math.sin(ph)) || 1
+  };
+
+  // Envelope helpers
+  function envADSR(t, T, a=0.02, d=0.08, s=0.6, r=0.15){
+    if (t<0 || t>T) return 0;
+    if (t<a) return t/a;
+    if (t<a+d) return 1 - (1-s)*((t-a)/d);
+    if (t<T-r) return s;
+    return Math.max(0, s*(1 - (t-(T-r))/r));
+  }
+  const easeOut = (x)=> 1 - Math.pow(1-x, 2);
+
+  // Noise (simple LCG for stable noise across runs)
+  let seed = 1234567;
+  function rand(){ seed = (seed*1664525 + 1013904223) >>> 0; return (seed & 0xffff)/0x8000 - 1; }
+
+  // Render utilities
+  function renderSec(dur, renderer){
+    const N = Math.floor(dur*SR);
+    const y = new Float32Array(N);
+    for (let i=0;i<N;i++){ y[i] = renderer(i/SR, i); }
+    // Gentle limiter
+    let max = 0; for (let i=0;i<N;i++) max = Math.max(max, Math.abs(y[i]));
+    const g = max>1 ? 1/max : 1;
+    if (g<1) for (let i=0;i<N;i++) y[i]*=g;
+    return y;
+  }
+  function oscChirp(dur, f0, f1, type='sine', gain=1, envFn=(t)=>1){
+    let ph = 0;
+    const df = (f1 - f0);
+    return renderSec(dur, (t, i)=>{
+      const f = f0 + df*(t/dur);
+      ph += TAU * f / SR;
+      if (ph>1e9) ph %= TAU; // avoid overflow
+      return gain * envFn(t) * waves[type](ph);
+    });
+  }
+  function layer(...arrs){
+    // Stack arrays (assume same length)
+    const N = arrs[0].length;
+    const out = new Float32Array(N);
+    for (const a of arrs){ for (let i=0;i<N;i++) out[i] += a[i]; }
+    return out;
+  }
+  function makeNoise(dur, centerHz=800, bandwidth=0.5, gain=0.5, envFn=(t)=>1){
+    // Simple band-limited-ish noise via amplitude ring modulation around centerHz
+    let ph = 0;
+    const bw = Math.max(0.05, bandwidth);
+    return renderSec(dur, (t, i)=>{
+      ph += TAU * centerHz / SR;
+      const carrier = Math.sin(ph);
+      const n = rand();                        // white noise
+      const band = (n * (0.5 + 0.5*carrier));  // crude band emphasis
+      const lp = 1 - Math.min(1, bw);
+      const sample = (lp*n + (1-lp)*band) * gain * envFn(t);
+      return sample;
+    });
+  }
+
+  // ---------- Animal synths -> Blob URLs via <audio> ----------
+  // Each function returns {url, dur}
+  function snd_lion(){
+    const dur = 1.2;
+    const env = (t)=> envADSR(t, dur, .03,.12,.7,.25);
+    const growl = oscChirp(dur, 120, 70, 'saw', 0.33, env);
+    const breath = makeNoise(dur, 300, 0.6, 0.55, (t)=> env(t)* (0.8 - 0.6*(t/dur)));
+    return toWavURL(layer(growl, breath));
+  }
+  function snd_cow(){
+    const dur = 0.95, env = (t)=>envADSR(t,dur,.02,.2,.5,.2);
+    const moo = oscChirp(dur, 140, 90, 'saw', 0.45, env);
+    const nasal = oscChirp(dur, 280, 180, 'sine', 0.12, env);
+    return toWavURL(layer(moo, nasal));
+  }
+  function snd_dog(){
+    const part = (t0)=> {
+      const dur=0.16, env=(t)=>envADSR(t,dur,.005,.04,.4,.07);
+      const pulse = oscChirp(dur, 340, 180, 'sq', 0.18, env);
+      const bark = makeNoise(dur, 900, 0.7, 0.6, env);
+      return {pulse, bark};
+    };
+    const a = part(0), b = part(0);
+    // Stitch: two barks separated by 0.22s
+    return stitch([layer(a.pulse,a.bark)], [0.22], [layer(b.pulse,b.bark)]);
+  }
+  function snd_cat(){
+    const dur = 0.72, env=(t)=>envADSR(t,dur,.015,.08,.6,.18);
+    const meow = oscChirp(dur, 330, 550, 'tri', 0.38, (t)=>env(t)* (t<0.25? 1 : 1 - 0.6*((t-0.25)/(dur-0.25))));
+    const nasal = oscChirp(dur, 1000, 900, 'sine', 0.12, env);
+    return toWavURL(layer(meow, nasal));
+  }
+  function snd_elephant(){
+    const dur=1.1, env=(t)=>envADSR(t,dur,.02,.1,.7,.2);
+    // Vibrato
+    let ph=0, lfoPh=0;
+    const y = renderSec(dur, (t)=>{
+      lfoPh += TAU*6/SR;
+      const vibr = Math.sin(lfoPh)*16; // Hz
+      const f = 280 + (520-280)*(t<0.5? t/0.5 : 1 - 0.3*((t-0.5)/(dur-0.5))) + vibr;
+      ph += TAU * f / SR;
+      return 0.55 * env(t) * waves.saw(ph);
+    });
+    const breath = makeNoise(dur, 500, 0.5, 0.25, env);
+    return toWavURL(layer(y, breath));
+  }
+  function snd_sheep(){
+    const dur=0.8;
+    const envA=(t)=>envADSR(t,0.3,.01,.05,.5,.08);
+    const envB=(t)=>envADSR(t,0.3,.01,.05,.5,.08);
+    const a = oscChirp(0.3, 320, 320, 'sq', .4, envA);
+    const b = oscChirp(0.3, 320, 300, 'sq', .4, envB);
+    return stitch([a], [0.22], [b]);
+  }
+  function snd_horse(){
+    const dur=1.0, env=(t)=>envADSR(t,dur,.02,.08,.6,.2);
+    const neigh = oscChirp(dur, 800, 220, 'tri', 0.45, env);
+    const breath = makeNoise(0.5, 1200, 0.7, 0.22, (t)=>env(t));
+    return toWavURL(layer(neigh, padStart(breath, 0.2, dur)));
+  }
+  function snd_pig(){
+    const pulse = (f0,f1)=> {
+      const dur=0.18, env=(t)=>envADSR(t,dur,.01,.05,.5,.06);
+      return layer(
+        oscChirp(dur, f0, f1, 'saw', .32, env),
+        oscChirp(dur, f0*2, f1*2, 'sine', .08, env)
+      );
+    };
+    return stitch([pulse(180,140)], [0.22], [pulse(180,140)]);
+  }
+  function snd_duck(){
+    const dur=0.32;
+    const burst = (t0)=> makeNoise(0.05, 1000, 0.6, 0.6, (t)=>envADSR(t,0.05,.005,.01,.4,.02));
+    const parts = [burst(0), burst(0), burst(0), burst(0), burst(0)];
+    return burstStitch(parts, 0.06);
+  }
+  function snd_chicken(){
+    const click = makeNoise(0.045, 2000, 0.8, 0.4, (t)=>envADSR(t,0.045,.003,.01,.3,.02));
+    const tone = oscChirp(0.1, 850, 850, 'tri', .18, (t)=>envADSR(t,0.1,.01,.02,.6,.04));
+    const click2 = padStart(makeNoise(0.04, 1800, 0.8, 0.35, (t)=>envADSR(t,0.04,.003,.01,.3,.02)), 0.12, 0.2);
+    return toWavURL(layer(padStart(click,0,0.2), padStart(tone,0.02,0.2), click2));
+  }
+  function snd_frog(){
+    const dur=0.9, env=(t)=>envADSR(t,dur,.02,.06,.7,.2);
+    const croak = oscChirp(dur, 85, 82, 'sq', 0.45, env);
+    return toWavURL(croak);
+  }
+  function snd_bird(){
+    const c1 = oscChirp(0.11, 2200, 3200, 'sine', .5, (t)=>envADSR(t,0.11,.01,.02,.6,.04));
+    const c2 = oscChirp(0.10, 1800, 2600, 'sine', .5, (t)=>envADSR(t,0.10,.01,.02,.6,.04));
+    const c3 = oscChirp(0.12, 2400, 2000, 'sine', .5, (t)=>envADSR(t,0.12,.01,.02,.6,.04));
+    return stitch([c1],[0.14],[c2],[0.14],[c3]);
+  }
+  function snd_monkey(){
+    const hoot = ()=> oscChirp(0.22, 420, 620, 'sine', .6, (t)=>envADSR(t,0.22,.02,.05,.5,.07));
+    return stitch([hoot()],[0.24],[hoot()]);
+  }
+  function snd_wolf(){
+    const dur=1.5, env=(t)=>envADSR(t,dur,.08,.2,.7,.3);
+    let lfo=0, ph=0;
+    const y = renderSec(dur,(t)=>{
+      lfo += TAU*5/SR;
+      const vibr = Math.sin(lfo)*8;
+      const f = (t<0.8? 320 + (560-320)*(t/0.8) : 560 - 80*((t-0.8)/(dur-0.8))) + vibr;
+      ph += TAU * f / SR;
+      return 0.55 * env(t) * Math.sin(ph);
+    });
+    return toWavURL(y);
+  }
+  function snd_owl(){
+    const hoot = (f)=> oscChirp(0.4, f, f*0.9, 'sine', .7, (t)=>envADSR(t,0.4,.06,.12,.65,.12));
+    return stitch([hoot(260)],[0.45],[hoot(240)]);
+  }
+
+  // --- Stitching helpers (concatenate arrays with gaps) ---
+  function stitch(...partsAndGaps){
+    // Accept pattern: [arr], [gapSec], [arr], [gapSec], ...
+    const segs = [];
+    let total = 0;
+    for (const item of partsAndGaps){
+      if (!Array.isArray(item)) continue;
+      const first = item[0];
+      if (first instanceof Float32Array){ segs.push({type:'audio', data:first}); total += first.length; }
+      else if (typeof first === 'number'){ const pad = Math.floor(first*SR); segs.push({type:'gap', n:pad}); total += pad; }
+    }
+    const out = new Float32Array(total);
+    let idx=0;
+    for (const s of segs){
+      if (s.type==='audio'){ out.set(s.data, idx); idx += s.data.length; }
+      else { idx += s.n; }
+    }
+    return toWavURL(out);
+  }
+  function burstStitch(arrs, gapSec){
+    const gap = Math.floor(gapSec*SR);
+    let total = (arrs.length-1)*gap;
+    for (const a of arrs) total += a.length;
+    const out = new Float32Array(total);
+    let idx = 0;
+    for (let i=0;i<arrs.length;i++){
+      out.set(arrs[i], idx);
+      idx += arrs[i].length;
+      if (i<arrs.length-1){ idx += gap; }
+    }
+    return toWavURL(out);
+  }
+  function padStart(arr, padSec, totalDurSec){
+    const pad = Math.floor(padSec*SR);
+    const total = totalDurSec ? Math.floor(totalDurSec*SR) : pad + arr.length;
+    const out = new Float32Array(total);
+    out.set(arr, pad);
+    return out;
+  }
+
+  // Build all sounds on first user gesture for snappy playback thereafter
+  const buildFns = {
+    lion: snd_lion, cow: snd_cow, dog: snd_dog, cat: snd_cat, elephant: snd_elephant,
+    sheep: snd_sheep, horse: snd_horse, pig: snd_pig, duck: snd_duck, chicken: snd_chicken,
+    frog: snd_frog, bird: snd_bird, monkey: snd_monkey, wolf: snd_wolf, owl: snd_owl
+  };
+  const audioBank = {}; // id -> {src, audioEl}
+
+  let built = false;
+  async function ensureBuilt(){
+    if (built) return;
+    // Synchronously build all WAV blobs
+    for (const id of Object.keys(buildFns)){
+      const url = buildFns[id]();
+      const el = new Audio();
+      el.src = url;
+      el.preload = 'auto';
+      el.crossOrigin = 'anonymous';
+      el.playsInline = true;
+      audioBank[id] = { url, el };
+    }
+    built = true;
+  }
+
+  function playSound(id, volume=0.9){
+    const bank = audioBank[id];
+    if (!bank){ return; }
+    // Clone for overlapping playback
+    const a = new Audio();
+    a.src = bank.url;
+    a.volume = volume;
+    a.playsInline = true;
+    a.play().catch(()=>{/* ignore (e.g., device muted) */});
+  }
+
+  // ---------- UI / Grid ----------
+  const animals = [
+    { id:'lion', emoji:'🦁', label:'Lion', colors:['#FFD166','#FF9F1C'] },
+    { id:'cow', emoji:'🐮', label:'Cow', colors:['#E0F7FA','#80DEEA'] },
+    { id:'dog', emoji:'🐶', label:'Dog', colors:['#FFE0B2','#FFCC80'] },
+    { id:'cat', emoji:'🐱', label:'Cat', colors:['#F8E1FF','#E1BEE7'] },
+    { id:'elephant', emoji:'🐘', label:'Elephant', colors:['#E0E0E0','#BDBDBD'] },
+    { id:'sheep', emoji:'🐑', label:'Sheep', colors:['#FFFFFF','#E3F2FD'] },
+    { id:'horse', emoji:'🐴', label:'Horse', colors:['#F3E5AB','#E6C99B'] },
+    { id:'pig', emoji:'🐷', label:'Pig', colors:['#FFD1DC','#FFB7C5'] },
+    { id:'duck', emoji:'🦆', label:'Duck', colors:['#C8E6C9','#A5D6A7'] },
+    { id:'chicken', emoji:'🐔', label:'Chicken', colors:['#FFF9C4','#FFE082'] },
+    { id:'frog', emoji:'🐸', label:'Frog', colors:['#D0F8CE','#A5D6A7'] },
+    { id:'bird', emoji:'🐦', label:'Bird', colors:['#BBDEFB','#90CAF9'] },
+    { id:'monkey', emoji:'🐵', label:'Monkey', colors:['#FFE0B2','#FFCC80'] },
+    { id:'wolf', emoji:'🐺', label:'Wolf', colors:['#CFD8DC','#B0BEC5'] },
+    { id:'owl', emoji:'🦉', label:'Owl', colors:['#D7CCC8','#BCAAA4'] },
+  ];
+
+  const grid = document.getElementById('grid');
+  const vol = document.getElementById('vol');
+
+  animals.forEach((a) => {
+    const btn = document.createElement('button');
+    btn.className = 'tile';
+    btn.setAttribute('role', 'gridcell');
+    btn.setAttribute('aria-label', `${a.label} sound`);
+    btn.style.setProperty('--c1', a.colors[0]);
+    btn.style.setProperty('--c2', a.colors[1]);
+    btn.innerHTML = `<div class="emoji" aria-hidden="true">${a.emoji}</div><div class="label">${a.label}</div>`;
+
+    const press = () => {
+      btn.classList.add('playing');
+      playSound(a.id, parseFloat(vol.value));
+      setTimeout(()=>btn.classList.remove('playing'), 180);
+    };
+
+    // Touch/click/keyboard
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); press(); } });
+
+    grid.appendChild(btn);
+  });
+
+  // Build audio bank on first user gesture (satisfies iOS autoplay policy)
+  const unlock = async () => {
+    await ensureBuilt();
+    window.removeEventListener('pointerdown', unlock);
+    window.removeEventListener('keydown', unlock);
+  };
+  window.addEventListener('pointerdown', unlock, {once:true});
+  window.addEventListener('keydown', unlock, {once:true});
+
+  // Remember volume
+  const savedVol = localStorage.getItem('animal_volume');
+  if (savedVol!==null) vol.value = savedVol;
+  vol.addEventListener('input', e => localStorage.setItem('animal_volume', e.target.value));
+
+})();
+</script>
+</body>
+</html>

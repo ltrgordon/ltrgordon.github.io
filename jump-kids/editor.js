@@ -15,7 +15,7 @@ const tiles = [
   {ch:'_', label:'Erase', color:'#eef'},
   {ch:'#', label:'Ground', color:'#8b5a2b'},
   {ch:'=', label:'Platform', color:'#a0522d'},
-  {ch:'M', label:'Moving', color:'#555'},
+  {ch:'V', label:'Moving', color:'#555'},
   {ch:'C', label:'Coin', color:'#ffd700'},
   {ch:'R', label:'Shamrock', color:'#00c853'},
   {ch:'N', label:'Rainbow', color:'#00bcd4'},

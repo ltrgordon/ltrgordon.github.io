@@ -3,12 +3,12 @@ import { Entity } from './entity.js';
 
 // Built-in level data used as fallback when JSON fails to load
 export const BASE = [
-"M_____________________________________________________________________________________________________________",
+"V_____________________________________________________________________________________________________________",
 "S_______________________________________S_____________________________________________________________________",
-"________________________________________MUC_________________________C_________________________________________",
+"________________________________________VUC_________________________C_________________________________________",
 "__________R________________________________==______________________====_______________________________________",
 "___________________________C__________________C_______________________S_C_____________________________________",
-"__________________________===___________R_______________________E_____MUC___==______________________C_________",
+"__________________________===___________R_______________________E_____VUC___==______________________C_________",
 "______________________________C____________====______________====______________________==_____________________",
 "_________C_____________==_______==_____________________C_______________________________==____________________",
 "________====___C____R__________________C_____________________C__________==_________________________====_______",
@@ -29,9 +29,9 @@ export const BASE = [
 
 // Second half of the demo level with tougher challenges
 export const EXT = [
-"M___________________________________________________________C______________________________C__________________",
+"V___________________________________________________________C______________________________C__________________",
 "S______________________________S________________________________________________________________C______________",
-"________________________C_____MUC_______________C__________________________C______________________________C___",
+"________________________C_____VUC_______________C__________________________C______________________________C___",
 "_______________________====___R___________==_____________________====___________________________==___________",
 "__________C__________C___________C_________________C________________C____________C___________________________",
 "__________==____________________====___________________________====________________________==_____U__________",
@@ -99,12 +99,12 @@ export class Player extends Entity{
     this.grounded=false; this.facing=1; this.invuln=0; this.lives=3; this.coins=0;
     this.spawnX=x; this.spawnY=y; this.coyote=0; this.jumpBuffer=0; this.big=false;
     this.action=null; this.lockControls=false; this.invisible=0;
-    this.rainbow=0; this.onLadder=false; this.mega=0;
+    this.rainbow=0; this.onLadder=false; this.mega=0; this.doubleJumped=false; this.berserk=0;
   }
   respawn(){
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
     this.invuln=1.2; this.big=false; this.w=20; this.h=28;
-    this.action=null; this.lockControls=false; this.invisible=0;
+    this.action=null; this.lockControls=false; this.invisible=0; this.doubleJumped=false; this.berserk=0;
   }
 }
 
@@ -161,6 +161,17 @@ export class Sunflower extends Entity{
   }
 }
 
+// Red Trampoline: stationary enemy that launches player 3x higher
+export class RedTrampoline extends Entity{
+  constructor(x,y,bounceForce=-720){
+    super(x,y,24,32);
+    this.speed = 0; // Stationary
+    this.vx = 0;
+    this.bounceForce = bounceForce;
+    this.isTrampoline = true;
+  }
+}
+
 // Butterfly enemy: flutters high in the sky
 export class Butterfly extends Entity{
   constructor(x,y){
@@ -182,6 +193,16 @@ export class Skeleton extends Entity{
     this.state = 'walk';
     this.reformT = 0;
     this.baseH = 30;
+  }
+}
+
+// Regular monkey enemy: smaller, faster than giant monkey
+export class Monkey extends Entity{
+  constructor(x,y){
+    super(x,y,20,24);
+    this.speed = 70;
+    this.vx = -this.speed;
+    this.jumpCD = 0;
   }
 }
 
@@ -224,7 +245,7 @@ export function setEnemyConfigs(cfg){
   ENEMY_CONFIGS = { ...ENEMY_CONFIGS, ...(cfg || {}) };
 }
 
-const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, GiantMonkey, Banana, Sunflower, Butterfly };
+const ENEMY_CLASSES = { Goomba, Hellmonk, Zakko, Ghost, FireEnemy, Bird, Skeleton, Monkey, GiantMonkey, Banana, Sunflower, Butterfly, RedTrampoline };
 
 // World creation ----------------------------------------------------------
 function findInMap(symbol){
@@ -239,7 +260,7 @@ export function buildWorld(){
   const spawn = findInMap('P');
   const world = {
     player:new Player(spawn.x*TILE,(spawn.y-1)*TILE),
-    enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[],
+    enemies:[], coins:[], blocks:[], chests:[], items:[], popCoins:[], chestBursts:[], projectiles:[],
     goal:null, checkpoint:null, platforms:[], camX:0, state:'play', winT:0, time:0,
     initialEnemies: [] // Track initial enemy configurations for respawning
   };
@@ -276,7 +297,7 @@ export function buildWorld(){
       if (c==='R') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'shamrock',remove:false,static:true});
       if (c==='N') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'rainbow',remove:false,static:true});
       if (c==='U') world.items.push({x:x*TILE+8,y:(y-1)*TILE+8,w:16,h:16,vx:0,vy:0,grounded:false,type:'mushroom',remove:false,static:true});
-      if (c==='M') world.platforms.push({x:x*TILE,y:(y-1)*TILE,w:TILE*2,h:8,dir:1,speed:40,range:64,baseX:x*TILE});
+      if (c==='V') world.platforms.push({x:x*TILE,y:(y-1)*TILE,w:TILE*2,h:8,dir:1,speed:40,range:64,baseX:x*TILE});
       if (c==='[') world.blocks.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE,type:'q',bounce:0,used:false});
       if (c==='B') world.chests.push({x:x*TILE,y:(y-1)*TILE,w:TILE,h:TILE});
       if (c==='G'){

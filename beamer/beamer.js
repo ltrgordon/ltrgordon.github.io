@@ -34,6 +34,7 @@ const cfg = {
   lensMaterial: stored.lensMaterial || 'glass',
   beamWavelength: stored.beamWavelength || 632.8,
   beamDiameter: stored.beamDiameter || 1.0,
+  paddleSize: stored.paddleSize || 'standard',
   powerupsFrequency: stored.powerupsFrequency || 'moderate',
   leftPaddleHandicap: stored.leftPaddleHandicap || 'standard',
   rightPaddleHandicap: stored.rightPaddleHandicap || 'standard',
@@ -48,6 +49,7 @@ function saveConfig(){
     lensMaterial: cfg.lensMaterial,
     beamWavelength: cfg.beamWavelength,
     beamDiameter: cfg.beamDiameter,
+    paddleSize: cfg.paddleSize,
     powerupsFrequency: cfg.powerupsFrequency,
     leftPaddleHandicap: cfg.leftPaddleHandicap,
     rightPaddleHandicap: cfg.rightPaddleHandicap
@@ -92,7 +94,7 @@ class Paddle{
     this.x=x;
     this.y=cfg.height/2-48;
     this.width=16;
-    this.baseHeight=getHandicapHeight(name === 'Left' ? cfg.leftPaddleHandicap : cfg.rightPaddleHandicap);
+    this.baseHeight=getHandicapHeight(name === 'Left' ? cfg.leftPaddleHandicap : cfg.rightPaddleHandicap) * getPaddleSizeMultiplier(cfg.paddleSize);
     this.height=this.baseHeight;
     this.speed=cfg.paddleSpeed;
     this.vy=0;
@@ -113,7 +115,7 @@ class Paddle{
   move(dir){ this.vy = dir*this.speed; }
   stop(){ if(!this.ai) this.vy=0; }
   resetToHandicap() {
-    this.baseHeight = getHandicapHeight(this.name === 'Left' ? cfg.leftPaddleHandicap : cfg.rightPaddleHandicap);
+    this.baseHeight = getHandicapHeight(this.name === 'Left' ? cfg.leftPaddleHandicap : cfg.rightPaddleHandicap) * getPaddleSizeMultiplier(cfg.paddleSize);
     this.height = this.baseHeight;
   }
 }
@@ -176,7 +178,7 @@ class Ball{
     let x1 = this.prevX, y1 = this.prevY;
     let x2 = this.x, y2 = this.y;
     
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
       const midX = (x1 + x2) / 2;
       const midY = (y1 + y2) / 2;
       const midInLens = lens.contains(midX, midY);
@@ -206,68 +208,59 @@ class Ball{
   refractAtIntersection(intersection, entering) {
     const n1 = entering ? 1.0 : getLensRefractiveIndex(cfg.lensMaterial);
     const n2 = entering ? getLensRefractiveIndex(cfg.lensMaterial) : 1.0;
-    
+
     const speed = Math.hypot(this.vx, this.vy);
     if (speed === 0) return;
-    
+
     const incidentX = this.vx / speed;
     const incidentY = this.vy / speed;
-    
+
     let normalX = intersection.nx;
     let normalY = intersection.ny;
-    
-    // Adjust normal direction for proper refraction
-    if (entering) {
+
+    // Surface normal from medium 1 into medium 2.
+    const incomingDot = incidentX * normalX + incidentY * normalY;
+    if (incomingDot > 0) {
       normalX = -normalX;
       normalY = -normalY;
     }
-    
-    // Calculate angle of incidence
-    let cosTheta1 = -(incidentX * normalX + incidentY * normalY);
-    
-    if (cosTheta1 < 0) {
-      normalX = -normalX;
-      normalY = -normalY;
-      cosTheta1 = -cosTheta1;
-    }
-    
-    cosTheta1 = Math.max(0.0, Math.min(1.0, cosTheta1));
-    const sinTheta1 = Math.sqrt(1.0 - cosTheta1 * cosTheta1);
-    
-    // Apply Snell's law
-    const sinTheta2 = (n1 / n2) * sinTheta1;
-    
-    // Check for total internal reflection
-    if (sinTheta2 > 1.0 && n1 > n2) {
-      // Total internal reflection
+
+    const cosTheta1 = Math.max(0.0, Math.min(1.0, -(incidentX * normalX + incidentY * normalY)));
+    const sin2Theta1 = Math.max(0.0, 1.0 - cosTheta1 * cosTheta1);
+
+    const eta = n1 / n2;
+    const sin2Theta2 = eta * eta * sin2Theta1;
+
+    // Total internal reflection
+    if (sin2Theta2 > 1.0) {
       const dotProduct = incidentX * normalX + incidentY * normalY;
-      const reflectedX = incidentX - 2.0 * dotProduct * normalX;
-      const reflectedY = incidentY - 2.0 * dotProduct * normalY;
-      
-      this.vx = speed * reflectedX;
-      this.vy = speed * reflectedY;
+      this.vx = speed * (incidentX - 2.0 * dotProduct * normalX);
+      this.vy = speed * (incidentY - 2.0 * dotProduct * normalY);
       playBeep(800, 0.05);
-    } else {
-      // Normal refraction
-      const clampedSinTheta2 = Math.min(1.0, sinTheta2);
-      const cosTheta2 = Math.sqrt(1.0 - clampedSinTheta2 * clampedSinTheta2);
-      
-      const ratio = n1 / n2;
-      const c = ratio * cosTheta1 - cosTheta2;
-      
-      const refractedX = ratio * incidentX + c * normalX;
-      const refractedY = ratio * incidentY + c * normalY;
-      
-      const refractedLength = Math.hypot(refractedX, refractedY);
-      if (refractedLength > 0) {
-        this.vx = speed * (refractedX / refractedLength);
-        this.vy = speed * (refractedY / refractedLength);
-      }
-      
-      playBeep(700, 0.05);
+      return;
     }
+
+    const cosTheta2 = Math.sqrt(Math.max(0.0, 1.0 - sin2Theta2));
+
+    // Stable vector Snell form: t = eta*i + (eta*cosTheta1 - cosTheta2)*n
+    const refractedX = eta * incidentX + (eta * cosTheta1 - cosTheta2) * normalX;
+    const refractedY = eta * incidentY + (eta * cosTheta1 - cosTheta2) * normalY;
+
+    const refractedLength = Math.hypot(refractedX, refractedY);
+    if (refractedLength > 1e-8) {
+      this.vx = speed * (refractedX / refractedLength);
+      this.vy = speed * (refractedY / refractedLength);
+      playBeep(700, 0.05);
+      return;
+    }
+
+    // Fallback to reflection for extreme numeric edge-cases near grazing/normal incidence.
+    const dotProduct = incidentX * normalX + incidentY * normalY;
+    this.vx = speed * (incidentX - 2.0 * dotProduct * normalX);
+    this.vy = speed * (incidentY - 2.0 * dotProduct * normalY);
+    playBeep(800, 0.05);
   }
-  
+
   reflectVertical(){ this.vy=-this.vy; }
   reflectHorizontal(){ this.vx=-this.vx; }
   speedUp(f){ this.vx*=f; this.vy*=f; this.speed*=f; this.baseSpeed*=f; }
@@ -306,9 +299,9 @@ class Lens{
 class PowerUp{
   constructor(kind){
     this.kind=kind;
-    this.size=30; // Increased from 20 to 30
+    this.size=40;
     this.vx = 0;
-    this.vy = 60; // Slower fall speed
+    this.vy = 36;
     this.ttl = 15.0; // Time to live in seconds
     do{
       this.x=Math.random()*(cfg.width-60)+30;
@@ -328,14 +321,38 @@ class PowerUp{
   
   bounds(){return [this.x-this.size/2,this.y-this.size/2,this.x+this.size/2,this.y+this.size/2];}
   draw(ctx){
-    const colors={PADDLE_EXPAND:cfg.theme.accent2,PADDLE_SHRINK_OPP:cfg.theme.danger,BALL_SLOW:'#60a5fa',BALL_FAST:'#f59e0b'};
-    ctx.fillStyle=colors[this.kind]||cfg.theme.accent;
-    ctx.fillRect(this.x-this.size/2,this.y-this.size/2,this.size,this.size);
+    const colors={
+      PADDLE_EXPAND:['#22c55e','#bbf7d0'],
+      PADDLE_SHRINK_OPP:['#ef4444','#fecaca'],
+      BALL_SLOW:['#3b82f6','#bfdbfe'],
+      BALL_FAST:['#f59e0b','#fde68a']
+    };
+    const [base, glow] = colors[this.kind] || [cfg.theme.accent, '#a5f3fc'];
+    const half = this.size / 2;
+
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = base;
+    ctx.beginPath();
+    ctx.roundRect(this.x-half, this.y-half, this.size, this.size, 8);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
     ctx.fillStyle='#0b0f1a';
-    ctx.font='bold 10px sans-serif';
+    ctx.font='bold 12px sans-serif';
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.fillText(this.kind.split('_')[0],this.x,this.y);
+    const label = {
+      PADDLE_EXPAND: 'EXP',
+      PADDLE_SHRINK_OPP: 'SHR',
+      BALL_SLOW: 'SLO',
+      BALL_FAST: 'FST'
+    }[this.kind] || 'PWR';
+    ctx.fillText(label,this.x,this.y);
   }
 }
 
@@ -604,10 +621,24 @@ function handleKeyDown(key){
       if(state==='menu'){cfg.ballSpeed=Math.max(100,cfg.ballSpeed-20);saveConfig();updateMenuDisplay();}
       break;
     case 'c':
-      if(state==='menu'){cfg.lensCurvature=Math.min(cfg.lensCurvature+0.002,0.05);lens.curvature=cfg.lensCurvature;lens.updateRadius();saveConfig();updateMenuDisplay();}
+      if(state==='menu'){
+        const options = [0.005, 0.0075, 0.01, 0.0125, 0.016, 0.02];
+        const currentIndex = options.reduce((bestIndex, value, index) => {
+          return Math.abs(value - cfg.lensCurvature) < Math.abs(options[bestIndex] - cfg.lensCurvature) ? index : bestIndex;
+        }, 0);
+        cfg.lensCurvature = options[Math.min(options.length - 1, currentIndex + 1)];
+        lens.curvature=cfg.lensCurvature;lens.updateRadius();saveConfig();updateMenuDisplay();
+      }
       break;
     case 'x':
-      if(state==='menu'){cfg.lensCurvature=Math.max(cfg.lensCurvature-0.002,0.002);lens.curvature=cfg.lensCurvature;lens.updateRadius();saveConfig();updateMenuDisplay();}
+      if(state==='menu'){
+        const options = [0.005, 0.0075, 0.01, 0.0125, 0.016, 0.02];
+        const currentIndex = options.reduce((bestIndex, value, index) => {
+          return Math.abs(value - cfg.lensCurvature) < Math.abs(options[bestIndex] - cfg.lensCurvature) ? index : bestIndex;
+        }, 0);
+        cfg.lensCurvature = options[Math.max(0, currentIndex - 1)];
+        lens.curvature=cfg.lensCurvature;lens.updateRadius();saveConfig();updateMenuDisplay();
+      }
       break;
     case 'l': case 'L':
       if(state==='menu'){
@@ -619,7 +650,7 @@ function handleKeyDown(key){
       }
       break;
     case 'd':
-      if(state==='menu'){cfg.beamDiameter=Math.min(cfg.beamDiameter+0.1,5.0);saveConfig();updateMenuDisplay();}
+      if(state==='menu'){cfg.beamDiameter=Math.min(cfg.beamDiameter+0.1,10.0);saveConfig();updateMenuDisplay();}
       break;
     case 'f':
       if(state==='menu'){cfg.beamDiameter=Math.max(cfg.beamDiameter-0.1,0.1);saveConfig();updateMenuDisplay();}
@@ -652,6 +683,16 @@ function handleKeyDown(key){
         const handicaps = ['small', 'standard', 'large', 'extra_large'];
         const currentIndex = handicaps.indexOf(cfg.rightPaddleHandicap);
         cfg.rightPaddleHandicap = handicaps[(currentIndex + 1) % handicaps.length];
+        right.resetToHandicap();
+        saveConfig();updateMenuDisplay();
+      }
+      break;
+    case 'o': case 'O':
+      if(state==='menu'){
+        const sizes = ['compact', 'standard', 'large', 'huge'];
+        const currentIndex = sizes.indexOf(cfg.paddleSize);
+        cfg.paddleSize = sizes[(currentIndex + 1) % sizes.length];
+        left.resetToHandicap();
         right.resetToHandicap();
         saveConfig();updateMenuDisplay();
       }
@@ -786,9 +827,9 @@ function updateMenuDisplay() {
     settingsDiv.innerHTML = `
       <div>Win Score: ${cfg.winScore} | Ball Speed: ${cfg.ballSpeed} px/s | AI Difficulty: ${aiDifficulty}</div>
       <div>AI: ${left.ai ? 'Left ON' : 'Left OFF'}, ${right.ai ? 'Right ON' : 'Right OFF'}</div>
-      <div>Lens: ${getLensMaterialDisplayName(cfg.lensMaterial)} | Curvature: ${cfg.lensCurvature.toFixed(3)}</div>
+      <div>Lens: ${getLensMaterialDisplayName(cfg.lensMaterial)} | Curvature: ${getLensCurvatureDisplayName(cfg.lensCurvature)}</div>
       <div>Beam: ${cfg.beamWavelength.toFixed(1)}nm, ${cfg.beamDiameter.toFixed(1)}mm | Power-ups: ${getPowerupFrequencyDisplayName(cfg.powerupsFrequency)}</div>
-      <div>Handicaps: Left ${getHandicapDisplayName(cfg.leftPaddleHandicap)}, Right ${getHandicapDisplayName(cfg.rightPaddleHandicap)}</div>
+      <div>Handicaps: Left ${getHandicapDisplayName(cfg.leftPaddleHandicap)}, Right ${getHandicapDisplayName(cfg.rightPaddleHandicap)} | Paddle Size: ${getPaddleSizeDisplayName(cfg.paddleSize)}</div>
     `;
   }
 }
@@ -817,6 +858,23 @@ function getPowerupFrequencyDisplayName(freq) {
     'high': 'High'
   };
   return names[freq] || 'Moderate';
+}
+
+
+function getLensCurvatureDisplayName(curvature) {
+  const options = [0.005, 0.0075, 0.01, 0.0125, 0.016, 0.02];
+  const labels = {
+    0.005: 'Very Large',
+    0.0075: 'Large+',
+    0.01: 'Large',
+    0.0125: 'Medium',
+    0.016: 'Small',
+    0.02: 'Very Small'
+  };
+  const nearest = options.reduce((best, candidate) => {
+    return Math.abs(candidate - curvature) < Math.abs(best - curvature) ? candidate : best;
+  }, options[0]);
+  return `${labels[nearest]} (${curvature.toFixed(4)})`;
 }
 
 function getPowerupSettings(freq){

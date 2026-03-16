@@ -44,10 +44,32 @@
     return names[handicap] || 'Standard';
   }
 
+  function getPaddleSizeMultiplier(size) {
+    const sizes = {
+      compact: 0.85,
+      standard: 1.0,
+      large: 1.2,
+      huge: 1.4
+    };
+    return sizes[size] || 1.0;
+  }
+
+  function getPaddleSizeDisplayName(size) {
+    const names = {
+      compact: 'Compact',
+      standard: 'Standard',
+      large: 'Large',
+      huge: 'Huge'
+    };
+    return names[size] || 'Standard';
+  }
+
   return {
     getLensRefractiveIndex,
     getLensMaterialDisplayName,
     getHandicapHeight,
-    getHandicapDisplayName
+    getHandicapDisplayName,
+    getPaddleSizeMultiplier,
+    getPaddleSizeDisplayName
   };
 }));

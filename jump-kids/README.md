@@ -11,7 +11,7 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 
 ## How to Play
 - Open `index.html` in any modern browser.
-- Keyboard: Left/Right to move, Space or Z to jump, D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1 and F for S2.
+- Keyboard: Left/Right to move, Space or Z to jump (press twice to double jump), D to dash, Up/Down (or W/Arrow keys) to climb ladders, S for S1, F for S2, E for S3 and C for S4.
 - P to pause/resume. After Game Over, press R or Jump to restart.
 - Mobile: Use the on‑screen buttons.
 
@@ -43,14 +43,14 @@ A small, modular browser platformer inspired by classic side‑scrollers. This v
 - Deep cavern section beneath the underground path filled with extra enemies, moving platforms, and frequent spike pits.
 - Spike pits bridged by small moving platforms.
 - Ladders connecting upper, underground, and cavern paths.
-- Rolling hills span the surface while the lower routes reveal a spooky underground cave backdrop.
+- Rolling hills, fiery volcanoes and looming castles span the surface while the lower routes reveal a spooky underground cave backdrop.
 - DPI aware canvas sizing; mobile controls; no tile culling to simplify rendering.
 
 ## Characters & Special Moves
-- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path.
-- **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes.
-- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front.
-- **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling.
+- **Lucy** – S1 high back‑flip jump reaching 1.5× normal height; S2 spinning cartwheel forward that knocks back enemies in her path; S3 backflip attack defeating foes behind her; S4 rainbow projectile.
+- **Joey** – S1 invisibility for 10 seconds so sight‑based enemies ignore him; S2 ninja spin dash that knocks down foes; S3 spinning dash forward that defeats enemies in his path; S4 shuriken projectile.
+- **Abe** – S1 ground smash that sends a shockwave staggering nearby enemies; S2 running punch that knocks back enemies with gloves held out front; S3 berserk mode doubling run speed and knocking back/dazing enemies; S4 water balloon projectile.
+- **Leo** – Hold jump for 3 s to form a bubble and float upward until released; jumps half as high, is invincible to enemies, and floats out of pits instead of falling; S4 diaper projectile.
 
 ## Tile/Map Encoding
 The level is an ASCII grid split across two arrays in `game.js`:
@@ -74,11 +74,12 @@ Legend (selected):
 - `O`: ghost enemy
 - `F`: fire enemy
 - `S`: bird enemy
-- `M`: moving platform (two tiles wide)
+- `V`: moving platform (two tiles wide)
 - `X`: skeleton enemy that crumbles and reforms
 - `T`: trapdoor
 - `L`: ladder
 - `^`: spike hazard
+- `J`: red trampoline enemy
 
 Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” convention for collision and rendering.
 
@@ -99,7 +100,7 @@ Tiles are 32×32 px. World Y↔tile mapping uses a consistent “(ty-1)*TILE” 
 See `developers.md` for a deeper tour of the loop, level format, and common extension points.
 
 ## Customization Tips
-- Use the start‑menu level editor to create new stages or tweak existing ones. Pick a backdrop, then click tiles to place ground (`#`), platforms (`=`), moving platforms (`M`), power‑ups (`R`, `N`, `U`), enemies (`E`, `H`, `F`, `X`), checkpoints (`K`), goal flags (`G`), and coins (`C`). Save downloads a JSON file compatible with `assets/levels/levels.json`.
+- Use the start‑menu level editor to create new stages or tweak existing ones. Pick a backdrop, then click tiles to place ground (`#`), platforms (`=`), moving platforms (`V`), power‑ups (`R`, `N`, `U`), enemies (`E`, `H`, `F`, `X`), checkpoints (`K`), goal flags (`G`), and coins (`C`). Save downloads a JSON file compatible with `assets/levels/levels.json`.
 - Level layout: edit the `BASE`/`EXT` strings in `entities.js`, or modify `assets/levels/level1.json`. Keep arrays the same height and update `assets/levels/levels.json` to list new level files.
 - Add enemies: place `E`, `H`, etc. where you want; tweak behaviors in `assets/enemies.json` or add new symbols there.
 - Move flags: `K` sets the checkpoint; the rightmost `G` becomes the goal.
