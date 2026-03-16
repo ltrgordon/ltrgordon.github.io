@@ -142,11 +142,11 @@
     <div class="controlsWrap">
       <div class="controlsBox">
         <h3>Player 1</h3>
-        <div>Move: <b>A / D</b><br>Jump: <b>W</b><br>Block: <b>S</b><br>Punch: <b>F</b><br>Kick: <b>G</b><br>Power: <b>E</b><br>Super: <b>Q</b></div>
+        <div>Move: <b>A / D</b><br>Jump: <b>W</b><br>Block: <b>S</b><br>Punch: <b>F</b><br>Ranged: <b>G</b><br>Grapple: <b>F+G</b> (adjacent)<br>Power: <b>E</b><br>Super: <b>Q</b></div>
       </div>
       <div class="controlsBox">
         <h3>Player 2</h3>
-        <div>Move: <b>← / →</b><br>Jump: <b>↑</b><br>Block: <b>↓</b><br>Punch: <b>K</b><br>Kick: <b>L</b><br>Power: <b>P</b><br>Super: <b>O</b></div>
+        <div>Move: <b>← / →</b><br>Jump: <b>↑</b><br>Block: <b>↓</b><br>Punch: <b>K</b><br>Ranged: <b>L</b><br>Grapple: <b>K+L</b> (adjacent)<br>Power: <b>P</b><br>Super: <b>O</b></div>
       </div>
     </div>
     <div class="cta">
@@ -196,7 +196,7 @@
     </div>
   </div>
 
-  <div class="footerTip">Combos: PP=Uppercut, KK=Double Kick, PKP=Cyclone! Supers travel full-screen — JUMP to dodge! Power has 5s cooldown.</div>
+  <div class="footerTip">Combos: PP=Uppercut, PKP=Cyclone! | Ranged (G/L): unique long-range shot per robot, 1s cooldown | Grapple: Punch+Ranged when adjacent — unblockable! 20s cooldown | Supers: JUMP to dodge!</div>
 </div>
 
 <script>
@@ -457,7 +457,9 @@
       this.superMeter = 0;
       this.powerCd = 0;
       this.attackCooldown = 0;
+      this.rangedCooldown = 0;
       this.jumpCooldown = 0;
+      this.grappleCd = 0;
       this.specialCd = 0;
       this.hitFlash = 0;
       this.stun = 0;
@@ -479,28 +481,31 @@
       this.superArmor = 0;
       // limb animation state
       this.attackPhase = 0;   // 0=idle, 1=windup, 2=extend, 3=retract
-      this.attackKind = null; // 'punch' | 'kick'
+      this.attackKind = null; // 'punch' | 'ranged' | 'grapple'
       this.attackPhaseDur = 0;
       this.attackPhaseMax = 0;
+      // grapple state
+      this.grappleState = null; // null | { phase, timer, victim, kind }
       // combo input buffer
-      this.inputBuffer = []; // sequence of 'p'/'k' inputs
+      this.inputBuffer = []; // sequence of 'p'/'r' inputs
       this.inputBufferTimer = 0;
       // hat: player 2 wears a hat when same robot chosen
       this.wearHat = false;
       // blocking state
       this.blocking = false;
-      this.kickContact = null;
+      this.kickContact = null; // kept for legacy compat but unused
     }
     get controlMap() {
       return this.playerIndex === 1
-        ? {left:'a',right:'d',jump:'w',block:'s',punch:'f',kick:'g',power:'e',special:'q'}
-        : {left:'ArrowLeft',right:'ArrowRight',jump:'ArrowUp',block:'ArrowDown',punch:'k',kick:'l',power:'p',special:'o'};
+        ? {left:'a',right:'d',jump:'w',block:'s',punch:'f',ranged:'g',power:'e',special:'q'}
+        : {left:'ArrowLeft',right:'ArrowRight',jump:'ArrowUp',block:'ArrowDown',punch:'k',ranged:'l',power:'p',special:'o'};
     }
     update(dt, enemy) {
       this.anim += dt*7;
       this.attackCooldown = Math.max(0,this.attackCooldown-dt);
-      this.kickCooldown   = Math.max(0,(this.kickCooldown||0)-dt);
+      this.rangedCooldown = Math.max(0,(this.rangedCooldown||0)-dt);
       this.jumpCooldown = Math.max(0,this.jumpCooldown-dt);
+      this.grappleCd = Math.max(0,(this.grappleCd||0)-dt);
       this.stun = Math.max(0,this.stun-dt);
       this.hitFlash = Math.max(0,this.hitFlash-dt);
       this.attackTimer = Math.max(0,this.attackTimer-dt);
@@ -531,11 +536,10 @@
           else { this.attackPhase = 0; this.attackKind = null; }
         }
       }
-      if (!(this.attackPhase > 0 && (this.attackKind === 'kick' || this.attackKind === 'doublekick'))) {
+      if (true) { // kick removed — always clear legacy kickContact
         this.kickContact = null;
       }
-      if (!this.dead) {
-        this.powerMeter = clamp(this.powerMeter + dt*10, 0, 100);
+      if (!this.dead) {        this.powerMeter = clamp(this.powerMeter + dt*10, 0, 100);
         this.superMeter = clamp(this.superMeter + dt*5.3, 0, 100);
       }
       if (this.comboTimer > 0) this.comboTimer -= dt;
@@ -560,6 +564,16 @@
 
       if (this.y >= floorY) {
         if (this.jumpState && this.groundPoundReady) this.landGroundPound(enemy);
+        // grapple slam damage on landing
+        if (this._grappleDmgPending) {
+          const g = this._grappleDmgPending;
+          this._grappleDmgPending = null;
+          makeExplosion(this.x, floorY - 20, g.attacker.robot.accent, 80, 44);
+          makeShockwave(this.x, floorY - 8, '#ffffff', 28, 260);
+          screenShake = Math.max(screenShake, 22);
+          sfx('boom');
+          this.takeHit(g.dmg, g.attacker, sign(this.x - g.attacker.x) * 180, g.attacker.robot.accent, 0.55);
+        }
         this.y = floorY;
         this.vy = 0;
         this.jumpState = false;
@@ -583,10 +597,12 @@
       if (countdownLock || this.dead || this.stun > 0) { this.blocking = false; return; }
       // hard freeze: can't move or attack
       if (this.freeze && this.freeze > 0) { this.vx *= 0.7; this.blocking = false; return; }
+      // locked in grapple animation
+      if (this.grappleState) { this.vx = 0; return; }
       const m = this.controlMap;
       const left = !!keys[m.left], right = !!keys[m.right];
       const jump = !!keys[m.jump], block = !!keys[m.block];
-      const punch = !!keys[m.punch], kick = !!keys[m.kick], power = !!keys[m.power];
+      const punch = !!keys[m.punch], ranged = !!keys[m.ranged], power = !!keys[m.power];
       const special = !!keys[m.special];
 
       // blocking: only on ground, cancels movement
@@ -600,26 +616,39 @@
         if (left) this.facing = -1;
         if (right) this.facing = 1;
       } else if (this.blocking) {
-        this.vx *= 0.5; // slow drag while blocking
+        this.vx *= 0.5;
       }
 
       if (jump && this.onGround() && this.jumpCooldown <= 0 && !this.blocking) this.jump();
 
-      // track rising-edge presses — only when not blocking
       if (!this.blocking && !this.movePrep) {
-        if (!this._prevPunch && punch && this.attackCooldown <= 0) {
+        // Grapple: punch+ranged pressed simultaneously when adjacent
+        const bothPressed = punch && ranged;
+        if (!this._prevGrapple && bothPressed && (this.grappleCd||0) <= 0 && enemy && !enemy.dead) {
+          const dist = Math.abs(enemy.x - this.x);
+          if (dist < this.w * 0.9 + enemy.w * 0.5) {
+            this.startGrapple(enemy);
+            this._prevGrapple = true;
+            this._prevPunch = punch;
+            this._prevRanged = ranged;
+            return;
+          }
+        }
+        this._prevGrapple = bothPressed;
+
+        if (!this._prevPunch && punch && !ranged && this.attackCooldown <= 0) {
           this.inputBuffer.push('p');
           this.inputBufferTimer = 0.55;
           this._checkCombo(enemy) || this.attack('punch');
         }
-        if (!this._prevKick && kick && (this.kickCooldown||0) <= 0) {
-          this.inputBuffer.push('k');
+        if (!this._prevRanged && ranged && !punch && (this.rangedCooldown||0) <= 0) {
+          this.inputBuffer.push('r');
           this.inputBufferTimer = 0.55;
-          this._checkCombo(enemy) || this.attack('kick');
+          this.fireRanged(enemy);
         }
       }
       this._prevPunch = punch;
-      this._prevKick  = kick;
+      this._prevRanged = ranged;
 
       if (power && this.powerCd <= 0 && this.powerMeter >= 100 && !this.movePrep) this.usePower(enemy);
       if (!this._prevSpecial && special && this.superMeter >= 100 && this.specialCd <= 0 && !this.movePrep) this.useSuper(enemy);
@@ -649,8 +678,8 @@
     }
     _checkCombo(enemy) {
       const buf = this.inputBuffer.join('');
-      // pkp — spinning cyclone: hits twice, big knockback
-      if (buf.endsWith('pkp')) {
+      // prp — spinning cyclone: hits twice, big knockback
+      if (buf.endsWith('prp')) {
         this.inputBuffer = [];
         this.inputBufferTimer = 0;
         this.fireCombo('cyclone', enemy);
@@ -663,13 +692,6 @@
         this.fireCombo('uppercut', enemy);
         return true;
       }
-      // kk — double-stomp kick
-      if (buf.endsWith('kk')) {
-        this.inputBuffer = [];
-        this.inputBufferTimer = 0;
-        this.fireCombo('doublekick', enemy);
-        return true;
-      }
       return false;
     }
     fireCombo(name, enemy) {
@@ -677,29 +699,26 @@
       this.attackCooldown = 0.55;
       this.attackTimer    = 0.45;
       this.comboCount = 0;
-      this.attackKind  = name === 'uppercut' ? 'punch' : 'kick';
-      this.attackPhase = 2; // jump straight to extend for big visual
+      this.attackKind  = 'punch';
+      this.attackPhase = 2;
       this.attackPhaseMax = 0.45;
       this.attackPhaseDur = 0.22;
       this.superMeter = clamp(this.superMeter + 22, 0, 100);
 
       if (name === 'uppercut') {
-        // rising fist: large upward knockback
         this.activeHit = {
           t:0.38, triggerAt:0.14, used:false, kind:'punch',
           dmg:18 * this.robot.power, reach:155, knock:160,
           height:0.62, color:'#ffffa0', stun:0.28,
           isCombo: true, comboName:'uppercut'
         };
-        // burst of gold sparks upward
         for (let i=0;i<22;i++) spawnParticle(this.x+this.facing*60, this.y-this.h*0.7, this.facing*rand(40,160), rand(-380,-80), '#ffe06d', rand(4,9), 0.5, 60);
         makeShockwave(this.x+this.facing*70, this.y-this.h*0.68, '#ffffa0', 18, 110);
         screenShake = Math.max(screenShake, 10);
         showComboText('UPPERCUT!', this);
       } else if (name === 'cyclone') {
-        // spinning multi-hit
         this.activeHit = {
-          t:0.44, triggerAt:0.08, used:false, kind:'kick',
+          t:0.44, triggerAt:0.08, used:false, kind:'punch',
           dmg:14 * this.robot.power, reach:200, knock:360,
           height:0.5, color:'#ff7fff', stun:0.32,
           isCombo: true, comboName:'cyclone'
@@ -708,17 +727,6 @@
         makeShockwave(this.x, this.y-this.h*0.52, '#ff7fff', 22, 180);
         screenShake = Math.max(screenShake, 12);
         showComboText('CYCLONE!!', this);
-      } else if (name === 'doublekick') {
-        this.activeHit = {
-          t:0.40, triggerAt:0.10, used:false, kind:'kick',
-          dmg:16 * this.robot.power, reach:190, knock:280,
-          height:0.44, color:'#7fffff', stun:0.26,
-          isCombo: true, comboName:'doublekick'
-        };
-        for (let i=0;i<20;i++) spawnParticle(this.x+this.facing*80, this.y-this.h*0.38, this.facing*rand(80,240), rand(-80,60), '#7fffff', rand(3,8), 0.44);
-        makeShockwave(this.x+this.facing*90, this.y-this.h*0.38, '#7fffff', 16, 140);
-        screenShake = Math.max(screenShake, 10);
-        showComboText('DOUBLE KICK!', this);
       }
     }
     jump() {
@@ -732,55 +740,180 @@
       sfx('zap');
     }
     attack(kind) {
-      const isPunch = kind === 'punch';
-      // Separate cooldowns: punch won't block a kick and vice versa
-      if (isPunch) {
-        this.attackCooldown = 1.0;
-      } else {
-        this.kickCooldown = 1.18;
-      }
-      // Kick is slower and more deliberate: longer animation window
-      const phaseDur = isPunch ? 0.22 : 0.54;
+      // only punch now
+      this.attackCooldown = 1.0;
+      const phaseDur = 0.22;
       this.attackTimer = phaseDur;
-      this.attackKind = kind;
+      this.attackKind = 'punch';
       this.kickContact = null;
       this.attackPhase = 1;
       this.attackPhaseMax = phaseDur;
-      this.attackPhaseDur = phaseDur * 0.28; // windup portion
+      this.attackPhaseDur = phaseDur * 0.28;
       const comboBoost = this.comboCount >= 2 ? 1.35 : 1;
-      // kick height varies by robot speed: fast = very high (head), slow = chest/mid
-      const kickSpeedFactor = clamp((this.robot.speed - 140) / (420 - 140), 0, 1);
-      const kickHeight = 0.72 + kickSpeedFactor * 0.2; // 0.72 (nova, shoulder/head) .. 0.92 (volt, very high)
       this.activeHit = {
-        t:isPunch?0.20:0.48,
-        triggerAt:isPunch?0.09:0.22,
-        used:false,
-        kind,
-        dmg:(isPunch?9.5:13.5) * this.robot.power * comboBoost,
-        reach:isPunch?165:255,
-        knock:isPunch?260:380,
-        height:isPunch?0.54:kickHeight,
-        color:isPunch?this.robot.accent:'#fff175',
-        stun:isPunch?0.14:0.22
+        t:0.20, triggerAt:0.09, used:false, kind:'punch',
+        dmg:9.5 * this.robot.power * comboBoost,
+        reach:165, knock:260, height:0.54,
+        color:this.robot.accent, stun:0.14
       };
       this.comboCount = clamp(this.comboCount + 1, 0, 4);
       this.comboTimer = 0.9;
-      this.superMeter = clamp(this.superMeter + (isPunch?12:16), 0, 100);
-      this.powerMeter = clamp(this.powerMeter + (isPunch?8:11), 0, 100);
-      // big dramatic wind-up particles
+      this.superMeter = clamp(this.superMeter + 12, 0, 100);
+      this.powerMeter = clamp(this.powerMeter + 8, 0, 100);
       const px = this.x + this.facing*(this.w*0.44);
-      const py = this.y - this.h*(isPunch?0.58:0.42);
+      const py = this.y - this.h*0.58;
       for (let i=0;i<20;i++) spawnParticle(
         px + rand(-18,18), py + rand(-18,18),
         this.facing*rand(100,320), rand(-120,80),
-        isPunch ? this.robot.accent : '#ffe56e', rand(5,11), 0.32
+        this.robot.accent, rand(5,11), 0.32
       );
-      // speed lines radiating outward
       for (let i=0;i<8;i++) {
         const a = (i/8)*Math.PI*2;
         spawnParticle(px, py, Math.cos(a)*rand(180,340), Math.sin(a)*rand(180,340), '#ffffff', rand(3,6), 0.18);
       }
-      sfx(isPunch?'hit':'kick');
+      sfx('hit');
+    }
+
+    fireRanged(enemy) {
+      this.rangedCooldown = 1.0;
+      this.attackCooldown = 0.3;
+      this.attackTimer = 0.28;
+      this.attackKind = 'ranged';
+      this.attackPhase = 2;
+      this.attackPhaseMax = 0.28;
+      this.attackPhaseDur = 0.18;
+      this.superMeter = clamp(this.superMeter + 6, 0, 100);
+
+      const ox = this.x + this.facing * (this.w * 0.5);
+      const oy = this.y - this.h * 0.62;
+
+      if (this.robot.id === 'blaze') {
+        // Blaze: slow rolling fireball — low damage, travels at mid height
+        projectiles.push({
+          kind:'rangedFireball', owner:this,
+          x: ox, y: oy,
+          vx: this.facing * 380, vy: 0,
+          r: 22, life: 2.0, color:'#ff6b2c', color2:'#ffd85c',
+          dmg: 7 * this.robot.power, knock: 160, hitSet: new Set()
+        });
+        for (let i=0;i<10;i++) spawnParticle(ox, oy, this.facing*rand(80,200), rand(-60,60), '#ff9f2f', rand(4,8), 0.3);
+        showComboText('FIREBALL!', this);
+      } else if (this.robot.id === 'volt') {
+        // Volt: fast narrow electric bolt — very fast, low damage
+        projectiles.push({
+          kind:'rangedBolt', owner:this,
+          x: ox, y: oy,
+          vx: this.facing * 900, vy: 0,
+          r: 12, life: 1.2, color:'#9cf7ff', color2:'#ffffff',
+          dmg: 5 * this.robot.power, knock: 120, hitSet: new Set()
+        });
+        for (let i=0;i<8;i++) spawnParticle(ox, oy, this.facing*rand(100,280), rand(-40,40), '#9cf7ff', rand(3,6), 0.2);
+        sfx('zap');
+      } else if (this.robot.id === 'nova') {
+        // Nova: slow heavy shell that bounces once off the ground
+        projectiles.push({
+          kind:'rangedShell', owner:this,
+          x: ox, y: oy,
+          vx: this.facing * 290, vy: -120,
+          r: 20, life: 2.2, color:'#b06cff', color2:'#ffe36d',
+          dmg: 9 * this.robot.power, knock: 200, hitSet: new Set(), bounced: false
+        });
+        for (let i=0;i<8;i++) spawnParticle(ox, oy, this.facing*rand(60,160), rand(-80,30), '#ffe36d', rand(4,8), 0.3);
+        sfx('boom');
+      } else if (this.robot.id === 'frost') {
+        // Frost: ice shard that splits into 3 on contact
+        projectiles.push({
+          kind:'rangedShard', owner:this,
+          x: ox, y: oy,
+          vx: this.facing * 520, vy: -30,
+          r: 15, life: 1.8, color:'#dffaff', color2:'#66b6ff',
+          dmg: 6 * this.robot.power, knock: 140, hitSet: new Set(), split: false
+        });
+        for (let i=0;i<8;i++) spawnParticle(ox, oy, this.facing*rand(60,180), rand(-60,20), '#dffaff', rand(3,6), 0.25);
+        sfx('zap');
+      }
+    }
+
+    startGrapple(enemy) {
+      this.grappleCd = 20.0;
+      this.attackCooldown = 2.5;
+      this.stun = 0;
+      this.vx = 0; this.vy = 0;
+      // snap attacker next to enemy
+      this.x = enemy.x - this.facing * (this.w * 0.5 + enemy.w * 0.3);
+      // Lock enemy
+      enemy.stun = 2.5;
+      enemy.vx = 0; enemy.vy = 0;
+      enemy.attackPhase = 0; enemy.attackKind = null;
+      enemy.blocking = false;
+      // Attacker grapple animation state
+      this.grappleState = { phase: 'lift', timer: 0.55, victim: enemy, robotId: this.robot.id };
+      this.attackKind = 'grapple';
+      this.attackPhase = 2;
+      this.attackPhaseMax = 2.5;
+      this.attackPhaseDur = 2.5;
+      screenShake = Math.max(screenShake, 8);
+      sfx('boom');
+      showComboText('GRAPPLE!', this);
+
+      const robotId = this.robot.id;
+      const self = this;
+
+      // phase 1: lift (0.55s) → phase 2: hold (0.45s) → phase 3: throw (0.5s) → phase 4: slam (done)
+      setTimeout(() => {
+        if (!self.grappleState) return;
+        self.grappleState.phase = 'hold';
+        self.grappleState.timer = 0.45;
+        // lift victim above head
+        enemy.vy = -200;
+        enemy.stun = 1.8;
+      }, 550);
+
+      setTimeout(() => {
+        if (!self.grappleState) return;
+        self.grappleState.phase = 'throw';
+        self.grappleState.timer = 0.5;
+        // slam down with robot-specific flair
+        if (robotId === 'blaze') {
+          // Flaming pile driver — straight down hard
+          enemy.vy = 900;
+          enemy.vx = 0;
+          showComboText('PILE DRIVER!', self);
+        } else if (robotId === 'volt') {
+          // Electric launch — horizontal blast with zap
+          enemy.vx = self.facing * 680;
+          enemy.vy = -280;
+          for (let i=0;i<18;i++) spawnParticle(self.x, self.y-self.h*0.7, rand(-180,180), rand(-200,-60), '#9cf7ff', rand(4,8), 0.45);
+          showComboText('THUNDER TOSS!', self);
+        } else if (robotId === 'nova') {
+          // Gravity Slam — enormous downward slam
+          enemy.vy = 1200;
+          enemy.vx = self.facing * 80;
+          screenShake = Math.max(screenShake, 18);
+          showComboText('GRAVITY SLAM!', self);
+        } else if (robotId === 'frost') {
+          // Cryo Spike — freeze then drop
+          enemy.vy = 700;
+          enemy.vx = self.facing * 120;
+          enemy.freeze = Math.max(enemy.freeze||0, 1.2);
+          showComboText('CRYO SPIKE!', self);
+        }
+        sfx('super');
+        screenShake = Math.max(screenShake, 12);
+      }, 1000);
+
+      setTimeout(() => {
+        if (!self.grappleState) return;
+        self.grappleState = null;
+        self.attackKind = null;
+        self.attackPhase = 0;
+        self.attackTimer = 0;
+        // deal damage when victim lands
+        const dmgTable = { blaze: 28, volt: 22, nova: 36, frost: 24 };
+        const dmg = (dmgTable[robotId] || 24) * self.robot.power;
+        // damage applied on next ground contact via a flag
+        enemy._grappleDmgPending = { dmg, attacker: self };
+      }, 1500);
     }
     landGroundPound(enemy) {
       const info = {
@@ -926,11 +1059,13 @@
       }
       });
     }
-    takeHit(dmg, from, knockX, effectColor='#fff', stun=0.14) {
+    takeHit(dmg, from, knockX, effectColor='#fff', stun=0.14, unblockable=false) {
       if (this.dead) return;
+      // grapple victim can't be further interrupted while being thrown
+      if (this.grappleState) return;
       if (this.freeze && this.freeze > 0) dmg *= 1.1;
-      // blocking: only 10% chip damage, minimal knockback, no stun
-      if (this.blocking) {
+      // blocking: only 10% chip damage — but grapples bypass block entirely
+      if (this.blocking && !unblockable) {
         const chip = dmg * 0.10 / this.robot.armor;
         this.hp = clamp(this.hp - chip, 0, this.maxHp);
         this.hitFlash = 0.08;
@@ -1017,46 +1152,16 @@
     if (!defender || defender.dead) return;
     const dx = defender.x - attacker.x;
     const facingOK = sign(dx) === attacker.facing || Math.abs(dx) < 24;
-    let didHit = false;
     let contactX = attacker.x + attacker.facing * Math.min(Math.abs(dx), hit.reach * 0.85);
-    let contactY = attacker.y - attacker.h * (hit.height || 0.54) + rand(-14, 14);
     let finalKnock = hit.knock;
     let finalStun = hit.stun;
 
-    if (hit.kind === 'kick' && attacker.kickContact) {
-      const torsoCenter = { x: defender.x, y: defender.y - defender.h*0.58 };
-      const headCenter = { x: defender.x, y: defender.y - defender.h*0.95 };
-      const kick = attacker.kickContact;
-      const bootR = kick.radius;
-      const torsoR = defender.w * 0.26;
-      const headR = defender.w * 0.17;
-      const inReach = Math.abs(dx) < (hit.reach + defender.w*0.45);
-      const onFront = facingOK || Math.abs(dx) < defender.w*0.25;
-      if (inReach && onFront) {
-        const seg = pointSegmentDistance(torsoCenter.x, torsoCenter.y, kick.knee.x, kick.knee.y, kick.foot.x, kick.foot.y);
-        const footToTorso = Math.hypot(torsoCenter.x - kick.foot.x, torsoCenter.y - kick.foot.y);
-        const footToHead = Math.hypot(headCenter.x - kick.foot.x, headCenter.y - kick.foot.y);
-        const hitsTorso = seg.d < torsoR + bootR*0.75 || footToTorso < torsoR + bootR;
-        const headKick = footToHead < headR + bootR;
-        if (hitsTorso || headKick) {
-          if (headKick) {
-            finalKnock *= 1.12;
-            finalStun += 0.03;
-            makeShockwave(headCenter.x, headCenter.y, '#fff7ae', 12, 100);
-          }
-          contactX = kick.foot.x;
-          contactY = kick.foot.y;
-          didHit = true;
-        }
-      }
-    } else {
-      const hitY = attacker.y - attacker.h * hit.height;
-      const defY = defender.y - defender.h * 0.52;
-      didHit = facingOK && Math.abs(dx) < hit.reach && Math.abs(defY - hitY) < 120;
-      if (didHit) contactY = hitY + rand(-14, 14);
-    }
-
+    const hitY = attacker.y - attacker.h * hit.height;
+    const defY = defender.y - defender.h * 0.52;
+    const didHit = facingOK && Math.abs(dx) < hit.reach && Math.abs(defY - hitY) < 120;
     if (!didHit) return;
+
+    const contactY = hitY + rand(-14, 14);
 
     if (hit.comboName === 'uppercut') {
       defender.vy = -520;
@@ -1068,11 +1173,10 @@
     defender.takeHit(hit.dmg, attacker, attacker.facing * finalKnock, hit.color, finalStun);
     attacker.superMeter = clamp(attacker.superMeter + 9, 0, 100);
     attacker.powerMeter = clamp(attacker.powerMeter + 7, 0, 100);
-    const expPower = hit.isCombo ? 55 : (hit.kind === 'kick' ? 36 : 28);
-    const expCount = hit.isCombo ? 30 : (hit.kind === 'kick' ? 22 : 16);
+    const expPower = hit.isCombo ? 55 : 28;
+    const expCount = hit.isCombo ? 30 : 16;
     makeExplosion(contactX, contactY, hit.color, expPower, expCount);
-    makeShockwave(contactX, contactY, hit.color, hit.isCombo ? 20 : 12, hit.isCombo ? 160 : (hit.kind==='kick'?110:80));
-    if (hit.kind === 'kick') makeShockwave((attacker.x+defender.x)/2, defender.y-defender.h*0.4, '#fff175', 10, 90);
+    makeShockwave(contactX, contactY, hit.color, hit.isCombo ? 20 : 12, hit.isCombo ? 160 : 80);
   }
 
   function spawnParticle(x,y,vx,vy,color,size,life,gravity=0) {
@@ -1249,6 +1353,63 @@
           p.spikeSpawned = true;
         }
         hitSuperIceWave(p);
+      } else if (p.kind === 'rangedFireball') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        for (let j=0;j<6;j++) spawnParticle(p.x+rand(-p.r*.5,p.r*.5), p.y+rand(-p.r*.5,p.r*.5), rand(-60,60), rand(-40,20), j%2?p.color:p.color2, rand(4,8), rand(.18,.36));
+        hitRangedProjectile(p);
+      } else if (p.kind === 'rangedBolt') {
+        p.x += p.vx * dt;
+        for (let j=0;j<5;j++) spawnParticle(p.x-p.owner.facing*rand(8,p.r*2), p.y+rand(-p.r*.4,p.r*.4), -p.owner.facing*rand(20,60), rand(-20,20), j%2?p.color:'#fff', rand(2,5), rand(.08,.2));
+        hitRangedProjectile(p);
+      } else if (p.kind === 'rangedShell') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 420 * dt;
+        if (!p.bounced && p.y >= floorY - p.r) {
+          p.y = floorY - p.r;
+          p.vy = -Math.abs(p.vy) * 0.55;
+          p.bounced = true;
+          makeShockwave(p.x, floorY - 6, p.color, 8, 60);
+        }
+        for (let j=0;j<4;j++) spawnParticle(p.x+rand(-p.r*.4,p.r*.4), p.y+rand(-p.r*.4,p.r*.4), rand(-40,40), rand(-20,40), j%2?p.color:p.color2, rand(3,6), .2);
+        hitRangedProjectile(p);
+      } else if (p.kind === 'rangedShard') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 120 * dt;
+        for (let j=0;j<4;j++) spawnParticle(p.x+rand(-p.r*.4,p.r*.4), p.y+rand(-p.r*.4,p.r*.4), rand(-30,30), rand(-20,10), j%2?p.color:p.color2, rand(2,5), .18);
+        const shardTarget = getEnemy(p.owner);
+        if (shardTarget && !shardTarget.dead && !p.hitSet.has(shardTarget)) {
+          const d = Math.hypot(shardTarget.x - p.x, (shardTarget.y - shardTarget.h*0.5) - p.y);
+          if (d < p.r + shardTarget.w*0.35) {
+            p.hitSet.add(shardTarget);
+            if (!p.split) {
+              p.split = true;
+              for (let s=0;s<3;s++) {
+                const ang = (s-1) * 0.5;
+                projectiles.push({
+                  kind:'rangedShardSplit', owner:p.owner,
+                  x:p.x, y:p.y,
+                  vx: p.vx*0.6 * Math.cos(ang),
+                  vy: -80 + s*60,
+                  r:9, life:0.5, color:p.color, color2:p.color2,
+                  dmg: p.dmg * 0.4, knock: p.knock*0.4, hitSet: new Set()
+                });
+              }
+            }
+            makeExplosion(p.x, p.y, p.color, 28, 16);
+            shardTarget.takeHit(p.dmg, p.owner, sign(shardTarget.x-p.owner.x)*p.knock, p.color, 0.12);
+            sfx('zap');
+            p.life = 0;
+          }
+        }
+      } else if (p.kind === 'rangedShardSplit') {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 200 * dt;
+        for (let j=0;j<2;j++) spawnParticle(p.x+rand(-4,4), p.y+rand(-4,4), rand(-20,20), rand(-10,10), p.color, rand(2,4), .12);
+        hitRangedProjectile(p);
       }
       if (p.life <= 0 || p.x < -200 || p.x > innerWidth+200) projectiles.splice(i,1);
     }
@@ -1315,6 +1476,20 @@
       p.life = 0;
     }
   }
+  function hitRangedProjectile(p) {
+    const target = getEnemy(p.owner);
+    if (!target || target.dead || p.hitSet.has(target)) return;
+    const d = Math.hypot(target.x - p.x, (target.y - target.h*0.5) - p.y);
+    if (d < p.r + target.w*0.35) {
+      p.hitSet.add(target);
+      makeExplosion(p.x, p.y, p.color, 32, 18);
+      makeShockwave(p.x, p.y, p.color2||'#fff', 10, 90);
+      target.takeHit(p.dmg, p.owner, sign(target.x-p.owner.x)*p.knock, p.color, 0.14);
+      sfx('hit');
+      p.life = 0;
+    }
+  }
+
   function hitSuperIceWave(p) {
     const target = getEnemy(p.owner);
     if (!target || target.dead || p.hitSet.has(target)) return;
@@ -1407,35 +1582,20 @@
     const lift = jumping ? Math.min(40, Math.max(0, -Math.sin(performance.now()*0.018)*6)) : 0;
 
     // ── Limb state parameters ──────────────────────────────────────────────────
-    // attackPhase: 0=idle, 1=windup, 2=extend(strike), 3=retract
-    // For punch: two-segment arm (upper arm + forearm), fully straightened at phase 2.
-    // For kick:  two-segment leg (thigh + shin), fully extended horizontal at phase 2.
-
-    // punch: angle of the whole arm from shoulder, measured from "pointing straight down"
-    //   -π/2 = pointing straight forward (horizontal punch)
-    let punchUpperAngle = 0.15;   // idle: arm hangs slightly forward
-    let punchForeAngle  = 0.3;    // idle: forearm droops a little
-
-    // kick: thigh angle from hip (0=straight down, negative=swung forward/up)
-    let kickThighAngle  = -0.15;  // idle: front leg slightly forward
-    let kickShinAngle   = 0.15;   // idle: shin hangs naturally
-
-    // shared pose vars
-    let backArmUpperAngle = -0.2; // back/guard arm upper segment
-    let backArmForeAngle  = 0.3;  // back arm forearm
+    let punchUpperAngle = 0.15;
+    let punchForeAngle  = 0.3;
+    let backArmUpperAngle = -0.2;
+    let backArmForeAngle  = 0.3;
     let torsoLean         = 0;
     let shoulderDrop      = 0;
 
     // ── BLOCKING GUARD POSE ────────────────────────────────────────────────────
     if (blocking) {
-      // Both arms raised with forearms vertical in front of the face
-      // front (strike) arm — guarding outward
-      punchUpperAngle  = -Math.PI * 0.72;  // upper arm nearly horizontal forward
-      punchForeAngle   = -Math.PI * 0.52;  // forearm folded upward
-      // back arm — guarding inward across chest
+      punchUpperAngle  = -Math.PI * 0.72;
+      punchForeAngle   = -Math.PI * 0.52;
       backArmUpperAngle = -Math.PI * 0.68;
       backArmForeAngle  = Math.PI * 0.48;
-      torsoLean  = -0.06; // slight duck
+      torsoLean  = -0.06;
       shoulderDrop = -0.01;
     }
     // ── PREP / FLINCH POSES ───────────────────────────────────────────────────
@@ -1446,8 +1606,6 @@
       punchForeAngle = 0.3 + prepAmp * 0.16;
       backArmUpperAngle = -0.68 - prepAmp * 0.22;
       backArmForeAngle = 0.34 + prepAmp * 0.14;
-      kickThighAngle = -0.24 - prepAmp * 0.12 - pulse * 0.06;
-      kickShinAngle = 0.28 + prepAmp * 0.1;
       torsoLean = -0.08 - prepAmp * 0.06;
       shoulderDrop = 0.014;
     } else if (attackKind === 'flinch') {
@@ -1455,152 +1613,101 @@
       punchForeAngle = 0.65;
       backArmUpperAngle = 0.56;
       backArmForeAngle = 0.4;
-      kickThighAngle = 0.12;
-      kickShinAngle = 0.2;
       torsoLean = 0.14;
       shoulderDrop = 0.03;
     }
-    // ── PUNCH PHASES ───────────────────────────────────────────────────────────
-    else if (attackPhase > 0 && (attackKind === 'punch' || attackKind === 'uppercut' || attackKind === 'cyclone' || attackKind === 'doublekick')) {
-      const isKindPunch = attackKind === 'punch' || attackKind === 'uppercut' || attackKind === 'cyclone';
-      if (isKindPunch) {
-        if (attackPhase === 1) {       // windup: arm pulled back
-          punchUpperAngle  = 0.85;     // upper arm swings back
-          punchForeAngle   = 0.55;
-          backArmUpperAngle= -0.5;
-          backArmForeAngle = 0.2;
-          torsoLean   = -0.06;
-          shoulderDrop = 0.012;
-        } else if (attackPhase === 2) {// FULL EXTEND: arm shoots straight out horizontally
-          punchUpperAngle  = -Math.PI * 0.5; // pointing straight forward
-          punchForeAngle   = 0.0;            // forearm fully aligned — dead straight
-          backArmUpperAngle= 0.1;
-          backArmForeAngle = 0.15;
-          torsoLean   = 0.09;
-          shoulderDrop = -0.012;
-        } else {                       // retract
-          punchUpperAngle  = -0.25;
-          punchForeAngle   = 0.25;
-          backArmUpperAngle= 0.0;
-          backArmForeAngle = 0.2;
-          torsoLean   = 0.03;
-        }
+    // ── GRAPPLE POSE ──────────────────────────────────────────────────────────
+    else if (attackKind === 'grapple' && fighterRef && fighterRef.grappleState) {
+      const phase = fighterRef.grappleState.phase;
+      if (phase === 'lift') {
+        // Reach both arms forward and upward to grab
+        punchUpperAngle   = -Math.PI * 0.62;
+        punchForeAngle    = -Math.PI * 0.24;
+        backArmUpperAngle = -Math.PI * 0.58;
+        backArmForeAngle  = -Math.PI * 0.18;
+        torsoLean = 0.12;
+      } else if (phase === 'hold') {
+        // Arms raised, holding victim overhead
+        punchUpperAngle   = -Math.PI * 0.88;
+        punchForeAngle    = Math.PI * 0.1;
+        backArmUpperAngle = -Math.PI * 0.84;
+        backArmForeAngle  = Math.PI * 0.1;
+        torsoLean = -0.05;
+      } else if (phase === 'throw') {
+        // Slamming down hard
+        punchUpperAngle   = Math.PI * 0.3;
+        punchForeAngle    = 0.4;
+        backArmUpperAngle = Math.PI * 0.28;
+        backArmForeAngle  = 0.35;
+        torsoLean = 0.22;
+        shoulderDrop = 0.03;
+      }
+    }
+    // ── RANGED SHOT POSE ──────────────────────────────────────────────────────
+    else if (attackPhase > 0 && attackKind === 'ranged') {
+      if (attackPhase === 1) {
+        punchUpperAngle   = -Math.PI * 0.3;
+        punchForeAngle    = -Math.PI * 0.18;
+        backArmUpperAngle = 0.2;
+        backArmForeAngle  = 0.4;
+        torsoLean = 0.04;
+      } else if (attackPhase === 2) {
+        // Both arms extended forward, firing stance
+        punchUpperAngle   = -Math.PI * 0.5;
+        punchForeAngle    = 0.0;
+        backArmUpperAngle = -Math.PI * 0.44;
+        backArmForeAngle  = 0.0;
+        torsoLean = 0.06;
+        shoulderDrop = -0.008;
+      } else {
+        punchUpperAngle   = -Math.PI * 0.28;
+        punchForeAngle    = 0.18;
+        backArmUpperAngle = -0.1;
+        backArmForeAngle  = 0.28;
+        torsoLean = 0.02;
+      }
+    }
+    // ── PUNCH PHASES ──────────────────────────────────────────────────────────
+    else if (attackPhase > 0 && (attackKind === 'punch' || attackKind === 'uppercut' || attackKind === 'cyclone')) {
+      if (attackPhase === 1) {
+        punchUpperAngle  = 0.85;
+        punchForeAngle   = 0.55;
+        backArmUpperAngle= -0.5;
+        backArmForeAngle = 0.2;
+        torsoLean   = -0.06;
+        shoulderDrop = 0.012;
+      } else if (attackPhase === 2) {
+        punchUpperAngle  = -Math.PI * 0.5;
+        punchForeAngle   = 0.0;
+        backArmUpperAngle= 0.1;
+        backArmForeAngle = 0.15;
+        torsoLean   = 0.09;
+        shoulderDrop = -0.012;
+      } else {
+        punchUpperAngle  = -0.25;
+        punchForeAngle   = 0.25;
+        backArmUpperAngle= 0.0;
+        backArmForeAngle = 0.2;
+        torsoLean   = 0.03;
       }
     }
 
-    // ── KICK PHASES ────────────────────────────────────────────────────────────
-    const isKicking = attackPhase > 0 && (attackKind === 'kick' || attackKind === 'doublekick');
-    const kickSpeedFactor = clamp((robot.speed - 140) / (420 - 140), 0, 1);
     const legBend = jumping ? 10 : 0;
 
-    let rootYOffset = 0;
-    let kickRig = null;
-    let kickPose = null;
-
-    if (isKicking && fighterRef) {
-      kickRig = getKickRig(fighterRef);
-      const hipLocal = { x: kickRig.hipX, y: kickRig.hipY };
-      const idleFootLocal = { x: w*0.13, y: -h*0.02 };
-      const windupFootLocal = { x: w*0.06, y: -h*0.56 };
-      const strikeReachX = fighterRef.x + fighterRef.facing * (enemy ? Math.min(hitboxGuardReach(fighterRef), Math.abs(enemy.x - fighterRef.x) + enemy.w*0.18) : w*0.86);
-      const highTargetMul = lerp(0.78, 0.98, kickSpeedFactor);
-      const strikeHeadY = enemy ? enemy.y - enemy.h * highTargetMul : fighterRef.y - fighterRef.h * 0.88;
-
-      let footTargetWorld = toWorldPoint(fighterRef, idleFootLocal.x, idleFootLocal.y);
-      if (attackPhase === 1) {
-        const t = easeInCubic(clamp(1 - attackTimer / Math.max(0.001, fighterRef.attackPhaseMax * 0.28), 0, 1));
-        const windupWorld = toWorldPoint(fighterRef, windupFootLocal.x, windupFootLocal.y);
-        footTargetWorld = { x: lerp(footTargetWorld.x, windupWorld.x, t), y: lerp(footTargetWorld.y, windupWorld.y, t) };
-      } else if (attackPhase === 2) {
-        const t = easeOutExpo(clamp(1 - attackTimer / Math.max(0.001, fighterRef.attackPhaseMax * 0.35), 0, 1));
-        rootYOffset = -h * 0.03 * t;
-        torsoLean = -(0.11 + 0.07 * kickSpeedFactor) * t;
-        const strikeTarget = { x: strikeReachX, y: strikeHeadY };
-        const windupWorld = toWorldPoint(fighterRef, windupFootLocal.x, windupFootLocal.y);
-        footTargetWorld = { x: lerp(windupWorld.x, strikeTarget.x, t), y: lerp(windupWorld.y, strikeTarget.y, t) };
-      } else if (attackPhase === 3) {
-        const t = easeInOutQuad(clamp(1 - attackTimer / Math.max(0.001, fighterRef.attackPhaseMax * 0.3), 0, 1));
-        const windupWorld = toWorldPoint(fighterRef, windupFootLocal.x, windupFootLocal.y);
-        const idleWorld = toWorldPoint(fighterRef, idleFootLocal.x, idleFootLocal.y);
-        footTargetWorld = { x: lerp(windupWorld.x, idleWorld.x, t), y: lerp(windupWorld.y, idleWorld.y, t) };
-        torsoLean = -0.04 * (1 - t);
-      }
-
-      const targetLocal = toLocalPoint(fighterRef, footTargetWorld.x, footTargetWorld.y - rootYOffset);
-      kickPose = solveTwoBoneIK(hipLocal, targetLocal, kickRig.thighLen, kickRig.shinLen, 1);
-      kickThighAngle = kickPose.thighAngle;
-      kickShinAngle = kickPose.kneeAngle;
-      if (fighterRef && attackPhase === 2) {
-        const hipWorld = toWorldPoint(fighterRef, hipLocal.x, hipLocal.y + rootYOffset);
-        const kneeWorld = toWorldPoint(fighterRef, kickPose.knee.x, kickPose.knee.y + rootYOffset);
-        const bootWorld = toWorldPoint(fighterRef, kickPose.effector.x, kickPose.effector.y + rootYOffset);
-        fighterRef.kickContact = {
-          hip: hipWorld,
-          knee: kneeWorld,
-          foot: bootWorld,
-          radius: Math.max(16, fighterRef.w * 0.11)
-        };
-      } else if (fighterRef) {
-        fighterRef.kickContact = null;
-      }
-    } else if (fighterRef) {
-      fighterRef.kickContact = null;
-    }
-
     // ── LEGS ──────────────────────────────────────────────────────────────────
-    const plantLeanBack = isKicking && attackPhase === 2 ? kickSpeedFactor * 12 : 0;
     g.fillStyle = robot.dark;
-    roundRect(g, -w*0.24, -h*0.28 + legBend + plantLeanBack*0.4 + rootYOffset, w*0.16, h*0.28, 16, true);
+    roundRect(g, -w*0.24, -h*0.28 + legBend, w*0.16, h*0.28, 16, true);
     g.fillStyle = robot.color;
-    roundRect(g, -w*0.28, -h*0.18 + legBend + plantLeanBack*0.3 + rootYOffset, w*0.22, h*0.22, 18, true);
-
-    // Front / striking leg (right in local space)
-    if (isKicking) {
-      const thighLen = (kickRig && kickRig.thighLen) || h * 0.28;
-      const shinLen  = (kickRig && kickRig.shinLen) || h * 0.24;
-      const hipX = (kickRig && kickRig.hipX) || w * 0.08;
-      const hipY = ((kickRig && kickRig.hipY) || -h * 0.26) + rootYOffset;
-
-      g.save();
-      g.translate(hipX, hipY);
-      g.rotate(kickThighAngle);
-
-      g.fillStyle = robot.dark;
-      roundRect(g, -w*0.09, 0, w*0.18, thighLen, 16, true);
-
-      g.translate(0, thighLen);
-      g.rotate(kickShinAngle);
-      g.fillStyle = robot.color;
-      roundRect(g, -w*0.1, 0, w*0.2, shinLen, 18, true);
-
-      g.fillStyle = robot.accent;
-      if (attackPhase === 2) {
-        roundRect(g, -w*0.18, shinLen - h*0.02, w*0.40, h*0.11, 10, true);
-        g.save();
-        g.globalCompositeOperation = 'screen';
-        g.globalAlpha = 0.72;
-        const kg = g.createRadialGradient(0, shinLen + h*0.05, 2, 0, shinLen + h*0.05, w*0.28);
-        kg.addColorStop(0, '#ffffff');
-        kg.addColorStop(0.35, robot.accent);
-        kg.addColorStop(1, 'rgba(0,0,0,0)');
-        g.fillStyle = kg;
-        g.beginPath(); g.arc(0, shinLen + h*0.05, w*0.28, 0, Math.PI*2); g.fill();
-        g.restore();
-      } else {
-        roundRect(g, -w*0.12, shinLen - h*0.05, w*0.24, h*0.08, 10, true);
-      }
-      g.restore();
-    } else {
-      // Normal standing front leg
-      g.fillStyle = robot.dark;
-      roundRect(g, w*0.08, -h*0.28 - legBend, w*0.16, h*0.28, 16, true);
-      g.fillStyle = robot.color;
-      roundRect(g, w*0.02, -h*0.18 - legBend, w*0.22, h*0.22, 18, true);
-    }
+    roundRect(g, -w*0.28, -h*0.18 + legBend, w*0.22, h*0.22, 18, true);
+    // Front leg (static — no kick)
+    g.fillStyle = robot.dark;
+    roundRect(g, w*0.08, -h*0.28 - legBend, w*0.16, h*0.28, 16, true);
+    g.fillStyle = robot.color;
+    roundRect(g, w*0.02, -h*0.18 - legBend, w*0.22, h*0.22, 18, true);
 
     // ── TORSO ─────────────────────────────────────────────────────────────────
     g.save();
-    g.translate(0, -h*0.88 - lift + rootYOffset);
+    g.translate(0, -h*0.88 - lift);
     g.rotate(torsoLean);
     g.fillStyle = robot.color;
     roundRect(g, -w*0.36, 0, w*0.72, h*0.56, 24, true);
@@ -1612,6 +1719,7 @@
     g.lineWidth = 3;
     g.beginPath();
     g.moveTo(-w*0.18, h*0.33);
+
     g.lineTo(w*0.18, h*0.33);
     g.stroke();
 
@@ -1760,6 +1868,17 @@
     g.arcTo(x,y+h,x,y,r);
     g.arcTo(x,y,x+w,y,r);
     if (fill) g.fill();
+  }
+  function roundRectPath(g, x, y, w, h, r) {
+    if (w <= 0) return;
+    r = Math.min(r, w/2, h/2);
+    g.beginPath();
+    g.moveTo(x+r,y);
+    g.arcTo(x+w,y,x+w,y+h,r);
+    g.arcTo(x+w,y+h,x,y+h,r);
+    g.arcTo(x,y+h,x,y,r);
+    g.arcTo(x,y,x+w,y,r);
+    g.closePath();
   }
 
   function startBattle() {
@@ -2082,7 +2201,32 @@
       }
     });
 
-    fighters.forEach((f, i) => f && f.draw(ctx, fighters[1-i]));
+    fighters.forEach((f, i) => {
+      if (!f) return;
+      // If this fighter is being grappled, draw them above their attacker
+      if (f.stun > 0 && fighters[1-i] && fighters[1-i].grappleState && fighters[1-i].grappleState.victim === f) {
+        const attacker = fighters[1-i];
+        const phase = attacker.grappleState.phase;
+        let victimY = f.y;
+        let victimX = attacker.x + attacker.facing * 20;
+        if (phase === 'lift') {
+          victimY = attacker.y - attacker.h * 0.82;
+        } else if (phase === 'hold') {
+          victimY = attacker.y - attacker.h * 1.0;
+        } else if (phase === 'throw') {
+          // victim already flying from velocity — draw at real position
+          victimX = f.x;
+          victimY = f.y;
+        }
+        // temporarily override position for drawing
+        const savedX = f.x, savedY = f.y;
+        f.x = victimX; f.y = victimY;
+        f.draw(ctx, attacker);
+        f.x = savedX; f.y = savedY;
+      } else {
+        f.draw(ctx, fighters[1-i]);
+      }
+    });
 
     particles.forEach(p => {
       ctx.save();
@@ -2123,6 +2267,27 @@
       ctx.restore();
     });
 
+    // ── GRAPPLE COOLDOWN PIPS ────────────────────────────────────────────────
+    fighters.forEach(f => {
+      if (!f || f.dead) return;
+      const cd = f.grappleCd || 0;
+      if (cd <= 0) return;
+      const frac = cd / 20;
+      const barW = 64, barH = 7;
+      const bx = f.x - barW/2, by = f.y - f.h - 18;
+      ctx.save();
+      ctx.globalAlpha = 0.82;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      roundRectPath(ctx, bx, by, barW, barH, 4); ctx.fill();
+      ctx.fillStyle = '#ff5d7f';
+      roundRectPath(ctx, bx, by, barW * frac, barH, 4); ctx.fill();
+      ctx.font = 'bold 10px Inter,Arial,sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText('GRAPPLE ' + cd.toFixed(1) + 's', f.x, by - 3);
+      ctx.restore();
+    });
+
     // ── IN-GAME BUTTON REMINDERS ─────────────────────────────────────────────
     if (gameState === 'battle' || gameState === 'over') {
       drawControlHints(ctx);
@@ -2132,7 +2297,7 @@
   }
 
   function drawControlHints(g) {
-    const panelW = 148, panelH = 210, panelR = 14;
+    const panelW = 148, panelH = 234, panelR = 14;
     const midY = innerHeight * 0.52;
     const panels = [
       {
@@ -2143,7 +2308,8 @@
           { key: 'W',       desc: 'Jump'   },
           { key: 'S',       desc: 'Block'  },
           { key: 'F',       desc: 'Punch'  },
-          { key: 'G',       desc: 'Kick'   },
+          { key: 'G',       desc: 'Ranged' },
+          { key: 'F+G',     desc: 'Grapple'},
           { key: 'E',       desc: 'Power'  },
           { key: 'Q',       desc: 'Super'  },
         ]
@@ -2156,7 +2322,8 @@
           { key: '↑',       desc: 'Jump'   },
           { key: '↓',       desc: 'Block'  },
           { key: 'K',       desc: 'Punch'  },
-          { key: 'L',       desc: 'Kick'   },
+          { key: 'L',       desc: 'Ranged' },
+          { key: 'K+L',     desc: 'Grapple'},
           { key: 'P',       desc: 'Power'  },
           { key: 'O',       desc: 'Super'  },
         ]
@@ -2212,7 +2379,8 @@
           if (row.desc === 'Jump')  return !!keys[m.jump];
           if (row.desc === 'Block') return !!keys[m.block];
           if (row.desc === 'Punch') return !!keys[m.punch];
-          if (row.desc === 'Kick')  return !!keys[m.kick];
+          if (row.desc === 'Ranged') return !!keys[m.ranged];
+          if (row.desc === 'Grapple') return !!(keys[m.punch] && keys[m.ranged]);
           if (row.desc === 'Power') return !!keys[m.power];
           if (row.desc === 'Super') return !!keys[m.special];
           return false;
