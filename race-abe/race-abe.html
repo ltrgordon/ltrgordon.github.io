@@ -229,9 +229,9 @@
   const world = {
     t:0,
     scrollX:0,            // how far the world has moved left
-    // Keep the truck and terrain around the vertical middle of the screen so
-    // upcoming jumps are visible.
-    groundBase: () => canvas.height / DPR / 2,
+    // Keep the terrain near the lower part of the view so there's more sky
+    // above and the truck has extra headroom while jumping.
+    groundBase: () => canvas.height / DPR * 0.78,
     gravity: 2300,        // px/s^2
     maxSpeed: 900,        // px/s
     accel: 1020,          // px/s^2
