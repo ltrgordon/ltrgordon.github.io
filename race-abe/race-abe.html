@@ -102,7 +102,7 @@
     padding:10px 12px;
   }
   .leaderboard h3{ margin:0 0 6px 0; font-size:16px; color:#1d4ed8; }
-  .leaderboard ol{ margin:0; padding-left:20px; max-height:180px; overflow:auto; }
+  .leaderboard ol{ margin:0; padding-left:8px; max-height:180px; overflow:auto; list-style-position:inside; }
   .leaderboard li{ margin:2px 0; font-weight:700; color:#1e3a8a; }
   .big{
     font-size:22px; font-weight:900; margin-top:10px; padding:14px 18px; border-radius:12px; border:none; cursor:pointer;
@@ -156,7 +156,7 @@
     <p>Tap <b>▶️</b> to start the monster truck.</p>
     <p>Use <b>⛔</b> to brake, <b>⤴️</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
-    <label><input type="checkbox" id="zoomToggle" checked /> Dynamic zoom (zoom in/out while jumping)</label>
+    <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
       <ol id="leaderboardStart"></ol>
@@ -258,7 +258,8 @@
     invincibleTimer: 0,
     bubbleTimer: 0,
     cameraZoom: 1,
-    zoomEnabled: true,
+    zoomEnabled: false,
+    cameraYOffset: 0,
     greenBricks: 0,
     redBricks: 0,
     blueBricks: 0,
@@ -509,7 +510,12 @@
         h = 160 + rnd()*80;
       }
       const landingW = 130 + rnd()*90;
-      const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false};
+      const turbo = rnd() < 0.25;
+      if(turbo){
+        w = 260 + rnd()*140;
+        h = 190 + rnd()*90;
+      }
+      const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false, turbo};
       ramps.push(ramp);
       const rampSlope = ramp.h / ramp.w;
       const launchSpeed = Math.max(640, world.maxSpeed * 0.96);
@@ -610,6 +616,14 @@
     return dy;
   }
 
+
+  function findRampAtX(x){
+    for(const ramp of ramps){
+      if(x >= ramp.x && x <= ramp.x + ramp.w + ramp.landingW) return ramp;
+    }
+    return null;
+  }
+
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
   function spawnConfetti(cx, cy, n=120){
@@ -693,7 +707,7 @@
 
   // ===== Game Control =====
   function resetGame(){
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
     obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
@@ -767,10 +781,21 @@
       const worldX = world.scrollX + truck.baseX;
       const gy = trackY(worldX);
       const surfaceDY = trackDY(worldX);
+      const activeRamp = findRampAtX(worldX);
       if(truck.y >= gy - truck.wheelR){
         truck.y = gy - truck.wheelR;
         truck.vy = surfaceDY * world.speed;
         truck.onGround = true;
+        if(activeRamp?.turbo && !activeRamp.used){
+          activeRamp.used = true;
+          world.speed = Math.min(world.maxSpeed + 520, Math.max(world.speed, world.maxSpeed * 0.92) + 420);
+          truck.vy = Math.min(truck.vy, -960);
+          world.shake = Math.max(world.shake, 8);
+          playBeep();
+          for(let i=0;i<36;i++){
+            puffs.push({x:truck.baseX + (Math.random()*50-25), y:truck.y - 20, vx:(Math.random()*2-1)*280 + 180, vy:(Math.random()*-1-0.1)*260, life:0, ttl:0.4+Math.random()*0.4, color:Math.random()<0.5?'#f97316':'#facc15', size:4+Math.random()*6});
+          }
+        }
       }else{
         truck.onGround = false;
       }
@@ -907,6 +932,10 @@
       }
 
       const truckTopVisual = truck.y - (truck.bodyH + 10);
+      const topSafeMargin = 120;
+      const camTarget = truck.onGround ? 0 : Math.max(0, topSafeMargin - truckTopVisual);
+      const camRate = camTarget > world.cameraYOffset ? 8 : 5;
+      world.cameraYOffset += (camTarget - world.cameraYOffset) * Math.min(1, dt * camRate);
       const zoomTarget = world.zoomEnabled && truckTopVisual < 70 ? 0.78 : 1;
       world.cameraZoom += (zoomTarget - world.cameraZoom) * Math.min(1, dt * 6);
 
@@ -1057,6 +1086,8 @@
   // ===== Drawing =====
   function draw(){
     const W = canvas.width, H = canvas.height;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,W,H);
     ctx.save();
     ctx.scale(DPR, DPR);
 
@@ -1069,6 +1100,7 @@
       if(world.shake<0.5) world.shake=0;
     }
     ctx.translate(shakeX, shakeY);
+    ctx.translate(0, world.cameraYOffset);
 
     const zoom = world.cameraZoom || 1;
     if(Math.abs(zoom - 1) > 0.001){
@@ -1082,7 +1114,12 @@
     }
 
     // Sky (parallax clouds & sun)
-    ctx.clearRect(0,0,W/DPR,H/DPR);
+    const sky = ctx.createLinearGradient(0, 0, 0, H / DPR);
+    sky.addColorStop(0, '#7dd3fc');
+    sky.addColorStop(0.6, '#a7f3d0');
+    sky.addColorStop(1, '#fef08a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(-240, -240, W / DPR + 480, H / DPR + 480);
     const t = world.t;
     drawSun();
     drawClouds(t);
@@ -1096,7 +1133,7 @@
       // Ramps
       for(const r of ramps){
         const x = r.x - world.scrollX;
-        drawRamp(x, r.baseY, r.w, r.h, r.landingW);
+        drawRamp(x, r.baseY, r.w, r.h, r.landingW, r.turbo);
       }
 
       // Stars
@@ -1266,11 +1303,11 @@
     ctx.setLineDash([]);
   }
 
-  function drawRamp(x, baseY, w, h, landingW){
+  function drawRamp(x, baseY, w, h, landingW, turbo=false){
     const segments = 14;
     ctx.save();
-    ctx.fillStyle = '#b45309';
-    ctx.strokeStyle = '#92400e';
+    ctx.fillStyle = turbo ? '#fb923c' : '#b45309';
+    ctx.strokeStyle = turbo ? '#ea580c' : '#92400e';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(x, groundY(x + world.scrollX));
@@ -1294,6 +1331,16 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    if(turbo){
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([12,10]);
+      ctx.beginPath();
+      ctx.moveTo(x + 16, baseY - 16);
+      ctx.lineTo(x + w - 8, baseY - h + 18);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.restore();
   }
 
