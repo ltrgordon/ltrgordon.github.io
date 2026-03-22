@@ -183,6 +183,7 @@
       <button class="levelOption active" data-level="sahara"><span>🏜️ Sahara</span><small>Rolling dunes, oases, and desert jumps.</small></button>
       <button class="levelOption" data-level="rockies"><span>⛰️ Rockies</span><small>Rocky peaks, waterfalls, sharp jumps, and streams.</small></button>
       <button class="levelOption" data-level="himalayas"><span>🏔️ Himalayas</span><small>Icy slopes, Everest cliffs, snow drifts, and frozen hazards.</small></button>
+      <button class="levelOption" data-level="moon"><span>🌕 Moon</span><small>Grey dust hills, giant craters, low gravity, and lunar obstacles.</small></button>
     </div>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
@@ -324,6 +325,17 @@
       obstacleBias: { boulder: 0.34, cactus: 0 },
       rampSpacingMin: 1400, rampSpacingMax: 2450, rampWidth: [170, 300], rampHeight: [82, 150], turboChance: 0.4,
       rainbowChance: 0.022, lowGravityDuration: 16, bubbleDuration: 9, flameDuration: 4, invincibleDuration: 5
+    },
+    moon: {
+      name: 'Moon',
+      skyTop: '#020617', skyMid: '#0f172a', skyBottom: '#111827',
+      hillNear: '#6b7280', hillFar: '#374151',
+      terrainTop: '#d1d5db', terrainMid: '#9ca3af', terrainBottom: '#4b5563', edge: '#f3f4f6', lane: '#e5e7eb',
+      bumpA: 42, bumpB: 24, bumpC: 16, bumpD: 58, rockySharpness: 24, jaggedAmp: 14, streamChance: 0, greenery: 0, waterfallChance: 0,
+      obstacleBias: { boulder: 0.18, cactus: 0 },
+      rampSpacingMin: 1650, rampSpacingMax: 2500, rampWidth: [180, 320], rampHeight: [88, 160], turboChance: 0.44,
+      rainbowChance: 0.028, lowGravityDuration: 20, bubbleDuration: 12, flameDuration: 5, invincibleDuration: 6,
+      gravityScale: 0.38, jumpBoost: 1.22, craterChance: 0.17, craterDepth: [120, 220], craterWidth: [220, 460]
     }
   };
 
@@ -467,13 +479,25 @@
     const base = world.groundBase();
     const k1=0.0015, k2=0.0033, k3=0.0007;
     const duneProgress = Math.min(1.4, x / 12000);
-    const y = base
+    let y = base
       + level.bumpA*Math.sin(k1*(x+500))
       + level.bumpB*Math.sin(k2*(x*1.2+1300))
       + level.bumpC*Math.sin(k3*(x*0.85+700))
       + (25 + level.bumpD * duneProgress) * Math.sin(0.0022 * (x + 1200));
     const jagged = level.jaggedAmp * Math.abs(Math.sin(0.009*(x+300))) + level.rockySharpness * Math.pow(Math.abs(Math.sin(0.0052*(x-900))), 3);
-    return y - jagged;
+    y -= jagged;
+    if(level.craterChance){
+      const craterWave = Math.sin(0.00125 * x + 1.1);
+      if(craterWave > 1 - level.craterChance){
+        const bowl = (craterWave - (1 - level.craterChance)) / level.craterChance;
+        const [depthMin, depthMax] = level.craterDepth;
+        const craterDepth = depthMin + (depthMax - depthMin) * bowl;
+        const rimLift = 30 + 60 * bowl;
+        y += craterDepth * Math.pow(bowl, 2.1);
+        y -= rimLift * Math.exp(-Math.pow((craterWave - (1 - level.craterChance)) / (level.craterChance * 0.24), 2));
+      }
+    }
+    return y;
   }
 
   function trackBaseY(x, width){
@@ -880,12 +904,12 @@
       }
       world.speed = Math.max(-world.reverseMaxSpeed, Math.min(world.maxSpeed, world.speed));
 
-      const gravityScale = hasLowGravityBoost() ? 0.56 : 1;
+      const gravityScale = (currentLevel().gravityScale || 1) * (hasLowGravityBoost() ? 0.56 : 1);
 
       // Jump
       if(input.jump){
         if(truck.onGround){
-          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (hasLowGravityBoost() ? 1.25 : 1);
+          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * (hasLowGravityBoost() ? 1.25 : 1);
           playBeep();
         }
         input.jump=false;
@@ -1245,8 +1269,7 @@
     ctx.fillStyle = sky;
     ctx.fillRect(-240, -240, W / DPR + 480, H / DPR + 480);
     const t = world.t;
-    drawSun();
-    drawClouds(t);
+    drawSkyObjects(t, level);
 
     // Background hills
     drawHills();
@@ -1323,6 +1346,16 @@
     ctx.restore();
   }
 
+  function drawSkyObjects(t, level){
+    if(level.name === 'Moon'){
+      drawEarth();
+      drawStarscape(t);
+      return;
+    }
+    drawSun();
+    drawClouds(t);
+  }
+
   function drawSun(){
     const cx = (canvas.width/DPR) - 120, cy = 100;
     const grd = ctx.createRadialGradient(cx,cy,10, cx,cy,120);
@@ -1341,6 +1374,32 @@
     }
     ctx.globalAlpha = 1;
   }
+  function drawStarscape(t){
+    for(let i=0;i<28;i++){
+      const x = (i * 137.5 + (t*3*(i%3+1))) % (canvas.width/DPR + 80) - 40;
+      const y = 34 + (i * 53) % 220;
+      const r = 1 + (i % 3);
+      ctx.fillStyle = `rgba(255,255,255,${0.45 + ((i*17)%40)/100})`;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawEarth(){
+    const cx = (canvas.width/DPR) - 150, cy = 120;
+    const grd = ctx.createRadialGradient(cx-24,cy-24,16, cx,cy,92);
+    grd.addColorStop(0,'#dbeafe');
+    grd.addColorStop(0.45,'#60a5fa');
+    grd.addColorStop(1,'#1d4ed8');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(cx,cy,72,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.moveTo(cx-18,cy-28); ctx.bezierCurveTo(cx+12,cy-44,cx+24,cy-10,cx+6,cy+4); ctx.bezierCurveTo(cx-12,cy+2,cx-30,cy-8,cx-18,cy-28);
+    ctx.moveTo(cx-34,cy+10); ctx.bezierCurveTo(cx-10,cy+2,cx+18,cy+24,cx+2,cy+42); ctx.bezierCurveTo(cx-24,cy+40,cx-40,cy+28,cx-34,cy+10);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff66'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx,cy,72,0,Math.PI*2); ctx.stroke();
+  }
+
   function drawCloud(x,y,w){
     ctx.fillStyle='#ffffffcc';
     ctx.beginPath();
@@ -1357,6 +1416,18 @@
     const startX = -padX;
     const endX = w + padX;
     const level = currentLevel();
+    if(level.name === 'Moon'){
+      ctx.fillStyle = '#1f2937';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+170);
+      for(let x=startX; x<=endX; x+=8){
+        const wx = x + world.scrollX*0.08;
+        const y = baseY - 160 + 26*Math.sin(wx*0.0008) + 18*Math.sin(wx*0.0014 + 1.5);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+170); ctx.closePath(); ctx.fill();
+    }
+
     ctx.fillStyle = level.hillFar;
     ctx.beginPath();
     ctx.moveTo(startX, baseY+200);
@@ -1473,8 +1544,18 @@
   function drawObstacle(x, yTop, w, h, hue, type){
     ctx.save();
     ctx.translate(x, yTop);
+    const isMoon = currentLevel().name === 'Moon';
     switch(type){
       case 'cone':
+        if(isMoon){
+          ctx.fillStyle = '#e5e7eb';
+          ctx.strokeStyle = '#9ca3af';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0,h); ctx.lineTo(w/2,0); ctx.lineTo(w,h); ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(w*0.42, h*0.18, w*0.16, h*0.46);
+          break;
+        }
         ctx.fillStyle = '#f97316';
         ctx.strokeStyle = '#9a3412';
         ctx.lineWidth = 3;
@@ -1487,6 +1568,15 @@
         ctx.stroke();
         break;
       case 'barrel':
+        if(isMoon){
+          ctx.fillStyle = '#475569';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 3;
+          roundRect(ctx, 0, 0, w, h, 10, true, true);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(w*0.18, h*0.2, w*0.64, h*0.14);
+          ctx.fillRect(w*0.18, h*0.48, w*0.64, h*0.14);
+          break;
+        }
         ctx.fillStyle = '#9ca3af';
         ctx.strokeStyle = '#4b5563';
         ctx.lineWidth = 3;
@@ -1497,6 +1587,14 @@
         ctx.fillRect(0, h*0.66-2, w,4);
         break;
       case 'garbage':
+        if(isMoon){
+          ctx.fillStyle = '#9ca3af';
+          roundRect(ctx, 0, h*0.16, w, h*0.72, 12, true, false);
+          ctx.strokeStyle = '#475569'; ctx.lineWidth = 3; ctx.strokeRect(0, h*0.16, w, h*0.72);
+          ctx.fillStyle = '#111827'; ctx.fillRect(w*0.18, h*0.26, w*0.64, h*0.18);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(w*0.42, 0, w*0.16, h*0.2);
+          break;
+        }
         ctx.fillStyle = '#4b5563';
         roundRect(ctx, 0, 0, w, h, 10, true, false);
         ctx.fillStyle = '#9ca3af';
@@ -1507,6 +1605,13 @@
         ctx.fillRect(w*0.52, h*0.42, w*0.22, h*0.14);
         break;
       case 'tnt':
+        if(isMoon){
+          ctx.fillStyle = '#ef4444';
+          roundRect(ctx, 0, 0, w, h, 6, true, false);
+          ctx.strokeStyle = '#7f1d1d'; ctx.lineWidth = 3; ctx.strokeRect(0,0,w,h);
+          ctx.fillStyle = '#fee2e2'; ctx.font = 'bold 15px Arial'; ctx.textAlign='center'; ctx.fillText('MOON', w/2, h*0.45); ctx.fillText('TNT', w/2, h*0.7);
+          break;
+        }
         ctx.fillStyle = '#dc2626';
         roundRect(ctx, 0, 0, w, h, 6, true, false);
         ctx.strokeStyle = '#7f1d1d';
@@ -1518,6 +1623,16 @@
         ctx.fillText('TNT', w/2, h*0.58);
         break;
       case 'car':
+        if(isMoon){
+          ctx.fillStyle = '#e5e7eb';
+          roundRect(ctx, 6, h*0.26, w-12, h*0.44, 14, true, false);
+          ctx.fillStyle = '#94a3b8'; roundRect(ctx, w*0.18, h*0.06, w*0.64, h*0.28, 12, true, false);
+          ctx.fillStyle = '#38bdf8'; roundRect(ctx, w*0.28, h*0.11, w*0.16, h*0.14, 4, true, false); roundRect(ctx, w*0.56, h*0.11, w*0.16, h*0.14, 4, true, false);
+          ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(w*0.24, h*0.68); ctx.lineTo(w*0.16, h*0.95); ctx.moveTo(w*0.76, h*0.68); ctx.lineTo(w*0.84, h*0.95); ctx.stroke();
+          ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(w*0.26, h*0.76, h*0.12, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(w*0.74, h*0.76, h*0.12, 0, Math.PI*2); ctx.fill();
+          break;
+        }
         ctx.fillStyle = '#dc2626';
         roundRect(ctx, 6, h*0.22, w-12, h*0.58, 10, true, false);
         ctx.fillStyle = '#991b1b';
@@ -1543,12 +1658,26 @@
         ctx.strokeStyle = '#334155'; ctx.lineWidth = 4; ctx.stroke();
         break;
       case 'cactus':
+        if(isMoon){
+          ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(w*0.5, 0); ctx.lineTo(w*0.5, h); ctx.moveTo(w*0.18, h*0.34); ctx.lineTo(w*0.82, h*0.58); ctx.moveTo(w*0.26, h*0.78); ctx.lineTo(w*0.74, h*0.24); ctx.stroke();
+          ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(w*0.5, h*0.08, 8, 0, Math.PI*2); ctx.fill();
+          break;
+        }
         ctx.fillStyle = '#15803d';
         roundRect(ctx, w*0.35, h*0.1, w*0.3, h*0.9, 20, true, false);
         roundRect(ctx, w*0.08, h*0.34, w*0.2, h*0.34, 16, true, false);
         roundRect(ctx, w*0.72, h*0.28, w*0.2, h*0.32, 16, true, false);
         break;
       case 'wall':
+        if(isMoon){
+          ctx.fillStyle = '#9ca3af';
+          ctx.fillRect(0, 0, w, h);
+          ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 3; ctx.strokeRect(0,0,w,h);
+          for(let yy=18; yy<h; yy+=28){ ctx.fillStyle = yy % 56 === 18 ? '#cbd5e1' : '#6b7280'; ctx.fillRect(0, yy, w, 8); }
+          ctx.fillStyle = '#111827'; ctx.fillRect(w*0.14, h*0.14, w*0.72, h*0.22);
+          break;
+        }
         ctx.fillStyle = '#b45309';
         ctx.fillRect(0, 0, w, h);
         ctx.strokeStyle = '#78350f';
@@ -1788,6 +1917,18 @@
         ctx.lineTo(x+item.w*0.16,y-item.h*0.56);
         ctx.lineTo(x+item.w*0.32,y-item.h*0.88);
         ctx.closePath(); ctx.fill();
+      } else if(item.kind === 'lander'){
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(x-item.w*0.2, y-item.h*0.3); ctx.lineTo(x+item.w*0.2, y-item.h*0.3); ctx.lineTo(x+item.w*0.1, y-item.h*0.58); ctx.lineTo(x-item.w*0.1, y-item.h*0.58); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3;
+        [[-0.14,0.2],[-0.06,0.02],[0.06,0.02],[0.14,0.2]].forEach(([sx,ex])=>{ ctx.beginPath(); ctx.moveTo(x+item.w*sx, y-item.h*0.3); ctx.lineTo(x+item.w*ex, y+4); ctx.stroke(); });
+        ctx.fillStyle = '#f59e0b'; ctx.fillRect(x-item.w*0.03, y-item.h*0.55, item.w*0.06, item.h*0.18);
+      } else if(item.kind === 'antenna'){
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x, y+4); ctx.lineTo(x, y-item.h*0.9); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y-item.h*0.98, item.w*0.09, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y-item.h*0.72); ctx.lineTo(x-item.w*0.24, y-item.h*0.52); ctx.moveTo(x, y-item.h*0.62); ctx.lineTo(x+item.w*0.24, y-item.h*0.42); ctx.stroke();
       } else if(item.kind === 'prayerflags'){
         ctx.strokeStyle = '#475569';
         ctx.lineWidth = 3;
