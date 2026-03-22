@@ -108,6 +108,28 @@
     font-size:22px; font-weight:900; margin-top:10px; padding:14px 18px; border-radius:12px; border:none; cursor:pointer;
     background:linear-gradient(135deg, #34d399, #3b82f6); color:white; box-shadow:0 6px 0 #0003;
   }
+  .levelPicker{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+    margin-top:14px;
+  }
+  .levelOption{
+    padding:14px 12px;
+    border-radius:14px;
+    border:3px solid #bfdbfe;
+    background:#eff6ff;
+    color:#1e3a8a;
+    font-weight:800;
+    cursor:pointer;
+    text-align:left;
+  }
+  .levelOption.active{
+    border-color:#2563eb;
+    background:linear-gradient(135deg, #dbeafe, #bfdbfe);
+    box-shadow:0 0 0 3px #93c5fd55;
+  }
+  .levelOption small{ display:block; font-weight:700; color:#1d4ed8; margin-top:4px; }
   #landscapeHint{
     position:fixed; right:10px; top:10px; background:#00000066; color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; display:none;
   }
@@ -157,6 +179,10 @@
     <p>Use <b>⛔</b> to brake, <b>⤴️</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
+    <div class="levelPicker" id="levelPicker">
+      <button class="levelOption active" data-level="sahara"><span>🏜️ Sahara</span><small>Rolling dunes, oases, and desert jumps.</small></button>
+      <button class="levelOption" data-level="rockies"><span>⛰️ Rockies</span><small>Rocky peaks, waterfalls, sharp jumps, and streams.</small></button>
+    </div>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
       <ol id="leaderboardStart"></ol>
@@ -263,7 +289,31 @@
     greenBricks: 0,
     redBricks: 0,
     blueBricks: 0,
-    baseMaxSpeed: 900
+    baseMaxSpeed: 900,
+    activeLevel: 'sahara'
+  };
+
+  const LEVELS = {
+    sahara: {
+      name: 'Sahara',
+      skyTop: '#7dd3fc', skyMid: '#a7f3d0', skyBottom: '#fef08a',
+      hillNear: '#f4d06f', hillFar: '#eab308',
+      terrainTop: '#f59e0b', terrainMid: '#fbbf24', terrainBottom: '#92400e', edge: '#92400e', lane: '#fff7ed',
+      bumpA: 60, bumpB: 25, bumpC: 35, bumpD: 25, rockySharpness: 0, jaggedAmp: 0, streamChance: 0.08, greenery: 0.16, waterfallChance: 0.02,
+      obstacleBias: { boulder: 0.02, cactus: 0.18 },
+      rampSpacingMin: 2800, rampSpacingMax: 4800, rampWidth: [160, 240], rampHeight: [38, 60], turboChance: 0.20,
+      rainbowChance: 0.035, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
+    },
+    rockies: {
+      name: 'Rockies',
+      skyTop: '#93c5fd', skyMid: '#bfdbfe', skyBottom: '#dcfce7',
+      hillNear: '#64748b', hillFar: '#94a3b8',
+      terrainTop: '#6b7280', terrainMid: '#78716c', terrainBottom: '#334155', edge: '#1f2937', lane: '#dbeafe',
+      bumpA: 30, bumpB: 18, bumpC: 22, bumpD: 65, rockySharpness: 42, jaggedAmp: 24, streamChance: 0.24, greenery: 0.44, waterfallChance: 0.18,
+      obstacleBias: { boulder: 0.26, cactus: 0.02 },
+      rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [58, 110], turboChance: 0.34,
+      rainbowChance: 0.018, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
+    }
   };
 
   // ===== Input =====
@@ -309,8 +359,17 @@
   const highScoreOverlay = document.getElementById('highScoreOverlay');
   const zoomToggle = document.getElementById('zoomToggle');
   const timerEl = document.getElementById('time');
+  const levelPicker = document.getElementById('levelPicker');
   const finalStarsEl = document.getElementById('finalStars');
   const finalTimeEl = document.getElementById('finalTime');
+  levelPicker?.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.levelOption');
+    if(!btn) return;
+    world.activeLevel = btn.dataset.level || 'sahara';
+    levelPicker.querySelectorAll('.levelOption').forEach((option)=> option.classList.toggle('active', option === btn));
+    resetGame();
+  });
+
   document.getElementById('btnStart').addEventListener('click', ()=>{ ensureAudio(); startGameIfNeeded(); });
   document.getElementById('btnPlayAgain').addEventListener('click', ()=>{ crashOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
   document.getElementById('btnWinAgain').addEventListener('click', ()=>{ winOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
@@ -388,19 +447,20 @@
 
   // ===== Simple Terrain =====
   // Ground is a smooth sum of sines; obstacles and stars are spawned along x.
+  function currentLevel(){ return LEVELS[world.activeLevel] || LEVELS.sahara; }
+
   function groundY(x){
+    const level = currentLevel();
     const base = world.groundBase();
-    // Use world-space coordinate
     const k1=0.0015, k2=0.0033, k3=0.0007;
     const duneProgress = Math.min(1.4, x / 12000);
-    const duneAmp = 25 + 75 * duneProgress;
-    const duneWave = duneAmp * Math.sin(0.0022 * (x + 1200));
     const y = base
-      + 60*Math.sin(k1*(x+500))
-      + 25*Math.sin(k2*(x*1.2+1300))
-      + 35*Math.sin(k3*(x*0.85+700))
-      + duneWave;
-    return y;
+      + level.bumpA*Math.sin(k1*(x+500))
+      + level.bumpB*Math.sin(k2*(x*1.2+1300))
+      + level.bumpC*Math.sin(k3*(x*0.85+700))
+      + (25 + level.bumpD * duneProgress) * Math.sin(0.0022 * (x + 1200));
+    const jagged = level.jaggedAmp * Math.abs(Math.sin(0.009*(x+300))) + level.rockySharpness * Math.pow(Math.abs(Math.sin(0.0052*(x-900))), 3);
+    return y - jagged;
   }
 
   function trackBaseY(x, width){
@@ -425,6 +485,7 @@
   const rainbowPowerups = []; // invincible pickups {x,y,r,taken}
   const bricks = []; // collectible bricks {x,y,size,color,taken}
   const ramps = [];     // dirt ramps {x, baseY, w, h, landingW, used}
+  const scenery = [];   // world scenery per level
   let lastSpawnX = 0;
   let lastRampX = 0;
   function spawnAhead(){
@@ -435,8 +496,9 @@
       lastSpawnX += spacing;
       const gy = groundY(lastSpawnX);
       let w, h, type, hue;
+      const level = currentLevel();
       const oType = rnd();
-      if(oType < 0.26){
+      if(oType < 0.22){
         type = 'crate';
         h = 40 + rnd()*70;
         w = 50 + rnd()*50;
@@ -457,10 +519,18 @@
         type = 'tnt';
         w = 62;
         h = 62;
-      } else if(oType < 0.94){
+      } else if(oType < 0.86){
         type = 'car';
         w = 150;
         h = 62;
+      } else if(oType < 0.86 + level.obstacleBias.boulder){
+        type = 'boulder';
+        w = 110 + rnd()*70;
+        h = w * (0.7 + rnd()*0.2);
+      } else if(oType < 0.86 + level.obstacleBias.boulder + level.obstacleBias.cactus){
+        type = 'cactus';
+        w = 60 + rnd()*26;
+        h = 110 + rnd()*40;
       } else {
         type = 'wall';
         w = 160 + rnd()*70;
@@ -489,7 +559,7 @@
         const by = gy - h - (85 + rnd()*85);
         lowGravityOrbs.push({x:lastSpawnX + w*0.5 + (rnd()*120-60), y: by, r:44, taken:false});
       }
-      if(rnd() < 0.08){
+      if(rnd() < currentLevel().rainbowChance){
         const ry = gy - h - (80 + rnd()*70);
         rainbowPowerups.push({x:lastSpawnX + w*0.5 + (rnd()*100-50), y: ry, r:38, taken:false});
       }
@@ -501,19 +571,20 @@
       }
     }
     while(lastRampX < rightEdge){
-      lastRampX += 2800 + rnd()*2000;
+      const level = currentLevel();
+      lastRampX += level.rampSpacingMin + rnd()*(level.rampSpacingMax - level.rampSpacingMin);
       const gy = groundY(lastRampX);
-      let w = 160 + rnd()*80;
-      let h = 38 + rnd()*18;
-      if(rnd() < 0.35){
-        w = 240 + rnd()*100;
-        h = 55 + rnd()*22;
+      let w = level.rampWidth[0] + rnd()*(level.rampWidth[1]-level.rampWidth[0]);
+      let h = level.rampHeight[0] + rnd()*(level.rampHeight[1]-level.rampHeight[0]);
+      if(rnd() < (level.name === 'Rockies' ? 0.58 : 0.35)){
+        w += 60 + rnd()*90;
+        h += 18 + rnd()*30;
       }
       const landingW = 130 + rnd()*90;
-      const turbo = rnd() < 0.20;
+      const turbo = rnd() < level.turboChance;
       if(turbo){
-        w = 280 + rnd()*120;
-        h = 65 + rnd()*25;
+        w += 90 + rnd()*100;
+        h += 20 + rnd()*35;
       }
       const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false, turbo};
       ramps.push(ramp);
@@ -548,6 +619,19 @@
     while(rainbowPowerups.length && rainbowPowerups[0].x + 40 < minX) rainbowPowerups.shift();
     while(bricks.length && bricks[0].x + 40 < minX) bricks.shift();
     while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
+
+    while(scenery.length && scenery[0].x + (scenery[0].w || 120) < minX) scenery.shift();
+    while((scenery.length ? scenery[scenery.length-1].x : lastSpawnX) < rightEdge){
+      const level = currentLevel();
+      const sx = (scenery.length ? scenery[scenery.length-1].x : world.scrollX - 200) + 280 + rnd()*380;
+      const kindRoll = rnd();
+      let kind = 'plant';
+      if(kindRoll < level.waterfallChance) kind = 'waterfall';
+      else if(kindRoll < level.waterfallChance + level.streamChance) kind = 'stream';
+      else if(kindRoll < level.waterfallChance + level.streamChance + level.greenery) kind = level.name === 'Rockies' ? 'pine' : 'palm';
+      else if(level.name === 'Rockies') kind = 'rocks';
+      scenery.push({x:sx, y:groundY(sx), kind, h:90 + rnd()*120, w:90 + rnd()*160, sway:rnd()*Math.PI*2});
+    }
   }
 
   // ===== Truck =====
@@ -707,8 +791,9 @@
 
   // ===== Game Control =====
   function resetGame(){
+    document.getElementById('title').textContent = `Abe’s Monster Truck – ${currentLevel().name}`;
     world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
-    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; puffs.length=0;
+    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; scenery.length=0; puffs.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -829,8 +914,8 @@
         const hx = h.x - world.scrollX;
         if(Math.abs(hx - truck.baseX) < 88 && Math.abs(h.y - (truck.y - truck.bodyH)) < 88){
           h.taken = true; if(world.damage>0) world.damage--; playBeep();
-          for(let i=0;i<10;i++){
-            puffs.push({x:hx, y:h.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#ffffff', size:3+Math.random()*3});
+          for(let i=0;i<22;i++){
+            puffs.push({x:hx, y:h.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.45)*220, life:0, ttl:0.8+Math.random()*0.6, color:Math.random()<0.65?'#22c55e':'#86efac', size:3+Math.random()*6});
           }
         }
       }
@@ -853,7 +938,7 @@
         const fx = f.x - world.scrollX;
         if(Math.abs(fx - truck.baseX) < 96 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 98){
           f.taken = true;
-          world.flameBoostTimer = 4;
+          world.flameBoostTimer = currentLevel().flameDuration;
           world.speed = Math.min(world.speed + 260, world.maxSpeed + 300);
           playBeep();
           for(let i=0;i<28;i++){
@@ -868,7 +953,8 @@
         const ox = orb.x - world.scrollX;
         if(Math.abs(ox - truck.baseX) < 98 && Math.abs(orb.y - (truck.y - truck.bodyH*0.6)) < 98){
           orb.taken = true;
-          world.lowGravityTimer = 15;
+          world.lowGravityTimer = currentLevel().lowGravityDuration;
+          world.bubbleTimer = Math.max(world.bubbleTimer, currentLevel().lowGravityDuration);
           playBeep();
           for(let i=0;i<32;i++){
             puffs.push({x:ox, y:orb.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.15)*220, life:0, ttl:0.55+Math.random()*0.5, color:Math.random()<0.5?'#38bdf8':'#60a5fa', size:6+Math.random()*8});
@@ -882,7 +968,7 @@
         const rx = rainbow.x - world.scrollX;
         if(Math.abs(rx - truck.baseX) < 98 && Math.abs(rainbow.y - (truck.y - truck.bodyH*0.6)) < 98){
           rainbow.taken = true;
-          world.invincibleTimer = 10;
+          world.invincibleTimer = currentLevel().invincibleDuration;
           playBeep();
           for(let i=0;i<40;i++){
             puffs.push({x:rx, y:rainbow.y, vx:(Math.random()*2-1)*240, vy:(Math.random()*-1-0.15)*220, life:0, ttl:0.6+Math.random()*0.5, color:["#ef4444", "#f59e0b", "#eab308", "#22c55e", "#3b82f6", "#a855f7"][Math.floor(Math.random()*6)], size:5+Math.random()*7});
@@ -903,12 +989,12 @@
           } else if(b.color === 'red'){
             world.redBricks += 1;
             if(world.redBricks % 3 === 0){
-              world.flameBoostTimer = Math.max(world.flameBoostTimer, 4);
+              world.flameBoostTimer = Math.max(world.flameBoostTimer, currentLevel().flameDuration);
               world.speed = Math.min(world.speed + 180, world.maxSpeed + 300);
             }
           } else if(b.color === 'blue'){
             world.blueBricks += 1;
-            if(world.blueBricks % 3 === 0) world.bubbleTimer = Math.max(world.bubbleTimer, 8);
+            if(world.blueBricks % 3 === 0) world.bubbleTimer = Math.max(world.bubbleTimer, currentLevel().bubbleDuration);
           }
           playBeep();
           for(let i=0;i<16;i++){
@@ -927,7 +1013,7 @@
       if(world.invincibleTimer > 0){
         world.invincibleTimer = Math.max(0, world.invincibleTimer - dt);
       }
-      if(world.bubbleTimer > 0){
+      if(world.bubbleTimer > 0 || world.lowGravityTimer > 0){
         world.bubbleTimer = Math.max(0, world.bubbleTimer - dt);
       }
 
@@ -1114,10 +1200,11 @@
     }
 
     // Sky (parallax clouds & sun)
+    const level = currentLevel();
     const sky = ctx.createLinearGradient(0, 0, 0, H / DPR);
-    sky.addColorStop(0, '#7dd3fc');
-    sky.addColorStop(0.6, '#a7f3d0');
-    sky.addColorStop(1, '#fef08a');
+    sky.addColorStop(0, level.skyTop);
+    sky.addColorStop(0.6, level.skyMid);
+    sky.addColorStop(1, level.skyBottom);
     ctx.fillStyle = sky;
     ctx.fillRect(-240, -240, W / DPR + 480, H / DPR + 480);
     const t = world.t;
@@ -1126,6 +1213,7 @@
 
     // Background hills
     drawHills();
+    drawScenery();
 
       // Track
       drawGround();
@@ -1230,7 +1318,8 @@
     const padX = getHorizontalRenderPadding();
     const startX = -padX;
     const endX = w + padX;
-    ctx.fillStyle = '#86efac';
+    const level = currentLevel();
+    ctx.fillStyle = level.hillFar;
     ctx.beginPath();
     ctx.moveTo(startX, baseY+200);
     for(let x=startX; x<=endX; x+=6){
@@ -1240,7 +1329,7 @@
     }
     ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
 
-    ctx.fillStyle = '#4ade80';
+    ctx.fillStyle = level.hillNear;
     ctx.beginPath();
     ctx.moveTo(startX, baseY+260);
     for(let x=startX; x<=endX; x+=6){
@@ -1263,14 +1352,13 @@
     const padX = getHorizontalRenderPadding();
     const startX = -padX;
     const endX = w + padX;
-    const topColor = '#065f46';
+    const level = currentLevel();
+    const topColor = level.edge;
     const dirt = ctx.createLinearGradient(0,0,0,h);
-    dirt.addColorStop(0.0,'#10b981');
-    dirt.addColorStop(0.2,'#22c55e');
-    dirt.addColorStop(0.28,'#84cc16');
-    dirt.addColorStop(0.35,'#f59e0b');
-    dirt.addColorStop(0.5,'#eab308');
-    dirt.addColorStop(1.0,'#92400e');
+    dirt.addColorStop(0.0, level.terrainTop);
+    dirt.addColorStop(0.25, level.terrainMid);
+    dirt.addColorStop(0.55, level.terrainBottom);
+    dirt.addColorStop(1.0, '#1f2937');
 
     ctx.beginPath();
     ctx.moveTo(startX,h);
@@ -1293,7 +1381,7 @@
 
     // Dotted lane line
     ctx.setLineDash([16,18]); ctx.lineDashOffset = (world.scrollX*0.5)%34;
-    ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = 4;
+    ctx.strokeStyle = level.lane; ctx.lineWidth = 4;
     ctx.beginPath();
     for(let x=startX; x<=endX; x+=6){
       const y = groundY(x + world.scrollX) - 28;
@@ -1402,6 +1490,25 @@
         ctx.fillStyle = '#111827';
         ctx.beginPath(); ctx.arc(w*0.22, h*0.84, h*0.18, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(w*0.78, h*0.84, h*0.18, 0, Math.PI*2); ctx.fill();
+        break;
+      case 'boulder':
+        ctx.fillStyle = '#6b7280';
+        ctx.beginPath();
+        ctx.moveTo(w*0.1,h);
+        ctx.lineTo(w*0.22,h*0.2);
+        ctx.lineTo(w*0.52,0);
+        ctx.lineTo(w*0.88,h*0.18);
+        ctx.lineTo(w,h*0.62);
+        ctx.lineTo(w*0.72,h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 4; ctx.stroke();
+        break;
+      case 'cactus':
+        ctx.fillStyle = '#15803d';
+        roundRect(ctx, w*0.35, h*0.1, w*0.3, h*0.9, 20, true, false);
+        roundRect(ctx, w*0.08, h*0.34, w*0.2, h*0.34, 16, true, false);
+        roundRect(ctx, w*0.72, h*0.28, w*0.2, h*0.32, 16, true, false);
         break;
       case 'wall':
         ctx.fillStyle = '#b45309';
@@ -1566,10 +1673,90 @@
     ctx.restore();
   }
 
+  function drawScenery(){
+    for(const item of scenery){
+      const x = item.x - world.scrollX;
+      const y = item.y;
+      ctx.save();
+      if(item.kind === 'waterfall'){
+        ctx.fillStyle = '#c7f9ff';
+        ctx.fillRect(x - item.w*0.08, y - item.h*1.4, item.w*0.16, item.h*1.45);
+        ctx.fillStyle = '#60a5fa88';
+        ctx.fillRect(x - item.w*0.22, y - item.h*0.08, item.w*0.44, item.h*0.14);
+      } else if(item.kind === 'stream'){
+        ctx.fillStyle = '#38bdf8aa';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 14, item.w*0.5, item.h*0.16, 0, 0, Math.PI*2);
+        ctx.fill();
+      } else if(item.kind === 'pine'){
+        ctx.fillStyle = '#365314';
+        ctx.fillRect(x - 8, y - item.h*0.4, 16, item.h*0.4);
+        ctx.fillStyle = '#166534';
+        for(let i=0;i<3;i++){
+          ctx.beginPath();
+          ctx.moveTo(x, y - item.h + i*28);
+          ctx.lineTo(x - item.w*(0.18 + i*0.03), y - item.h*0.46 + i*30);
+          ctx.lineTo(x + item.w*(0.18 + i*0.03), y - item.h*0.46 + i*30);
+          ctx.closePath(); ctx.fill();
+        }
+      } else if(item.kind === 'palm'){
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(x - 7, y - item.h*0.55, 14, item.h*0.55);
+        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 5;
+        for(let i=0;i<5;i++){
+          ctx.beginPath();
+          ctx.moveTo(x, y - item.h*0.55);
+          ctx.quadraticCurveTo(x + (i-2)*24, y - item.h*0.92, x + (i-2)*46, y - item.h*0.74);
+          ctx.stroke();
+        }
+      } else if(item.kind === 'rocks'){
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.moveTo(x-item.w*0.4,y+8); ctx.lineTo(x-item.w*0.18,y-item.h*0.25); ctx.lineTo(x+item.w*0.05,y-item.h*0.38); ctx.lineTo(x+item.w*0.36,y+4); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.fillStyle = '#22c55e';
+        for(let i=0;i<5;i++){
+          const bladeOffset = Math.sin(item.sway + i*0.9) * 5;
+          const bladeH = 22 + i*4 + Math.sin(item.sway + i) * 4;
+          ctx.fillRect(x + bladeOffset + i*6 - 16, y - bladeH, 3, bladeH);
+        }
+      }
+      ctx.restore();
+    }
+  }
+
   function drawTruck(){
     const x = truck.baseX;
     const axleY = truck.y;
     const r = truck.wheelR;
+
+    if(world.bubbleTimer > 0 || world.lowGravityTimer > 0){
+      ctx.save();
+      ctx.translate(x, axleY - truck.bodyH*0.55);
+      const bubblePulse = 1 + Math.sin(world.t*8)*0.04;
+      const bubble = ctx.createRadialGradient(0, -10, 24, 0, 0, 138);
+      bubble.addColorStop(0, '#dbeafe22');
+      bubble.addColorStop(0.58, '#60a5fa55');
+      bubble.addColorStop(1, '#2563eb11');
+      ctx.fillStyle = bubble;
+      ctx.beginPath(); ctx.ellipse(0, 0, 138*bubblePulse, 102*bubblePulse, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.restore();
+    }
+
+    if(world.flameBoostTimer > 0){
+      ctx.save();
+      ctx.translate(x, axleY - truck.bodyH*0.52);
+      for(let i=0;i<3;i++){
+        const radius = 84 + i*18 + Math.sin(world.t*18 + i)*8;
+        ctx.strokeStyle = i === 0 ? '#fef08a' : i === 1 ? '#fb923c' : '#dc2626';
+        ctx.lineWidth = 10 - i*2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, -0.2*Math.PI, 1.1*Math.PI);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // === Wheels ===
     function wheel(wx, wy){
@@ -1771,6 +1958,28 @@
     ctx.fillText('Abe', 0, npY + npH/2 + 1);
     ctx.shadowBlur = 0;
     ctx.restore();
+
+    if(isInvincible()){
+      ctx.save();
+      ctx.translate(0, -bh - 18);
+      const trail = Math.min(180, 70 + Math.max(world.speed, 0) * 0.16);
+      const bands = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6'];
+      bands.forEach((band, i)=>{
+        ctx.strokeStyle = band;
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(-24, 6 + i*2);
+        ctx.quadraticCurveTo(-65, -72 + i*4, -110, 0 + i*4);
+        ctx.quadraticCurveTo(-trail*0.58, 18 + i*4, -trail, 4 + i*6);
+        ctx.stroke();
+      });
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(0, 10, 62, Math.PI, 0, false);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // === Flame boost exhaust flames ===
     if(hasFlameBoost()){
