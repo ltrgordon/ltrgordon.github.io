@@ -176,12 +176,13 @@
   <div class="card">
     <h1>Welcome!</h1>
     <p>Tap <b>▶️</b> to start the monster truck.</p>
-    <p>Use <b>⛔</b> to brake, <b>⤴️</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
+    <p>Use <b>⛔</b> to brake, <b>⤴️</b> or the <b>space bar</b> to jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
     <div class="levelPicker" id="levelPicker">
       <button class="levelOption active" data-level="sahara"><span>🏜️ Sahara</span><small>Rolling dunes, oases, and desert jumps.</small></button>
       <button class="levelOption" data-level="rockies"><span>⛰️ Rockies</span><small>Rocky peaks, waterfalls, sharp jumps, and streams.</small></button>
+      <button class="levelOption" data-level="himalayas"><span>🏔️ Himalayas</span><small>Icy slopes, Everest cliffs, snow drifts, and frozen hazards.</small></button>
     </div>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
@@ -313,6 +314,16 @@
       obstacleBias: { boulder: 0.26, cactus: 0.02 },
       rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [58, 110], turboChance: 0.34,
       rainbowChance: 0.018, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
+    },
+    himalayas: {
+      name: 'Himalayas',
+      skyTop: '#60a5fa', skyMid: '#dbeafe', skyBottom: '#f8fafc',
+      hillNear: '#94a3b8', hillFar: '#cbd5e1',
+      terrainTop: '#f8fafc', terrainMid: '#cbd5e1', terrainBottom: '#475569', edge: '#e2e8f0', lane: '#ffffff',
+      bumpA: 74, bumpB: 44, bumpC: 26, bumpD: 110, rockySharpness: 78, jaggedAmp: 42, streamChance: 0.14, greenery: 0.12, waterfallChance: 0.08,
+      obstacleBias: { boulder: 0.34, cactus: 0 },
+      rampSpacingMin: 1400, rampSpacingMax: 2450, rampWidth: [170, 300], rampHeight: [82, 150], turboChance: 0.4,
+      rainbowChance: 0.022, lowGravityDuration: 16, bubbleDuration: 9, flameDuration: 4, invincibleDuration: 5
     }
   };
 
@@ -326,13 +337,15 @@
   if(!('ontouchstart' in window)){
     document.addEventListener('keydown', (e)=>{
       if(e.repeat) return;
+      if(e.key===' ' || e.code==='Space') e.preventDefault();
       if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',true); }
       if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',true); }
-      if(e.key===' ' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
+      if(e.key===' ' || e.code==='Space' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
       if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
       if(e.key==='r'){ resetGame(); }
     });
     document.addEventListener('keyup', (e)=>{
+      if(e.key===' ' || e.code==='Space') e.preventDefault();
       if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',false); }
       if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',false); }
     });
@@ -479,7 +492,7 @@
   const obstacles = []; // {x, yTop, w, h, hue}
   const stars = [];     // collectibles {x,y, r, taken}
   const medkits = [];   // health pickups {x,y, size, taken}
-  const hourglasses = []; // time pickups {x,y,r,taken}
+  const hourglasses = []; // time pickups {x,y,r,value,taken}
   const flames = []; // speed boost pickups {x,y,r,taken}
   const lowGravityOrbs = []; // low-gravity pickups {x,y,r,taken}
   const rainbowPowerups = []; // invincible pickups {x,y,r,taken}
@@ -546,10 +559,11 @@
         const hy = gy - h - (140 + rnd()*160);
         medkits.push({x:lastSpawnX + w*0.5, y: hy, size: 64, taken:false});
       }
-      // Occasionally spawn a hourglass
-      if(rnd() < 0.09){
+      // Occasionally spawn an hourglass
+      if(rnd() < 0.11){
         const gy2 = gy - h - (60 + rnd()*140);
-        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:40, taken:false});
+        const large = rnd() < 0.34;
+        hourglasses.push({x:lastSpawnX + w*0.5, y: gy2, r:large ? 48 : 32, value:large ? 10 : 5, taken:false});
       }
       if(rnd() < 0.12){
         const ry = gy - h - (75 + rnd()*75);
@@ -628,8 +642,8 @@
       let kind = 'plant';
       if(kindRoll < level.waterfallChance) kind = 'waterfall';
       else if(kindRoll < level.waterfallChance + level.streamChance) kind = 'stream';
-      else if(kindRoll < level.waterfallChance + level.streamChance + level.greenery) kind = level.name === 'Rockies' ? 'pine' : 'palm';
-      else if(level.name === 'Rockies') kind = 'rocks';
+      else if(kindRoll < level.waterfallChance + level.streamChance + level.greenery) kind = level.name === 'Rockies' ? 'pine' : level.name === 'Himalayas' ? 'snowdrift' : 'palm';
+      else if(level.name === 'Rockies' || level.name === 'Himalayas') kind = level.name === 'Himalayas' ? (rnd() < 0.5 ? 'cliff' : 'prayerflags') : 'rocks';
       scenery.push({x:sx, y:groundY(sx), kind, h:90 + rnd()*120, w:90 + rnd()*160, sway:rnd()*Math.PI*2});
     }
   }
@@ -710,6 +724,7 @@
 
   // ===== Particles (confetti) =====
   const puffs = []; // {x,y,vx,vy,life,ttl,color,size}
+  const floatTexts = []; // {x,y,vy,life,ttl,text,color,size}
   function spawnConfetti(cx, cy, n=120){
     for(let i=0;i<n;i++){
       const a = Math.random()*Math.PI*2;
@@ -778,6 +793,28 @@
     src.connect(g).connect(audioCtx.destination);
     src.start();
   }
+
+  function spawnHourglassPickupEffect(x, y, value, radius){
+    const colors = ['#fef08a','#fde68a','#fbbf24','#ffffff','#c4b5fd'];
+    const burstCount = value >= 10 ? 34 : 22;
+    const truckY = truck.y - truck.bodyH * 0.55;
+    for(let i=0;i<burstCount;i++){
+      const a = Math.random()*Math.PI*2;
+      const s = (value >= 10 ? 140 : 95) + Math.random()*(value >= 10 ? 260 : 180);
+      puffs.push({
+        x:truck.baseX + Math.cos(a) * (12 + Math.random()*30),
+        y:truckY + Math.sin(a) * (12 + Math.random()*28),
+        vx:Math.cos(a)*s,
+        vy:Math.sin(a)*s - 180 - Math.random()*80,
+        life:0,
+        ttl:0.6+Math.random()*0.55,
+        color:colors[Math.floor(Math.random()*colors.length)],
+        size:3+Math.random()*(value >= 10 ? 6 : 4)
+      });
+    }
+    floatTexts.push({x:truck.baseX, y:truckY - radius * 0.8, vy:value >= 10 ? -70 : -54, life:0, ttl:0.95, text:`+${value}s!`, color:'#22c55e', size:value >= 10 ? 32 : 26});
+  }
+
   function playHorn(){
     if(!audioCtx) return;
     const o = audioCtx.createOscillator();
@@ -793,7 +830,7 @@
   function resetGame(){
     document.getElementById('title').textContent = `Abe’s Monster Truck – ${currentLevel().name}`;
     world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
-    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; scenery.length=0; puffs.length=0;
+    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; scenery.length=0; puffs.length=0; floatTexts.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
     lastSpawnX = truck.baseX;
@@ -925,10 +962,10 @@
         if(g.taken) continue;
         const gx = g.x - world.scrollX;
         if(Math.abs(gx - truck.baseX) < 88 && Math.abs(g.y - (truck.y - truck.bodyH)) < 88){
-          g.taken = true; world.timeLeft += 5; playBeep();
-          for(let i=0;i<10;i++){
-            puffs.push({x:gx, y:g.y, vx:(Math.random()*2-1)*100, vy:(Math.random()*-1-0.2)*180, life:0, ttl:0.5+Math.random()*0.4, color:'#fde047', size:3+Math.random()*3});
-          }
+          g.taken = true;
+          world.timeLeft += g.value;
+          playBeep();
+          spawnHourglassPickupEffect(gx, g.y, g.value, g.r);
         }
       }
 
@@ -1242,7 +1279,7 @@
     for(const g of hourglasses){
       if(g.taken) continue;
       const x = g.x - world.scrollX;
-      drawHourglass(x, g.y, g.r);
+      drawHourglass(x, g.y, g.r, g.value);
     }
 
     // Flame pickups
@@ -1281,6 +1318,7 @@
 
     // Particles
     updateParticles();
+    updateFloatTexts();
 
     ctx.restore();
   }
@@ -1626,12 +1664,13 @@
     ctx.restore();
   }
 
-  function drawHourglass(x, y, r){
+  function drawHourglass(x, y, r, value=5){
     ctx.save();
     ctx.translate(x, y);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.fillStyle = '#fde68a';
-    ctx.lineWidth = 3;
+    const large = value >= 10;
+    ctx.strokeStyle = large ? '#f59e0b' : '#fbbf24';
+    ctx.fillStyle = large ? '#fef3c7' : '#fde68a';
+    ctx.lineWidth = large ? 4 : 3;
     ctx.beginPath();
     ctx.moveTo(-r, -r);
     ctx.lineTo(r, -r);
@@ -1644,6 +1683,17 @@
     ctx.lineTo(0, 0);
     ctx.closePath();
     ctx.fill(); ctx.stroke();
+    ctx.fillStyle = large ? '#f59e0b' : '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(-r*0.52, -r*0.16);
+    ctx.lineTo(r*0.52, -r*0.16);
+    ctx.lineTo(0, r*0.28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = `bold ${large ? 22 : 16}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#166534';
+    ctx.fillText(`+${value}`, 0, r + 24);
     ctx.restore();
   }
 
@@ -1713,6 +1763,50 @@
         ctx.fillStyle = '#475569';
         ctx.beginPath();
         ctx.moveTo(x-item.w*0.4,y+8); ctx.lineTo(x-item.w*0.18,y-item.h*0.25); ctx.lineTo(x+item.w*0.05,y-item.h*0.38); ctx.lineTo(x+item.w*0.36,y+4); ctx.closePath(); ctx.fill();
+      } else if(item.kind === 'snowdrift'){
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 10, item.w*0.42, item.h*0.18, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.ellipse(x - item.w*0.14, y + 4, item.w*0.18, item.h*0.12, 0, 0, Math.PI*2);
+        ctx.fill();
+      } else if(item.kind === 'cliff'){
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(x-item.w*0.5,y+8);
+        ctx.lineTo(x-item.w*0.34,y-item.h*0.72);
+        ctx.lineTo(x-item.w*0.08,y-item.h*0.95);
+        ctx.lineTo(x+item.w*0.14,y-item.h*0.62);
+        ctx.lineTo(x+item.w*0.32,y-item.h*0.88);
+        ctx.lineTo(x+item.w*0.52,y+6);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.moveTo(x-item.w*0.08,y-item.h*0.95);
+        ctx.lineTo(x+item.w*0.16,y-item.h*0.56);
+        ctx.lineTo(x+item.w*0.32,y-item.h*0.88);
+        ctx.closePath(); ctx.fill();
+      } else if(item.kind === 'prayerflags'){
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x-item.w*0.4, y-item.h*0.6);
+        ctx.lineTo(x+item.w*0.38, y-item.h*0.78);
+        ctx.stroke();
+        const colors = ['#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7'];
+        colors.forEach((color, idx)=>{
+          const px = x-item.w*0.28 + idx*item.w*0.16;
+          const py = y-item.h*(0.61 + idx*0.035);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px+18, py+8);
+          ctx.lineTo(px, py+18);
+          ctx.closePath();
+          ctx.fill();
+        });
       } else {
         ctx.fillStyle = '#22c55e';
         for(let i=0;i<5;i++){
@@ -2046,6 +2140,33 @@
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x- p.size/2, p.y- p.size/2, p.size, p.size);
       ctx.globalAlpha = 1;
+    }
+  }
+
+
+  function updateFloatTexts(){
+    const dt = 1/60;
+    for(let i=floatTexts.length-1;i>=0;i--){
+      const item = floatTexts[i];
+      item.life += dt;
+      item.y += item.vy * dt;
+      item.vy *= 0.96;
+      const alpha = Math.max(0, 1 - item.life/item.ttl);
+      if(alpha <= 0){
+        floatTexts.splice(i,1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `900 ${item.size}px "Arial Rounded MT Bold", Arial Black, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#f0fdf4';
+      ctx.strokeText(item.text, item.x, item.y);
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.text, item.x, item.y);
+      ctx.restore();
     }
   }
 
