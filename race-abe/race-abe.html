@@ -501,19 +501,19 @@
       }
     }
     while(lastRampX < rightEdge){
-      lastRampX += 1300 + rnd()*1000;
+      lastRampX += 2800 + rnd()*2000;
       const gy = groundY(lastRampX);
-      let w = 140 + rnd()*80;
-      let h = 80 + rnd()*40;
+      let w = 160 + rnd()*80;
+      let h = 38 + rnd()*18;
       if(rnd() < 0.35){
-        w = 220 + rnd()*120;
-        h = 160 + rnd()*80;
+        w = 240 + rnd()*100;
+        h = 55 + rnd()*22;
       }
       const landingW = 130 + rnd()*90;
-      const turbo = rnd() < 0.25;
+      const turbo = rnd() < 0.20;
       if(turbo){
-        w = 260 + rnd()*140;
-        h = 190 + rnd()*90;
+        w = 280 + rnd()*120;
+        h = 65 + rnd()*25;
       }
       const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false, turbo};
       ramps.push(ramp);
@@ -1571,100 +1571,239 @@
     const axleY = truck.y;
     const r = truck.wheelR;
 
-    // Wheels
-    function wheel(wx,wy){
+    // === Wheels ===
+    function wheel(wx, wy){
       ctx.save();
       ctx.translate(wx, wy);
-      // Tire
-      ctx.fillStyle='#111827';
-      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
-      // Rim
-      ctx.fillStyle='#9ca3af';
-      ctx.beginPath(); ctx.arc(0,0,r*0.55,0,Math.PI*2); ctx.fill();
-      // Lugs
-      ctx.strokeStyle='#6b7280'; ctx.lineWidth=3;
-      for(let i=0;i<6;i++){
-        const a = i * Math.PI*2/6 + world.t*6;
-        ctx.beginPath(); ctx.moveTo(0,0);
-        ctx.lineTo(Math.cos(a)*r*0.45, Math.sin(a)*r*0.45); ctx.stroke();
+      // Outer tyre (fat off-road)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+      // Tyre sidewall tread marks
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      for(let i = 0; i < 10; i++){
+        const a = i * Math.PI*2/10 + world.t * 5;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.88, a, a + 0.2);
+        ctx.stroke();
       }
+      // Silver rim
+      const rimGrd = ctx.createRadialGradient(-r*0.18, -r*0.18, r*0.05, 0, 0, r*0.62);
+      rimGrd.addColorStop(0, '#f0f0f0');
+      rimGrd.addColorStop(0.5, '#c0c8d0');
+      rimGrd.addColorStop(1, '#7a8490');
+      ctx.fillStyle = rimGrd;
+      ctx.beginPath(); ctx.arc(0, 0, r*0.62, 0, Math.PI*2); ctx.fill();
+      // Rim spokes (5-spoke modern)
+      ctx.strokeStyle = '#555e6a';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      for(let i = 0; i < 5; i++){
+        const a = i * Math.PI*2/5 + world.t * 5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*r*0.12, Math.sin(a)*r*0.12);
+        ctx.lineTo(Math.cos(a)*r*0.54, Math.sin(a)*r*0.54);
+        ctx.stroke();
+      }
+      // Center cap
+      ctx.fillStyle = '#d0d8e0';
+      ctx.beginPath(); ctx.arc(0, 0, r*0.14, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#444';
+      ctx.beginPath(); ctx.arc(0, 0, r*0.07, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
-    wheel(x-78, axleY);
-    wheel(x+78, axleY);
+    wheel(x - 78, axleY);
+    wheel(x + 78, axleY);
 
-    // Body
+    // === Body ===
     ctx.save();
     ctx.translate(x, axleY - r - 10);
-    ctx.rotate(truck.angle*0.6);
+    ctx.rotate(truck.angle * 0.6);
     const bw = truck.bodyW, bh = truck.bodyH;
 
-    // Shadow
-    ctx.fillStyle='#00000022';
-    ctx.beginPath(); ctx.ellipse(0, bh+18, bw*0.6, 10, 0, 0, Math.PI*2); ctx.fill();
-
-    // Chassis base
-    ctx.fillStyle = '#064e3b';
-    ctx.fillRect(-bw/2, -10, bw, 16);
-
-    // Main body (GREEN)
-    const grd = ctx.createLinearGradient(-bw/2,0,bw/2,0);
-    grd.addColorStop(0,'#34d399');
-    grd.addColorStop(1,'#059669');
-    ctx.fillStyle = grd;
-    roundRect(ctx, -bw/2, -bh, bw, bh, 14, true, false);
-
-    // Cab window
-    ctx.fillStyle = '#e0f2fe';
-    roundRect(ctx, -bw/2+18, -bh+12, 96, 42, 10, true, false);
-
-    // Monster fenders
-    ctx.fillStyle = '#10b981';
-    roundRect(ctx, -bw/2+12, -24, 86, 32, 12, true, false);
-    roundRect(ctx,  bw/2-98, -24, 86, 32, 12, true, false);
-
-    // Name "ABE" – BIG letters
+    // Drop shadow
     ctx.save();
-    ctx.fillStyle = '#064e3b';
-    ctx.font = 'bold 44px "Arial Rounded MT Bold", system-ui, sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.translate(0, -bh/2+8);
-    ctx.rotate(-0.03);
-    ctx.fillText('ABE', 0, 0);
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(4, bh + 16, bw*0.55, 9, 0, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // --- Underbody / chassis skid plate (black) ---
+    ctx.fillStyle = '#111';
+    roundRect(ctx, -bw/2 - 4, -14, bw + 8, 20, 5, true, false);
+
+    // --- Side running boards (silver) ---
+    const boardGrd = ctx.createLinearGradient(0, -20, 0, -6);
+    boardGrd.addColorStop(0, '#d0d8e0');
+    boardGrd.addColorStop(1, '#8a9099');
+    ctx.fillStyle = boardGrd;
+    ctx.fillRect(-bw/2, -20, bw, 12);
+
+    // --- Main body shell (lime green metallic) ---
+    const bodyGrd = ctx.createLinearGradient(-bw/2, -bh, bw/2, 0);
+    bodyGrd.addColorStop(0.0, '#d4ff3a');  // highlight lime
+    bodyGrd.addColorStop(0.28, '#a3e635'); // lime green
+    bodyGrd.addColorStop(0.65, '#65a30d'); // darker mid
+    bodyGrd.addColorStop(1.0, '#4d7c0f');  // deep shadow
+    ctx.fillStyle = bodyGrd;
+    roundRect(ctx, -bw/2, -bh, bw, bh, 12, true, false);
+
+    // --- Body outline / panel lines (black) ---
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    roundRect(ctx, -bw/2, -bh, bw, bh, 12, false, true);
+
+    // --- Silver side trim stripe ---
+    const trimGrd = ctx.createLinearGradient(0, -bh*0.44, 0, -bh*0.3);
+    trimGrd.addColorStop(0, '#e8eef4');
+    trimGrd.addColorStop(0.5, '#b0bcc8');
+    trimGrd.addColorStop(1, '#7a8490');
+    ctx.fillStyle = trimGrd;
+    ctx.fillRect(-bw/2 + 8, -bh*0.44, bw - 16, bh*0.13);
+
+    // --- Cab / roof section (darker green) ---
+    const cabGrd = ctx.createLinearGradient(-bw*0.3, -bh, bw*0.3, -bh*0.6);
+    cabGrd.addColorStop(0, '#c8f542');
+    cabGrd.addColorStop(0.5, '#84cc16');
+    cabGrd.addColorStop(1, '#4d7c0f');
+    ctx.fillStyle = cabGrd;
+    roundRect(ctx, -bw*0.3, -bh, bw*0.62, bh*0.44, 10, true, false);
+
+    // --- Windshield (blue-tinted glass) ---
+    const windGrd = ctx.createLinearGradient(-bw*0.26, -bh + 8, -bw*0.26 + 80, -bh*0.6 + 8);
+    windGrd.addColorStop(0, '#e0f2fecc');
+    windGrd.addColorStop(1, '#7dd3fca0');
+    ctx.fillStyle = windGrd;
+    roundRect(ctx, -bw*0.26, -bh + 9, bw*0.44, bh*0.30, 7, true, false);
+    // Windshield glare
+    ctx.fillStyle = '#ffffff55';
+    ctx.beginPath();
+    ctx.moveTo(-bw*0.26 + 6, -bh + 12);
+    ctx.lineTo(-bw*0.26 + 28, -bh + 12);
+    ctx.lineTo(-bw*0.26 + 18, -bh + bh*0.22);
+    ctx.lineTo(-bw*0.26 + 4, -bh + bh*0.22);
+    ctx.closePath();
+    ctx.fill();
+    // Windshield frame (black)
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2;
+    roundRect(ctx, -bw*0.26, -bh + 9, bw*0.44, bh*0.30, 7, false, true);
+
+    // --- Rear side window ---
+    ctx.fillStyle = '#7dd3fc88';
+    roundRect(ctx, bw*0.2, -bh + 11, bw*0.22, bh*0.27, 5, true, false);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+    roundRect(ctx, bw*0.2, -bh + 11, bw*0.22, bh*0.27, 5, false, true);
+
+    // --- Front fender flare (black plastic) ---
+    ctx.fillStyle = '#222';
+    roundRect(ctx, -bw/2 - 2, -28, 72, 20, 8, true, false);
+    // --- Rear fender flare (black plastic) ---
+    roundRect(ctx, bw/2 - 70, -28, 72, 20, 8, true, false);
+
+    // --- Grille (front, black with chrome bars) ---
+    ctx.fillStyle = '#111';
+    roundRect(ctx, bw/2 - 22, -bh + 38, 22, 38, 4, true, false);
+    ctx.strokeStyle = '#c0c8d0';
+    ctx.lineWidth = 2;
+    for(let gy = 0; gy < 4; gy++){
+      ctx.beginPath();
+      ctx.moveTo(bw/2 - 21, -bh + 44 + gy * 9);
+      ctx.lineTo(bw/2 - 2,  -bh + 44 + gy * 9);
+      ctx.stroke();
+    }
+
+    // --- Headlights (LED-style, bright yellow-white) ---
+    // Main headlight housing
+    ctx.fillStyle = '#111';
+    roundRect(ctx, bw/2 - 24, -bh + 12, 24, 22, 4, true, false);
+    // LED strip
+    const ledGrd = ctx.createLinearGradient(bw/2 - 24, 0, bw/2, 0);
+    ledGrd.addColorStop(0, '#fffde7');
+    ledGrd.addColorStop(1, '#fde047');
+    ctx.fillStyle = ledGrd;
+    roundRect(ctx, bw/2 - 22, -bh + 14, 20, 7, 3, true, false);
+    // Lens glow
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    const lensGlow = ctx.createRadialGradient(bw/2 - 8, -bh + 18, 1, bw/2 - 8, -bh + 18, 18);
+    lensGlow.addColorStop(0, '#fef9c3');
+    lensGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = lensGlow;
+    ctx.beginPath(); ctx.arc(bw/2 - 8, -bh + 18, 18, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // DRL (daytime running light) strip
+    ctx.fillStyle = '#fde047cc';
+    ctx.fillRect(bw/2 - 22, -bh + 24, 20, 3);
+
+    // --- Tail light (red, rear) ---
+    ctx.fillStyle = '#dc2626';
+    roundRect(ctx, -bw/2, -bh + 18, 14, 18, 3, true, false);
+    ctx.fillStyle = '#fca5a5';
+    roundRect(ctx, -bw/2 + 2, -bh + 20, 10, 8, 2, true, false);
+
+    // === "Abe" name plate ===
+    ctx.save();
+    // Nameplate background (black badge)
+    const npW = 108, npH = 30;
+    const npX = -npW/2, npY = -bh*0.52 - npH/2;
+    ctx.fillStyle = '#111';
+    roundRect(ctx, npX - 4, npY - 4, npW + 8, npH + 8, 6, true, false);
+    // Silver border
+    ctx.strokeStyle = '#c0c8d0';
+    ctx.lineWidth = 2;
+    roundRect(ctx, npX - 4, npY - 4, npW + 8, npH + 8, 6, false, true);
+    // Lime green nameplate base
+    const npGrd = ctx.createLinearGradient(npX, npY, npX, npY + npH);
+    npGrd.addColorStop(0, '#c8f542');
+    npGrd.addColorStop(1, '#65a30d');
+    ctx.fillStyle = npGrd;
+    roundRect(ctx, npX, npY, npW, npH, 4, true, false);
+    // "Abe" text — bold, italic, black
+    ctx.fillStyle = '#0a0a0a';
+    ctx.shadowColor = '#a3e63588';
+    ctx.shadowBlur = 6;
+    ctx.font = 'italic 900 22px "Arial Rounded MT Bold", Arial Black, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Abe', 0, npY + npH/2 + 1);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // === Flame boost exhaust flames ===
     if(hasFlameBoost()){
-      ctx.globalAlpha = 0.9;
-      for(let i=0;i<4;i++){
-        const fx = -bw/2 - 20 - i*14;
-        const flameH = 16 + Math.sin(world.t*30 + i*0.8)*10 + i*8;
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      for(let i = 0; i < 5; i++){
+        const fx = -bw/2 - 14 - i * 13;
+        const flameH = 18 + Math.sin(world.t*28 + i*0.7)*10 + i*9;
         ctx.fillStyle = i % 2 ? '#fb923c' : '#facc15';
         ctx.beginPath();
-        ctx.moveTo(fx, -22);
-        ctx.quadraticCurveTo(fx-16, -22 + flameH*0.5, fx, -22 + flameH);
-        ctx.quadraticCurveTo(fx+10, -22 + flameH*0.5, fx, -22);
+        ctx.moveTo(fx, -26);
+        ctx.quadraticCurveTo(fx - 18, -26 + flameH*0.5, fx, -26 + flameH);
+        ctx.quadraticCurveTo(fx + 10, -26 + flameH*0.5, fx, -26);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
-    ctx.restore();
-
-    // Headlight
-    ctx.fillStyle='#fde68a';
-    ctx.beginPath(); ctx.arc(bw/2-10,-bh+22,8,0,Math.PI*2); ctx.fill();
-
-    // Exhaust puff (cute)
-    if(world.playing && !world.crashed && world.speed>50 && Math.random()<0.3){
+    // === Exhaust smoke ===
+    if(world.playing && !world.crashed && world.speed > 50 && Math.random() < 0.3){
       puffs.push({
-        x: (x - bw/2 - 14), y:(axleY - r - bh + 35),
+        x: (x - bw/2 - 14), y: (axleY - r - bh + 35),
         vx: -60 - Math.random()*60, vy: -10 - Math.random()*30,
-        life:0, ttl:0.8, color:'#9ca3afaa', size: 8+Math.random()*8
+        life: 0, ttl: 0.8, color: '#9ca3afaa', size: 8 + Math.random()*8
       });
     }
 
-    if(world.damage>0){
-      ctx.globalAlpha = Math.min(0.7, world.damage/world.maxDamage*0.7);
+    // === Damage overlay ===
+    if(world.damage > 0){
+      ctx.globalAlpha = Math.min(0.68, world.damage / world.maxDamage * 0.68);
       ctx.fillStyle = '#b91c1c';
-      roundRect(ctx, -bw/2, -bh, bw, bh, 14, true, false);
+      roundRect(ctx, -bw/2, -bh, bw, bh, 12, true, false);
       ctx.globalAlpha = 1;
     }
 
