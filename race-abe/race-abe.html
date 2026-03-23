@@ -298,9 +298,9 @@
   const LEVELS = {
     sahara: {
       name: 'Sahara',
-      skyTop: '#7dd3fc', skyMid: '#a7f3d0', skyBottom: '#fef08a',
-      hillNear: '#f4d06f', hillFar: '#eab308',
-      terrainTop: '#f59e0b', terrainMid: '#fbbf24', terrainBottom: '#92400e', edge: '#92400e', lane: '#fff7ed',
+      skyTop: '#87ceeb', skyMid: '#b8e4f9', skyBottom: '#fef08a',
+      hillNear: '#e8c97a', hillFar: '#d4a843',
+      terrainTop: '#e8c97a', terrainMid: '#d4a843', terrainBottom: '#a07030', edge: '#c9a04a', lane: '#fff7ed',
       bumpA: 60, bumpB: 25, bumpC: 35, bumpD: 25, rockySharpness: 0, jaggedAmp: 0, streamChance: 0.08, greenery: 0.16, waterfallChance: 0.02,
       obstacleBias: { boulder: 0.02, cactus: 0.18 },
       rampSpacingMin: 2800, rampSpacingMax: 4800, rampWidth: [160, 240], rampHeight: [38, 60], turboChance: 0.20,
@@ -308,9 +308,9 @@
     },
     rockies: {
       name: 'Rockies',
-      skyTop: '#93c5fd', skyMid: '#bfdbfe', skyBottom: '#dcfce7',
-      hillNear: '#64748b', hillFar: '#94a3b8',
-      terrainTop: '#6b7280', terrainMid: '#78716c', terrainBottom: '#334155', edge: '#1f2937', lane: '#dbeafe',
+      skyTop: '#6fb3d9', skyMid: '#b0d4e8', skyBottom: '#d4f0d4',
+      hillNear: '#6b7c50', hillFar: '#8a9e6a',
+      terrainTop: '#5a6e40', terrainMid: '#7a6040', terrainBottom: '#4a3a28', edge: '#4a5a30', lane: '#dbeafe',
       bumpA: 30, bumpB: 18, bumpC: 22, bumpD: 65, rockySharpness: 42, jaggedAmp: 24, streamChance: 0.24, greenery: 0.44, waterfallChance: 0.18,
       obstacleBias: { boulder: 0.26, cactus: 0.02 },
       rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [58, 110], turboChance: 0.34,
@@ -335,7 +335,8 @@
       obstacleBias: { boulder: 0.18, cactus: 0 },
       rampSpacingMin: 1650, rampSpacingMax: 2500, rampWidth: [180, 320], rampHeight: [88, 160], turboChance: 0.44,
       rainbowChance: 0.028, lowGravityDuration: 20, bubbleDuration: 12, flameDuration: 5, invincibleDuration: 6,
-      gravityScale: 0.38, jumpBoost: 1.22, craterChance: 0.17, craterDepth: [120, 220], craterWidth: [220, 460]
+      gravityScale: 0.38, jumpBoost: 1.22, craterChance: 0.17, craterDepth: [120, 220], craterWidth: [220, 460],
+      halfpipeChance: 0.045, halfpipeRadius: [320, 520], halfpipeSpacing: 5500
     }
   };
 
@@ -495,6 +496,21 @@
         const rimLift = 30 + 60 * bowl;
         y += craterDepth * Math.pow(bowl, 2.1);
         y -= rimLift * Math.exp(-Math.pow((craterWave - (1 - level.craterChance)) / (level.craterChance * 0.24), 2));
+      }
+    }
+    // Moon halfpipe craters: evenly spaced large U-shaped bowls
+    if(level.halfpipeChance){
+      const spacing = level.halfpipeSpacing || 6000;
+      // Use a deterministic pattern: halfpipes at fixed world intervals
+      const hpIndex = Math.floor((x + spacing*0.5) / spacing);
+      const hpCenterX = hpIndex * spacing + spacing * 0.44;
+      const hpRadius = level.halfpipeRadius ? (level.halfpipeRadius[0] + ((hpIndex * 7919) % 1000) / 1000 * (level.halfpipeRadius[1] - level.halfpipeRadius[0])) : 400;
+      const dx = x - hpCenterX;
+      if(Math.abs(dx) < hpRadius){
+        // Semi-circular bowl shape: dip down and come back up
+        const norm = dx / hpRadius; // -1..1
+        const bowlDip = hpRadius * (1.0 - Math.sqrt(Math.max(0, 1 - norm*norm)));
+        y += bowlDip;
       }
     }
     return y;
@@ -666,8 +682,14 @@
       let kind = 'plant';
       if(kindRoll < level.waterfallChance) kind = 'waterfall';
       else if(kindRoll < level.waterfallChance + level.streamChance) kind = 'stream';
-      else if(kindRoll < level.waterfallChance + level.streamChance + level.greenery) kind = level.name === 'Rockies' ? 'pine' : level.name === 'Himalayas' ? 'snowdrift' : 'palm';
-      else if(level.name === 'Rockies' || level.name === 'Himalayas') kind = level.name === 'Himalayas' ? (rnd() < 0.5 ? 'cliff' : 'prayerflags') : 'rocks';
+      else if(kindRoll < level.waterfallChance + level.streamChance + level.greenery){
+        if(level.name === 'Rockies') kind = rnd() < 0.55 ? 'pine' : 'bush';
+        else if(level.name === 'Himalayas') kind = 'snowdrift';
+        else kind = 'palm';
+      } else if(level.name === 'Rockies' || level.name === 'Himalayas'){
+        if(level.name === 'Himalayas') kind = rnd() < 0.5 ? 'cliff' : 'prayerflags';
+        else kind = rnd() < 0.5 ? 'rocks' : 'greyrock';
+      }
       scenery.push({x:sx, y:groundY(sx), kind, h:90 + rnd()*120, w:90 + rnd()*160, sway:rnd()*Math.PI*2});
     }
   }
@@ -1262,12 +1284,15 @@
 
     // Sky (parallax clouds & sun)
     const level = currentLevel();
-    const sky = ctx.createLinearGradient(0, 0, 0, H / DPR);
+    // Extend sky far above the viewport so it never cuts out during high jumps.
+    const skyTopY = -2400;
+    const skyH = H / DPR - skyTopY + 480;
+    const sky = ctx.createLinearGradient(0, skyTopY, 0, H / DPR + 240);
     sky.addColorStop(0, level.skyTop);
     sky.addColorStop(0.6, level.skyMid);
     sky.addColorStop(1, level.skyBottom);
     ctx.fillStyle = sky;
-    ctx.fillRect(-240, -240, W / DPR + 480, H / DPR + 480);
+    ctx.fillRect(-240, skyTopY, W / DPR + 480, skyH);
     const t = world.t;
     drawSkyObjects(t, level);
 
@@ -1347,13 +1372,18 @@
   }
 
   function drawSkyObjects(t, level){
+    // Draw sky decorations in screen space so they don't shift when the
+    // camera pans up during a high jump.
+    ctx.save();
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if(level.name === 'Moon'){
       drawEarth();
       drawStarscape(t);
-      return;
+    } else {
+      drawSun();
+      drawClouds(t);
     }
-    drawSun();
-    drawClouds(t);
+    ctx.restore();
   }
 
   function drawSun(){
@@ -1412,11 +1442,14 @@
   function drawHills(){
     const baseY = world.groundBase()+40;
     const w = canvas.width/DPR;
-    const padX = getHorizontalRenderPadding();
+    const h = canvas.height/DPR;
+    const padX = getHorizontalRenderPadding() + 60;
     const startX = -padX;
     const endX = w + padX;
     const level = currentLevel();
+
     if(level.name === 'Moon'){
+      // Deep Moon far silhouette
       ctx.fillStyle = '#1f2937';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+170);
@@ -1426,6 +1459,139 @@
         ctx.lineTo(x, y);
       }
       ctx.lineTo(endX, baseY+170); ctx.closePath(); ctx.fill();
+    }
+
+    if(level.name === 'Rockies'){
+      // Tall distant mountain range - snowy grey peaks very far back
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.04;
+        const y = baseY - 310
+          + 90*Math.sin(wx*0.00065)
+          + 55*Math.sin(wx*0.00131 + 2.4)
+          + 30*Math.sin(wx*0.00258 + 0.9);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+      // Snow caps on far peaks
+      ctx.fillStyle = '#f0f4f8';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.04;
+        const y = baseY - 310
+          + 90*Math.sin(wx*0.00065)
+          + 55*Math.sin(wx*0.00131 + 2.4)
+          + 30*Math.sin(wx*0.00258 + 0.9)
+          + 38; // only the very peaks
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // Mid mountain range - darker rock with greenery at base
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.10;
+        const y = baseY - 200
+          + 70*Math.sin(wx*0.00095)
+          + 40*Math.sin(wx*0.00190 + 1.1)
+          + 20*Math.sin(wx*0.00380 + 3.2);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+      // Green forest band at base of mid mountains
+      ctx.fillStyle = '#166534';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.10;
+        const mountainY = baseY - 200
+          + 70*Math.sin(wx*0.00095)
+          + 40*Math.sin(wx*0.00190 + 1.1)
+          + 20*Math.sin(wx*0.00380 + 3.2);
+        const y = mountainY + 80 + 22*Math.abs(Math.sin(wx*0.014));
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+    }
+
+    if(level.name === 'Himalayas'){
+      // Massive distant Himalayan peaks - very tall, white/icy
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.03;
+        const y = baseY - 420
+          + 130*Math.sin(wx*0.00055)
+          + 80*Math.sin(wx*0.00112 + 1.8)
+          + 40*Math.sin(wx*0.00224 + 4.0)
+          + 20*Math.sin(wx*0.00448 + 2.2);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+      // Deep shadow/rock face on far peaks
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.03;
+        const y = baseY - 420
+          + 130*Math.sin(wx*0.00055)
+          + 80*Math.sin(wx*0.00112 + 1.8)
+          + 40*Math.sin(wx*0.00224 + 4.0)
+          + 20*Math.sin(wx*0.00448 + 2.2)
+          + 55;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+      // Bright snow highlights on upper peaks
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.03;
+        const y = baseY - 420
+          + 130*Math.sin(wx*0.00055)
+          + 80*Math.sin(wx*0.00112 + 1.8)
+          + 40*Math.sin(wx*0.00224 + 4.0)
+          + 20*Math.sin(wx*0.00448 + 2.2)
+          + 22;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // Nearer middle ridge
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.09;
+        const y = baseY - 210
+          + 60*Math.sin(wx*0.00088)
+          + 35*Math.sin(wx*0.00176 + 0.7)
+          + 18*Math.sin(wx*0.00352 + 2.5);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+      // Snow on nearer ridge
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=5){
+        const wx = x + world.scrollX*0.09;
+        const y = baseY - 210
+          + 60*Math.sin(wx*0.00088)
+          + 35*Math.sin(wx*0.00176 + 0.7)
+          + 18*Math.sin(wx*0.00352 + 2.5)
+          + 30;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
     }
 
     ctx.fillStyle = level.hillFar;
@@ -1479,6 +1645,108 @@
     ctx.closePath();
     ctx.fillStyle = dirt; ctx.fill();
 
+    // Rockies: draw green vegetation strip along the ground surface
+    if(level.name === 'Rockies'){
+      ctx.beginPath();
+      for(let x=startX; x<=endX; x+=4){
+        const y = groundY(x + world.scrollX);
+        if(x===startX) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      for(let x=endX; x>=startX; x-=4){
+        const y = groundY(x + world.scrollX) + 18 + 8*Math.abs(Math.sin((x + world.scrollX)*0.018));
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#2d6a1e';
+      ctx.fill();
+    }
+
+    // Himalayas: draw snow cap over the terrain surface
+    if(level.name === 'Himalayas'){
+      ctx.beginPath();
+      for(let x=startX; x<=endX; x+=4){
+        const y = groundY(x + world.scrollX);
+        if(x===startX) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      for(let x=endX; x>=startX; x-=4){
+        const y = groundY(x + world.scrollX) + 22 + 10*Math.abs(Math.sin((x + world.scrollX)*0.022));
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#eef4fc';
+      ctx.fill();
+    }
+
+    // Sahara: draw a subtle sand ripple overlay
+    if(level.name === 'Sahara'){
+      ctx.strokeStyle = '#d4a84388';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([20, 30]);
+      for(let row=0; row<3; row++){
+        const offset = (row * 22 + (world.scrollX * 0.08)) % 50;
+        ctx.beginPath();
+        for(let x=startX; x<=endX; x+=4){
+          const y = groundY(x + world.scrollX) + 8 + row*14 + 4*Math.sin((x + world.scrollX)*0.012);
+          if(x===startX) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
+    // Moon halfpipe: draw a lighter inner bowl highlight to emphasize the curved shape
+    if(level.halfpipeChance){
+      const spacing = level.halfpipeSpacing || 6000;
+      const viewLeft  = world.scrollX - padX;
+      const viewRight = world.scrollX + w + padX;
+      // Check which halfpipes are in view
+      const firstIdx = Math.floor((viewLeft  - spacing) / spacing);
+      const lastIdx  = Math.ceil( (viewRight + spacing) / spacing);
+      for(let idx = firstIdx; idx <= lastIdx; idx++){
+        const hpCenterX = idx * spacing + spacing * 0.44;
+        const hpRadius = level.halfpipeRadius ? (level.halfpipeRadius[0] + ((idx * 7919) % 1000) / 1000 * (level.halfpipeRadius[1] - level.halfpipeRadius[0])) : 400;
+        const screenCX = hpCenterX - world.scrollX;
+        // Only draw if halfpipe rim x range overlaps the screen
+        if(screenCX + hpRadius < startX - 20 || screenCX - hpRadius > endX + 20) continue;
+
+        // Draw inner bowl face (lighter grey to show the concave surface)
+        ctx.save();
+        const bowlGrd = ctx.createRadialGradient(screenCX, groundY(hpCenterX), hpRadius * 0.1, screenCX, groundY(hpCenterX), hpRadius * 1.05);
+        bowlGrd.addColorStop(0, '#e5e7ebcc');
+        bowlGrd.addColorStop(0.6, '#9ca3af88');
+        bowlGrd.addColorStop(1, '#6b728000');
+        ctx.fillStyle = bowlGrd;
+        ctx.beginPath();
+        ctx.moveTo(screenCX - hpRadius, groundY(hpCenterX - hpRadius));
+        for(let sx = screenCX - hpRadius; sx <= screenCX + hpRadius; sx += 5){
+          const wx = sx + world.scrollX;
+          ctx.lineTo(sx, groundY(wx));
+        }
+        ctx.lineTo(screenCX + hpRadius, groundY(hpCenterX + hpRadius) + 40);
+        ctx.lineTo(screenCX - hpRadius, groundY(hpCenterX - hpRadius) + 40);
+        ctx.closePath();
+        ctx.fill();
+
+        // Rim highlights - glowing edge at lip of halfpipe
+        ctx.strokeStyle = '#f3f4f6cc';
+        ctx.lineWidth = 5;
+        ctx.shadowColor = '#ffffff88';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        const rimLeft  = screenCX - hpRadius;
+        const rimRight = screenCX + hpRadius;
+        const rimYL = groundY(hpCenterX - hpRadius);
+        const rimYR = groundY(hpCenterX + hpRadius);
+        ctx.moveTo(rimLeft - 14, rimYL - 4);
+        ctx.lineTo(rimLeft + 22, rimYL - 4);
+        ctx.moveTo(rimRight - 22, rimYR - 4);
+        ctx.lineTo(rimRight + 14, rimYR - 4);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+    }
+
     // Track edge
     ctx.lineWidth = 6; ctx.strokeStyle = topColor;
     ctx.beginPath();
@@ -1502,9 +1770,33 @@
 
   function drawRamp(x, baseY, w, h, landingW, turbo=false){
     const segments = 14;
+    const level = currentLevel();
     ctx.save();
-    ctx.fillStyle = turbo ? '#fb923c' : '#b45309';
-    ctx.strokeStyle = turbo ? '#ea580c' : '#92400e';
+
+    // Level-specific ramp colors
+    let rampFill, rampStroke;
+    if(level.name === 'Sahara'){
+      rampFill  = turbo ? '#d97706' : '#b45309';
+      rampStroke = turbo ? '#92400e' : '#78350f';
+      // sand texture – slightly lighter top
+      if(!turbo) rampFill = '#c9a04a';
+      if(!turbo) rampStroke = '#92704a';
+    } else if(level.name === 'Rockies'){
+      rampFill  = turbo ? '#fb923c' : '#6b7280';
+      rampStroke = turbo ? '#ea580c' : '#374151';
+    } else if(level.name === 'Himalayas'){
+      rampFill  = turbo ? '#38bdf8' : '#bfdbfe';
+      rampStroke = turbo ? '#0ea5e9' : '#7dd3fc';
+    } else if(level.name === 'Moon'){
+      rampFill  = turbo ? '#fb923c' : '#9ca3af';
+      rampStroke = turbo ? '#ea580c' : '#6b7280';
+    } else {
+      rampFill  = turbo ? '#fb923c' : '#b45309';
+      rampStroke = turbo ? '#ea580c' : '#92400e';
+    }
+
+    ctx.fillStyle = rampFill;
+    ctx.strokeStyle = rampStroke;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(x, groundY(x + world.scrollX));
@@ -1528,6 +1820,29 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Sahara: add sand grain dots on ramp surface
+    if(level.name === 'Sahara' && !turbo){
+      ctx.fillStyle = '#e8c97a88';
+      for(let i=1;i<segments;i++){
+        const px = x + (w * i / segments);
+        const py = baseY - h * (i / segments) - 4;
+        ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // Himalayas: add icy sheen stripe
+    if(level.name === 'Himalayas' && !turbo){
+      ctx.strokeStyle = '#e0f2fecc';
+      ctx.lineWidth = 5;
+      ctx.setLineDash([14, 12]);
+      ctx.beginPath();
+      ctx.moveTo(x + 10, baseY - 10);
+      ctx.lineTo(x + w - 8, baseY - h + 14);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     if(turbo){
       ctx.strokeStyle = '#fef08a';
       ctx.lineWidth = 4;
@@ -1878,6 +2193,44 @@
           ctx.lineTo(x + item.w*(0.18 + i*0.03), y - item.h*0.46 + i*30);
           ctx.closePath(); ctx.fill();
         }
+        // Snow dusting on pine tips
+        ctx.fillStyle = '#d4edda88';
+        ctx.beginPath();
+        ctx.moveTo(x, y - item.h);
+        ctx.lineTo(x - item.w*0.08, y - item.h*0.88);
+        ctx.lineTo(x + item.w*0.08, y - item.h*0.88);
+        ctx.closePath(); ctx.fill();
+      } else if(item.kind === 'bush'){
+        // Rounded green bush for Rockies
+        ctx.fillStyle = '#166534';
+        ctx.beginPath();
+        ctx.ellipse(x, y - item.h*0.14, item.w*0.28, item.h*0.16, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.ellipse(x - item.w*0.1, y - item.h*0.18, item.w*0.18, item.h*0.13, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + item.w*0.12, y - item.h*0.22, item.w*0.16, item.h*0.12, 0, 0, Math.PI*2); ctx.fill();
+      } else if(item.kind === 'greyrock'){
+        // Large grey rocky formation for Rockies
+        ctx.fillStyle = '#6b7280';
+        ctx.beginPath();
+        ctx.moveTo(x - item.w*0.45, y + 6);
+        ctx.lineTo(x - item.w*0.3, y - item.h*0.42);
+        ctx.lineTo(x - item.w*0.08, y - item.h*0.65);
+        ctx.lineTo(x + item.w*0.12, y - item.h*0.48);
+        ctx.lineTo(x + item.w*0.3, y - item.h*0.28);
+        ctx.lineTo(x + item.w*0.48, y + 4);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#9ca3af';
+        ctx.beginPath();
+        ctx.moveTo(x - item.w*0.08, y - item.h*0.65);
+        ctx.lineTo(x + item.w*0.12, y - item.h*0.48);
+        ctx.lineTo(x + item.w*0.04, y - item.h*0.28);
+        ctx.closePath(); ctx.fill();
+        // Moss/lichen on rock
+        ctx.fillStyle = '#4ade8044';
+        ctx.beginPath();
+        ctx.ellipse(x - item.w*0.15, y - item.h*0.18, item.w*0.14, item.h*0.06, 0.3, 0, Math.PI*2); ctx.fill();
       } else if(item.kind === 'palm'){
         ctx.fillStyle = '#92400e';
         ctx.fillRect(x - 7, y - item.h*0.55, 14, item.h*0.55);
