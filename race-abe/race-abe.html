@@ -115,21 +115,26 @@
     margin-top:14px;
   }
   .levelOption{
-    padding:14px 12px;
+    padding:16px 12px;
     border-radius:14px;
     border:3px solid #bfdbfe;
     background:#eff6ff;
-    color:#1e3a8a;
-    font-weight:800;
     cursor:pointer;
-    text-align:left;
+    text-align:center;
+    font-size:22px;
+    font-weight:900;
+    letter-spacing:0.5px;
+    line-height:1.1;
   }
   .levelOption.active{
     border-color:#2563eb;
     background:linear-gradient(135deg, #dbeafe, #bfdbfe);
     box-shadow:0 0 0 3px #93c5fd55;
   }
-  .levelOption small{ display:block; font-weight:700; color:#1d4ed8; margin-top:4px; }
+  .levelOption[data-level="sahara"]  { color:#b45309; }
+  .levelOption[data-level="rockies"] { color:#166534; }
+  .levelOption[data-level="himalayas"]{ color:#1d4ed8; }
+  .levelOption[data-level="moon"]    { color:#4b5563; }
   #landscapeHint{
     position:fixed; right:10px; top:10px; background:#00000066; color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; display:none;
   }
@@ -180,10 +185,10 @@
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
     <div class="levelPicker" id="levelPicker">
-      <button class="levelOption active" data-level="sahara"><span>🏜️ Sahara</span><small>Rolling dunes, oases, and desert jumps.</small></button>
-      <button class="levelOption" data-level="rockies"><span>⛰️ Rockies</span><small>Rocky peaks, waterfalls, sharp jumps, and streams.</small></button>
-      <button class="levelOption" data-level="himalayas"><span>🏔️ Himalayas</span><small>Icy slopes, Everest cliffs, snow drifts, and frozen hazards.</small></button>
-      <button class="levelOption" data-level="moon"><span>🌕 Moon</span><small>Grey dust hills, giant craters, low gravity, and lunar obstacles.</small></button>
+      <button class="levelOption active" data-level="sahara">🏜️ Sahara</button>
+      <button class="levelOption" data-level="rockies">⛰️ Rockies</button>
+      <button class="levelOption" data-level="himalayas">🏔️ Himalayas</button>
+      <button class="levelOption" data-level="moon">🌕 Moon</button>
     </div>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
@@ -952,7 +957,13 @@
       const activeRamp = findRampAtX(worldX);
       if(truck.y >= gy - truck.wheelR){
         truck.y = gy - truck.wheelR;
-        truck.vy = surfaceDY * world.speed;
+        // Follow the slope tangent, but clamp so normal terrain undulation
+        // doesn't bounce the truck into the air. Only ramps & turbo should
+        // produce large upward velocities.
+        const slopeVy = surfaceDY * world.speed;
+        const isOnRamp = activeRamp !== null;
+        const maxGroundLaunch = isOnRamp ? -Infinity : -120; // clamp upward bounce on flat ground
+        truck.vy = Math.max(maxGroundLaunch, Math.min(slopeVy, 400));
         truck.onGround = true;
         if(activeRamp?.turbo && !activeRamp.used){
           activeRamp.used = true;
@@ -965,6 +976,13 @@
           }
         }
       }else{
+        // If the truck is only fractionally above ground and moving slowly
+        // upward, push it back down so it hugs the terrain rather than
+        // skimming over small bumps.
+        const airGap = (gy - truck.wheelR) - truck.y;
+        if(airGap < 18 && truck.vy < 80 && !input.jump){
+          truck.vy += Math.min(airGap * 18, 300) * dt;
+        }
         truck.onGround = false;
       }
 
@@ -1405,12 +1423,36 @@
     ctx.globalAlpha = 1;
   }
   function drawStarscape(t){
-    for(let i=0;i<28;i++){
-      const x = (i * 137.5 + (t*3*(i%3+1))) % (canvas.width/DPR + 80) - 40;
-      const y = 34 + (i * 53) % 220;
-      const r = 1 + (i % 3);
-      ctx.fillStyle = `rgba(255,255,255,${0.45 + ((i*17)%40)/100})`;
-      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    const W = canvas.width/DPR;
+    // Dense star field: ~120 stars across the whole sky area
+    for(let i=0;i<120;i++){
+      const x = (i * 137.508 + (t * (0.4 + (i % 5)*0.18))) % (W + 80) - 40;
+      const y = 8 + (i * 61 + (i % 7)*53) % 340;
+      const r = 0.6 + (i % 4) * 0.55;
+      const alpha = 0.35 + ((i * 17) % 55) / 100;
+      ctx.fillStyle = i % 12 === 0
+        ? `rgba(180,220,255,${alpha})`   // faint blue-white
+        : `rgba(255,255,255,${alpha})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    }
+    // A handful of brighter "feature" stars
+    const bright = [
+      {ix:3, size:2.8}, {ix:17, size:2.4}, {ix:41, size:3.0},
+      {ix:67, size:2.6}, {ix:89, size:2.2}, {ix:107, size:2.9},
+    ];
+    for(const b of bright){
+      const i = b.ix;
+      const x = (i * 137.508 + (t * 0.25)) % (W + 80) - 40;
+      const y = 8 + (i * 61 + (i % 7)*53) % 340;
+      // Soft glow
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, b.size * 4);
+      glow.addColorStop(0, 'rgba(200,230,255,0.55)');
+      glow.addColorStop(1, 'rgba(200,230,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(x, y, b.size * 4, 0, Math.PI*2); ctx.fill();
+      // Core
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(x, y, b.size, 0, Math.PI*2); ctx.fill();
     }
   }
 
@@ -1439,6 +1481,20 @@
     ctx.fill();
   }
 
+  // Returns a jagged mountain y-value at world-x `wx`.
+  // `base` is the average elevation, `layers` is an array of
+  // {amp, freq, phase} which are combined and then sharpened with
+  // Math.pow(|sin|, sharpness) so peaks become narrow spikes.
+  function jaggedMountainY(wx, base, layers, sharpness){
+    let y = base;
+    for(const l of layers){
+      const v = Math.sin(l.freq * wx + l.phase);
+      // Flip: peaks go upward (negative y) so multiply by -1
+      y -= l.amp * Math.pow(Math.max(0, v), sharpness);
+    }
+    return y;
+  }
+
   function drawHills(){
     const baseY = world.groundBase()+40;
     const w = canvas.width/DPR;
@@ -1462,134 +1518,141 @@
     }
 
     if(level.name === 'Rockies'){
-      // Tall distant mountain range - snowy grey peaks very far back
-      ctx.fillStyle = '#9ca3af';
+      // ── Far range: tall jagged grey peaks with snow caps ──
+      const farLayers = [
+        {amp:200, freq:0.00042, phase:0.0},
+        {amp:130, freq:0.00091, phase:1.7},
+        {amp: 80, freq:0.00183, phase:3.1},
+        {amp: 50, freq:0.00370, phase:0.8},
+        {amp: 30, freq:0.00740, phase:2.4},
+        {amp: 18, freq:0.01480, phase:4.9},
+      ];
+      // Rock body
+      ctx.fillStyle = '#78909c';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
+      for(let x=startX; x<=endX; x+=3){
         const wx = x + world.scrollX*0.04;
-        const y = baseY - 310
-          + 90*Math.sin(wx*0.00065)
-          + 55*Math.sin(wx*0.00131 + 2.4)
-          + 30*Math.sin(wx*0.00258 + 0.9);
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
-      // Snow caps on far peaks
-      ctx.fillStyle = '#f0f4f8';
-      ctx.beginPath();
-      ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.04;
-        const y = baseY - 310
-          + 90*Math.sin(wx*0.00065)
-          + 55*Math.sin(wx*0.00131 + 2.4)
-          + 30*Math.sin(wx*0.00258 + 0.9)
-          + 38; // only the very peaks
-        ctx.lineTo(x, y);
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 60, farLayers, 2.2));
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
 
-      // Mid mountain range - darker rock with greenery at base
-      ctx.fillStyle = '#64748b';
+      // Dark rock crevice shadow layer (slightly lower)
+      ctx.fillStyle = '#546e7a';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.10;
-        const y = baseY - 200
-          + 70*Math.sin(wx*0.00095)
-          + 40*Math.sin(wx*0.00190 + 1.1)
-          + 20*Math.sin(wx*0.00380 + 3.2);
-        ctx.lineTo(x, y);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.04;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 60, farLayers, 2.2) + 40);
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
-      // Green forest band at base of mid mountains
-      ctx.fillStyle = '#166534';
+
+      // Snow cap: same peaks but offset up — fills only the top portion
+      ctx.fillStyle = '#eceff1';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.04;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 60, farLayers, 2.2) + 55);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // ── Mid range: medium jagged grey-green rocky hills ──
+      const midLayers = [
+        {amp:130, freq:0.00062, phase:1.2},
+        {amp: 85, freq:0.00140, phase:0.4},
+        {amp: 55, freq:0.00310, phase:3.8},
+        {amp: 32, freq:0.00680, phase:1.1},
+        {amp: 18, freq:0.01350, phase:5.5},
+      ];
+      ctx.fillStyle = '#546e7a';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=3){
         const wx = x + world.scrollX*0.10;
-        const mountainY = baseY - 200
-          + 70*Math.sin(wx*0.00095)
-          + 40*Math.sin(wx*0.00190 + 1.1)
-          + 20*Math.sin(wx*0.00380 + 3.2);
-        const y = mountainY + 80 + 22*Math.abs(Math.sin(wx*0.014));
-        ctx.lineTo(x, y);
+        ctx.lineTo(x, jaggedMountainY(wx, baseY + 30, midLayers, 2.0));
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // Green forest band — fills from the mid-mountain bottom down
+      ctx.fillStyle = '#1b5e20';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.10;
+        const my = jaggedMountainY(wx, baseY + 30, midLayers, 2.0);
+        ctx.lineTo(x, my + 55 + 18*Math.abs(Math.sin(wx*0.014)));
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
     }
 
     if(level.name === 'Himalayas'){
-      // Massive distant Himalayan peaks - very tall, white/icy
-      ctx.fillStyle = '#cbd5e1';
+      // ── Far range: massive jagged Himalayan peaks ──
+      const farLayers = [
+        {amp:280, freq:0.00032, phase:0.0},
+        {amp:170, freq:0.00071, phase:2.1},
+        {amp:110, freq:0.00148, phase:4.5},
+        {amp: 70, freq:0.00310, phase:1.3},
+        {amp: 42, freq:0.00660, phase:3.8},
+        {amp: 24, freq:0.01320, phase:0.6},
+        {amp: 14, freq:0.02640, phase:5.1},
+      ];
+      // Blue-grey rock base
+      ctx.fillStyle = '#b0bec5';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.03;
-        const y = baseY - 420
-          + 130*Math.sin(wx*0.00055)
-          + 80*Math.sin(wx*0.00112 + 1.8)
-          + 40*Math.sin(wx*0.00224 + 4.0)
-          + 20*Math.sin(wx*0.00448 + 2.2);
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
-      // Deep shadow/rock face on far peaks
-      ctx.fillStyle = '#94a3b8';
-      ctx.beginPath();
-      ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.03;
-        const y = baseY - 420
-          + 130*Math.sin(wx*0.00055)
-          + 80*Math.sin(wx*0.00112 + 1.8)
-          + 40*Math.sin(wx*0.00224 + 4.0)
-          + 20*Math.sin(wx*0.00448 + 2.2)
-          + 55;
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
-      // Bright snow highlights on upper peaks
-      ctx.fillStyle = '#f8fafc';
-      ctx.beginPath();
-      ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.03;
-        const y = baseY - 420
-          + 130*Math.sin(wx*0.00055)
-          + 80*Math.sin(wx*0.00112 + 1.8)
-          + 40*Math.sin(wx*0.00224 + 4.0)
-          + 20*Math.sin(wx*0.00448 + 2.2)
-          + 22;
-        ctx.lineTo(x, y);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.025;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 80, farLayers, 2.6));
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
 
-      // Nearer middle ridge
-      ctx.fillStyle = '#94a3b8';
+      // Shadow/rock crevice layer
+      ctx.fillStyle = '#78909c';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.09;
-        const y = baseY - 210
-          + 60*Math.sin(wx*0.00088)
-          + 35*Math.sin(wx*0.00176 + 0.7)
-          + 18*Math.sin(wx*0.00352 + 2.5);
-        ctx.lineTo(x, y);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.025;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 80, farLayers, 2.6) + 50);
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
-      // Snow on nearer ridge
-      ctx.fillStyle = '#e2e8f0';
+
+      // Bright snow — covers upper portion of peaks
+      ctx.fillStyle = '#f5f7fa';
       ctx.beginPath();
       ctx.moveTo(startX, baseY+200);
-      for(let x=startX; x<=endX; x+=5){
-        const wx = x + world.scrollX*0.09;
-        const y = baseY - 210
-          + 60*Math.sin(wx*0.00088)
-          + 35*Math.sin(wx*0.00176 + 0.7)
-          + 18*Math.sin(wx*0.00352 + 2.5)
-          + 30;
-        ctx.lineTo(x, y);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.025;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY - 80, farLayers, 2.6) + 70);
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // ── Mid range: nearer jagged snowy ridge ──
+      const midLayers = [
+        {amp:160, freq:0.00055, phase:1.5},
+        {amp: 95, freq:0.00125, phase:0.3},
+        {amp: 60, freq:0.00280, phase:2.9},
+        {amp: 35, freq:0.00600, phase:4.4},
+        {amp: 20, freq:0.01200, phase:1.7},
+        {amp: 12, freq:0.02400, phase:3.3},
+      ];
+      // Rock body
+      ctx.fillStyle = '#90a4ae';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.08;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY + 10, midLayers, 2.4));
+      }
+      ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
+
+      // Snow on mid ridge
+      ctx.fillStyle = '#eceff1';
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY+200);
+      for(let x=startX; x<=endX; x+=3){
+        const wx = x + world.scrollX*0.08;
+        ctx.lineTo(x, jaggedMountainY(wx, baseY + 10, midLayers, 2.4) + 42);
       }
       ctx.lineTo(endX, baseY+200); ctx.closePath(); ctx.fill();
     }
