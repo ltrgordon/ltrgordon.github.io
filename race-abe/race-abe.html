@@ -181,7 +181,7 @@
   <div class="card">
     <h1>Welcome!</h1>
     <p>Tap <b>▶️</b> to start the monster truck.</p>
-    <p>Use <b>⛔</b> to brake, <b>⤴️</b> or the <b>space bar</b> for a rocket jump (5s cooldown), and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
+    <p>Use <b>⛔</b> to brake, <b>⤴️</b> or the <b>space bar</b> for a rocket jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
     <div class="levelPicker" id="levelPicker">
@@ -273,9 +273,7 @@
     reverseAccel: 900,    // px/s^2
     reverseBrake: 1600,   // px/s^2
     reverseMaxSpeed: 360, // px/s
-    jumpVel: 585,         // px/s (about 35% lower jump)
-    manualJumpCooldown: 0,
-    manualJumpCooldownDuration: 5,
+    jumpVel: 790,         // px/s (~35% higher default jump)
     distance: 0,
     stars: 0,
     tntHit: 0,
@@ -311,7 +309,7 @@
       bumpA: 60, bumpB: 25, bumpC: 35, bumpD: 25, rockySharpness: 0, jaggedAmp: 0, streamChance: 0.08, greenery: 0.16, waterfallChance: 0.02,
       longSlopeMeters: 700, longSlopeHeight: 180,
       obstacleBias: { boulder: 0.02, cactus: 0.18 },
-      rampSpacingMin: 2800, rampSpacingMax: 4800, rampWidth: [160, 240], rampHeight: [24, 39], turboChance: 0.20,
+      rampSpacingMin: 2800, rampSpacingMax: 4800, rampWidth: [160, 240], rampHeight: [32, 53], turboChance: 0.20,
       rainbowChance: 0.035, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
     },
     rockies: {
@@ -322,7 +320,7 @@
       bumpA: 30, bumpB: 18, bumpC: 22, bumpD: 65, rockySharpness: 42, jaggedAmp: 24, streamChance: 0.24, greenery: 0.44, waterfallChance: 0.18,
       longSlopeMeters: 620, longSlopeHeight: 220,
       obstacleBias: { boulder: 0.26, cactus: 0.02 },
-      rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [38, 72], turboChance: 0.34,
+      rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [51, 97], turboChance: 0.34,
       rainbowChance: 0.018, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
     },
     himalayas: {
@@ -333,7 +331,7 @@
       bumpA: 74, bumpB: 44, bumpC: 26, bumpD: 110, rockySharpness: 78, jaggedAmp: 42, streamChance: 0.14, greenery: 0.12, waterfallChance: 0.08,
       longSlopeMeters: 500, longSlopeHeight: 340, longSlopeMode: 'himalayaSteep',
       obstacleBias: { boulder: 0.34, cactus: 0 },
-      rampSpacingMin: 1400, rampSpacingMax: 2450, rampWidth: [170, 300], rampHeight: [53, 98], turboChance: 0.4,
+      rampSpacingMin: 1400, rampSpacingMax: 2450, rampWidth: [170, 300], rampHeight: [72, 132], turboChance: 0.4,
       rainbowChance: 0.022, lowGravityDuration: 16, bubbleDuration: 9, flameDuration: 4, invincibleDuration: 5
     },
     moon: {
@@ -344,7 +342,7 @@
       bumpA: 42, bumpB: 24, bumpC: 16, bumpD: 58, rockySharpness: 24, jaggedAmp: 14, streamChance: 0, greenery: 0, waterfallChance: 0,
       longSlopeMeters: 680, longSlopeHeight: 170,
       obstacleBias: { boulder: 0.18, cactus: 0 },
-      rampSpacingMin: 1650, rampSpacingMax: 2500, rampWidth: [180, 320], rampHeight: [57, 104], turboChance: 0.44,
+      rampSpacingMin: 1650, rampSpacingMax: 2500, rampWidth: [180, 320], rampHeight: [77, 140], turboChance: 0.44,
       rainbowChance: 0.028, lowGravityDuration: 20, bubbleDuration: 12, flameDuration: 5, invincibleDuration: 6,
       gravityScale: 0.38, jumpBoost: 1.22, craterChance: 0.17, craterDepth: [120, 220], craterWidth: [220, 460],
       halfpipeChance: 0.045, halfpipeRadius: [320, 520], halfpipeSpacing: 5500
@@ -902,7 +900,7 @@
   // ===== Game Control =====
   function resetGame(){
     document.getElementById('title').textContent = `Abe’s Monster Truck – ${currentLevel().name}`;
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0; world.manualJumpCooldown=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
     obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; scenery.length=0; puffs.length=0; floatTexts.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
@@ -940,7 +938,6 @@
         finishGame(false);
         return;
       }
-      world.manualJumpCooldown = Math.max(0, world.manualJumpCooldown - dt);
       // Input to speed
       if(input.go){
         if(world.speed < 0) world.speed += world.reverseBrake * dt;
@@ -958,9 +955,8 @@
 
       // Jump
       if(input.jump){
-        if(truck.onGround && world.manualJumpCooldown <= 0){
+        if(truck.onGround){
           truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * (hasLowGravityBoost() ? 1.25 : 1);
-          world.manualJumpCooldown = world.manualJumpCooldownDuration;
           for(let i=0;i<34;i++){
             const spread = (Math.random()*2-1);
             puffs.push({
