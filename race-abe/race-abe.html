@@ -56,6 +56,7 @@
     display:flex; gap:16px; align-items:center; justify-content:center;
     background: var(--ui-bg);
     padding:12px; border-radius:18px; box-shadow:0 6px 16px #00000033;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
   .btn{
     width:var(--btn-size); height:var(--btn-size);
@@ -67,6 +68,7 @@
     transition: transform .03s ease;
   }
   .btn:active{ transform: translateY(2px) scale(0.98);}
+  .btn, #controls *{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   .go{ background: radial-gradient(circle at 30% 30%, #34d399, #059669); color:#053b2d;}
   .brake{ background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444); color:#5b0a0a;}
   .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
@@ -184,6 +186,9 @@
   </div>
   <div style="text-align:center">
     <button class="btn horn" id="btnHorn" aria-label="Horn">📢</button>
+  </div>
+  <div style="text-align:center">
+    <button class="btn horn" id="btnSlam" aria-label="Jump cancel">⤵️</button>
   </div>
   <div style="text-align:center">
     <button class="btn reset" id="btnReset" aria-label="Reset">↻</button>
@@ -376,13 +381,14 @@
   };
 
   // ===== Input =====
+  const IS_MOBILE = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   const input = { go:false, brake:false, jump:false, slam:false };
   function setHold(btn,holding){
     input[btn]=holding;
     if(btn==='go' && holding) startGameIfNeeded();
   }
   // Keyboard
-  if(!('ontouchstart' in window)){
+  if(!IS_MOBILE){
     document.addEventListener('keydown', (e)=>{
       if(e.repeat) return;
       if(e.key===' ' || e.code==='Space') e.preventDefault();
@@ -414,7 +420,8 @@
   bindHold(document.getElementById('btnBrake'), 'brake');
   document.getElementById('btnJump').addEventListener('pointerdown', (e)=>{ e.preventDefault(); input.jump=true; ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); });
   document.getElementById('btnHorn').addEventListener('pointerdown', (e)=>{ e.preventDefault(); ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); playHorn(); });
-  document.getElementById('btnReset').addEventListener('click', resetGame);
+  bindHold(document.getElementById('btnSlam'), 'slam');
+  document.getElementById('btnReset').addEventListener('pointerdown', (e)=>{ e.preventDefault(); resetGame(); });
 
   const startOverlay = document.getElementById('startOverlay');
   const crashOverlay = document.getElementById('crashOverlay');
@@ -709,7 +716,10 @@
   const rainbowPowerups = []; // invincible pickups {x,y,r,taken}
   const bricks = []; // collectible bricks {x,y,size,color,taken}
   const ramps = [];     // dirt ramps {x, baseY, w, h, landingW, used}
-  const scenery = [];   // world scenery per level
+  const scenery = [];
+  const lasers = [];
+  const laserBarriers = [];
+  const goldLaserCoins = [];   // world scenery per level
   let lastSpawnX = 0;
   let lastRampX = 0;
   function spawnAhead(){
@@ -848,6 +858,9 @@
     while(rainbowPowerups.length && rainbowPowerups[0].x + 40 < minX) rainbowPowerups.shift();
     while(bricks.length && bricks[0].x + 40 < minX) bricks.shift();
     while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
+    while(lasers.length && lasers[0].x < minX - 200) lasers.shift();
+    while(laserBarriers.length && laserBarriers[0].x + laserBarriers[0].w < minX) laserBarriers.shift();
+    while(goldLaserCoins.length && goldLaserCoins[0].x + goldLaserCoins[0].r < minX) goldLaserCoins.shift();
 
     while(scenery.length && scenery[0].x + (scenery[0].w || 120) < minX) scenery.shift();
     while((scenery.length ? scenery[scenery.length-1].x : lastSpawnX) < rightEdge){
@@ -866,6 +879,18 @@
         else kind = rnd() < 0.5 ? 'rocks' : 'greyrock';
       }
       scenery.push({x:sx, y:groundY(sx), kind, h:90 + rnd()*120, w:90 + rnd()*160, sway:rnd()*Math.PI*2});
+    }
+    if(IS_MOBILE){
+      if(rnd() < 0.16){
+        const bx = lastSpawnX + 260 + rnd()*520;
+        const by = trackY(bx) - 130;
+        laserBarriers.push({x:bx, y:by, w:40, h:120, hp:1});
+      }
+      if(rnd() < 0.24){
+        const cx = lastSpawnX + 180 + rnd()*620;
+        const cy = trackY(cx) - 180 - rnd()*110;
+        goldLaserCoins.push({x:cx, y:cy, r:26, taken:false});
+      }
     }
   }
 
@@ -1071,6 +1096,9 @@
     bricks.length = 0;
     ramps.length = 0;
     scenery.length = 0;
+    lasers.length = 0;
+    laserBarriers.length = 0;
+    goldLaserCoins.length = 0;
   }
 
   function resetSpawnAnchors(offset=0){
@@ -1134,6 +1162,26 @@
   }
   updateOrientationHint();
   addEventListener('resize', updateOrientationHint);
+
+  function fireLaserAtScreenPoint(px, py){
+    if(!IS_MOBILE) return;
+    const originX = truck.baseX + 72;
+    const originY = truck.y - truck.bodyH - 22;
+    const tx = px, ty = py - world.cameraYOffset;
+    const dx = tx - originX, dy = ty - originY;
+    const mag = Math.hypot(dx, dy) || 1;
+    const speed = 1850;
+    lasers.push({x:originX + world.scrollX, y:originY, vx:dx/mag*speed, vy:dy/mag*speed, life:0, ttl:0.65});
+  }
+
+  const controlsEl = document.getElementById("controls");
+  canvas.addEventListener("pointerdown", (e)=>{
+    if(!IS_MOBILE) return;
+    if(controlsEl.contains(e.target)) return;
+    const rect = canvas.getBoundingClientRect();
+    fireLaserAtScreenPoint(e.clientX - rect.left, e.clientY - rect.top);
+    e.preventDefault();
+  }, {passive:false});
 
   // ===== Main Loop =====
   let last = performance.now();
@@ -1394,6 +1442,26 @@
       world.cameraYOffset += (camTarget - world.cameraYOffset) * Math.min(1, dt * camRate);
       const zoomTarget = world.zoomEnabled && truckTopVisual < 70 ? 0.78 : 1;
       world.cameraZoom += (zoomTarget - world.cameraZoom) * Math.min(1, dt * 6);
+
+      for(let i=lasers.length-1;i>=0;i--){
+        const l = lasers[i];
+        l.life += dt;
+        l.x += l.vx*dt;
+        l.y += l.vy*dt;
+        if(l.life > l.ttl){ lasers.splice(i,1); continue; }
+        for(let j=laserBarriers.length-1;j>=0;j--){
+          const b = laserBarriers[j];
+          if(l.x > b.x && l.x < b.x+b.w && l.y > b.y && l.y < b.y+b.h){
+            laserBarriers.splice(j,1); lasers.splice(i,1); world.stars += 2; break;
+          }
+        }
+        if(!lasers[i]) continue;
+        for(const c of goldLaserCoins){
+          if(c.taken) continue;
+          const d = Math.hypot(l.x-c.x, l.y-c.y);
+          if(d < c.r + 6){ c.taken = true; world.stars += 10; lasers.splice(i,1); break; }
+        }
+      }
 
       // Obstacle collisions (simple AABB with truck front)
       for(const o of obstacles){
@@ -1668,6 +1736,17 @@
       if(b.taken) continue;
       const x = b.x - world.scrollX;
       drawCollectibleBrick(x, b.y, b.size, b.color);
+    }
+
+    for(const c of goldLaserCoins){
+      if(c.taken) continue;
+      drawGoldLaserCoin(c.x - world.scrollX, c.y, c.r);
+    }
+    for(const b of laserBarriers){
+      drawLaserBarrier(b.x - world.scrollX, b.y, b.w, b.h);
+    }
+    for(const l of lasers){
+      drawLaserShot(l.x - world.scrollX, l.y);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -3178,6 +3257,14 @@
       });
     }
 
+        if(IS_MOBILE){
+      ctx.fillStyle = "#334155";
+      roundRect(ctx, bw*0.1, -bh - 26, 42, 10, 4, true, false);
+      ctx.strokeStyle = "#93c5fd"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(bw*0.44, -bh-21); ctx.lineTo(bw*0.58, -bh-34); ctx.stroke();
+      ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(bw*0.58, -bh-34, 4.5, 0, Math.PI*2); ctx.fill();
+    }
+
     // === Damage overlay ===
     if(world.damage > 0){
       ctx.globalAlpha = Math.min(0.68, world.damage / world.maxDamage * 0.68);
@@ -3188,6 +3275,10 @@
 
     ctx.restore();
   }
+
+  function drawLaserShot(x,y){ ctx.strokeStyle="#f43f5e"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x-12,y); ctx.lineTo(x+12,y); ctx.stroke(); }
+  function drawLaserBarrier(x,y,w,h){ const g=ctx.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,"#f87171"); g.addColorStop(1,"#991b1b"); ctx.fillStyle=g; roundRect(ctx,x,y,w,h,6,true,false); ctx.strokeStyle="#fca5a5"; ctx.lineWidth=2; ctx.strokeRect(x+2,y+2,w-4,h-4); }
+  function drawGoldLaserCoin(x,y,r){ ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#fef08a"; ctx.lineWidth=4; ctx.stroke(); ctx.fillStyle="#92400e"; ctx.font="900 20px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("10",x,y+1);}
 
   function roundRect(ctx, x, y, w, h, r, fill, stroke){
     const rr = Math.min(r, w/2, h/2);
