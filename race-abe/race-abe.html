@@ -135,6 +135,19 @@
   .levelOption[data-level="rockies"] { color:#166534; }
   .levelOption[data-level="himalayas"]{ color:#1d4ed8; }
   .levelOption[data-level="moon"]    { color:#4b5563; }
+  .levelOption[data-level="worldTour"]{
+    grid-column:1 / -1;
+    color:#047857;
+  }
+  .irishFlagOverlay{
+    width:min(320px, 72vw);
+    height:min(180px, 40vw);
+    margin:10px auto 14px;
+    border:4px solid #14532d;
+    border-radius:8px;
+    box-shadow:0 8px 18px #00000033;
+    background:linear-gradient(90deg, #169b62 0 33.333%, #ffffff 33.333% 66.666%, #ff883e 66.666% 100%);
+  }
   #landscapeHint{
     position:fixed; right:10px; top:10px; background:#00000066; color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; display:none;
   }
@@ -189,6 +202,7 @@
       <button class="levelOption" data-level="rockies">⛰️ Rockies</button>
       <button class="levelOption" data-level="himalayas">🏔️ Himalayas</button>
       <button class="levelOption" data-level="moon">🌕 Moon</button>
+      <button class="levelOption" data-level="worldTour">🌍 World Tour</button>
     </div>
     <div class="leaderboard">
       <h3>🏆 High Scores</h3>
@@ -218,6 +232,7 @@
 <div id="winOverlay" style="display:none" role="dialog" aria-modal="true">
   <div class="card">
     <h1 style="color:#15803d;">You Win!</h1>
+    <div id="winIrishFlag" class="irishFlagOverlay" style="display:none" aria-label="Irish flag"></div>
     <p>Stars collected: <span id="finalStars">0</span></p>
     <p>Time: <span id="finalTime">0</span>s</p>
     <p>Distance travelled: <span id="finalDistance">0</span> m</p>
@@ -280,7 +295,7 @@
     bricksCollected: 0,
     speed: 0,
     damage: 0,
-    maxDamage: 16,
+    maxDamage: 24,
     timeLeft: 60,
     timeElapsed: 0,
     playing: false,
@@ -297,15 +312,26 @@
     redBricks: 0,
     blueBricks: 0,
     baseMaxSpeed: 900,
-    activeLevel: 'sahara'
+    activeLevel: 'sahara',
+    tourStageIndex: 0,
+    tourTransitionTimer: 0,
+    tourTransitionDuration: 2.4,
+    tourTransitionLabel: '',
+    tourSpeedFloor: 0,
+    irishFlagTimer: 0
   };
+
+  const TOUR_LEVEL_KEYS = ['sahara', 'rockies', 'himalayas', 'moon'];
+  const TOUR_STAGE_DURATION = 60;
+  const TOUR_STAGE_DISTANCE = 1000;
+  const TOUR_TRANSITION_DISTANCE = 420;
 
   const LEVELS = {
     sahara: {
       name: 'Sahara',
       skyTop: '#87ceeb', skyMid: '#b8e4f9', skyBottom: '#fef08a',
       hillNear: '#e8c97a', hillFar: '#d4a843',
-      terrainTop: '#e8c97a', terrainMid: '#d4a843', terrainBottom: '#a07030', edge: '#c9a04a', lane: '#fff7ed',
+      terrainTop: '#e8c97a', terrainMid: '#d4a843', terrainBottom: '#a07030', terrainDeep: '#d4a843', edge: '#c9a04a', lane: '#fff7ed',
       bumpA: 60, bumpB: 25, bumpC: 35, bumpD: 25, rockySharpness: 0, jaggedAmp: 0, streamChance: 0.08, greenery: 0.16, waterfallChance: 0.02,
       longSlopeMeters: 700, longSlopeHeight: 180,
       obstacleBias: { boulder: 0.02, cactus: 0.18 },
@@ -316,7 +342,7 @@
       name: 'Rockies',
       skyTop: '#6fb3d9', skyMid: '#b0d4e8', skyBottom: '#d4f0d4',
       hillNear: '#6b7c50', hillFar: '#8a9e6a',
-      terrainTop: '#5a6e40', terrainMid: '#7a6040', terrainBottom: '#4a3a28', edge: '#4a5a30', lane: '#dbeafe',
+      terrainTop: '#5a6e40', terrainMid: '#7a6040', terrainBottom: '#4a3a28', terrainDeep: '#7a6040', edge: '#4a5a30', lane: '#dbeafe',
       bumpA: 30, bumpB: 18, bumpC: 22, bumpD: 65, rockySharpness: 42, jaggedAmp: 24, streamChance: 0.24, greenery: 0.44, waterfallChance: 0.18,
       longSlopeMeters: 620, longSlopeHeight: 220,
       obstacleBias: { boulder: 0.26, cactus: 0.02 },
@@ -327,7 +353,7 @@
       name: 'Himalayas',
       skyTop: '#60a5fa', skyMid: '#dbeafe', skyBottom: '#f8fafc',
       hillNear: '#94a3b8', hillFar: '#cbd5e1',
-      terrainTop: '#f8fafc', terrainMid: '#cbd5e1', terrainBottom: '#475569', edge: '#e2e8f0', lane: '#ffffff',
+      terrainTop: '#f8fafc', terrainMid: '#cbd5e1', terrainBottom: '#475569', terrainDeep: '#f8fafc', edge: '#e2e8f0', lane: '#ffffff',
       bumpA: 74, bumpB: 44, bumpC: 26, bumpD: 110, rockySharpness: 78, jaggedAmp: 42, streamChance: 0.14, greenery: 0.12, waterfallChance: 0.08,
       longSlopeMeters: 500, longSlopeHeight: 340, longSlopeMode: 'himalayaSteep',
       obstacleBias: { boulder: 0.34, cactus: 0 },
@@ -338,7 +364,7 @@
       name: 'Moon',
       skyTop: '#020617', skyMid: '#0f172a', skyBottom: '#111827',
       hillNear: '#6b7280', hillFar: '#374151',
-      terrainTop: '#d1d5db', terrainMid: '#9ca3af', terrainBottom: '#4b5563', edge: '#f3f4f6', lane: '#e5e7eb',
+      terrainTop: '#d1d5db', terrainMid: '#9ca3af', terrainBottom: '#4b5563', terrainDeep: '#6b7280', edge: '#f3f4f6', lane: '#e5e7eb',
       bumpA: 42, bumpB: 24, bumpC: 16, bumpD: 58, rockySharpness: 24, jaggedAmp: 14, streamChance: 0, greenery: 0, waterfallChance: 0,
       longSlopeMeters: 680, longSlopeHeight: 170,
       obstacleBias: { boulder: 0.18, cactus: 0 },
@@ -350,7 +376,7 @@
   };
 
   // ===== Input =====
-  const input = { go:false, brake:false, jump:false };
+  const input = { go:false, brake:false, jump:false, slam:false };
   function setHold(btn,holding){
     input[btn]=holding;
     if(btn==='go' && holding) startGameIfNeeded();
@@ -363,6 +389,7 @@
       if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',true); }
       if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',true); }
       if(e.key===' ' || e.code==='Space' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
+      if(e.key==='ArrowDown' || e.key==='s' || e.key==='S'){ e.preventDefault(); input.slam=true; }
       if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
       if(e.key==='r'){ resetGame(); }
     });
@@ -370,6 +397,7 @@
       if(e.key===' ' || e.code==='Space') e.preventDefault();
       if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',false); }
       if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',false); }
+      if(e.key==='ArrowDown' || e.key==='s' || e.key==='S'){ input.slam=false; }
     });
   }
 
@@ -482,10 +510,125 @@
 
   // ===== Simple Terrain =====
   // Ground is a smooth sum of sines; obstacles and stars are spawned along x.
-  function currentLevel(){ return LEVELS[world.activeLevel] || LEVELS.sahara; }
+  function isWorldTour(){
+    return world.activeLevel === 'worldTour';
+  }
+
+  const clamp01 = (v)=> Math.max(0, Math.min(1, v));
+  const smoothstep = (v)=> {
+    const t = clamp01(v);
+    return t * t * (3 - 2 * t);
+  };
+  const mix = (a, b, t)=> a + (b - a) * t;
+  function mixArray(a, b, t){
+    if(!a && !b) return undefined;
+    const aa = a || b;
+    const bb = b || a;
+    return aa.map((value, index)=> mix(value, bb[index] ?? value, t));
+  }
+  function hexToRgb(hex){
+    const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+    if(!m) return null;
+    const n = parseInt(m[1], 16);
+    return {r:(n >> 16) & 255, g:(n >> 8) & 255, b:n & 255};
+  }
+  function rgbToHex({r,g,b}){
+    const toHex = (v)=> Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+  function mixColor(a, b, t){
+    const ca = hexToRgb(a);
+    const cb = hexToRgb(b);
+    if(!ca || !cb) return t < 0.5 ? a : b;
+    return rgbToHex({r:mix(ca.r, cb.r, t), g:mix(ca.g, cb.g, t), b:mix(ca.b, cb.b, t)});
+  }
+
+  const blendedLevelCache = new Map();
+  function blendedLevel(fromKey, toKey, t){
+    if(fromKey === toKey || t <= 0) return LEVELS[fromKey] || LEVELS.sahara;
+    if(t >= 1) return LEVELS[toKey] || LEVELS.sahara;
+    const bucket = Math.round(t * 100) / 100;
+    const cacheKey = `${fromKey}:${toKey}:${bucket}`;
+    if(blendedLevelCache.has(cacheKey)) return blendedLevelCache.get(cacheKey);
+
+    const from = LEVELS[fromKey] || LEVELS.sahara;
+    const to = LEVELS[toKey] || LEVELS.sahara;
+    const level = {...to};
+    const colorKeys = ['skyTop','skyMid','skyBottom','hillNear','hillFar','terrainTop','terrainMid','terrainBottom','terrainDeep','edge','lane'];
+    for(const key of colorKeys) level[key] = mixColor(from[key], to[key], bucket);
+    const numberKeys = [
+      'bumpA','bumpB','bumpC','bumpD','rockySharpness','jaggedAmp','streamChance','greenery','waterfallChance',
+      'longSlopeMeters','longSlopeHeight','turboChance','rainbowChance','lowGravityDuration','bubbleDuration',
+      'flameDuration','invincibleDuration','gravityScale','jumpBoost','craterChance','halfpipeChance'
+    ];
+    for(const key of numberKeys){
+      const a = from[key] ?? (key === 'gravityScale' || key === 'jumpBoost' ? 1 : 0);
+      const b = to[key] ?? (key === 'gravityScale' || key === 'jumpBoost' ? 1 : 0);
+      level[key] = mix(a, b, bucket);
+    }
+    level.rampSpacingMin = mix(from.rampSpacingMin, to.rampSpacingMin, bucket);
+    level.rampSpacingMax = mix(from.rampSpacingMax, to.rampSpacingMax, bucket);
+    level.rampWidth = mixArray(from.rampWidth, to.rampWidth, bucket);
+    level.rampHeight = mixArray(from.rampHeight, to.rampHeight, bucket);
+    level.craterDepth = mixArray(from.craterDepth || [0,0], to.craterDepth || [0,0], bucket);
+    level.craterWidth = mixArray(from.craterWidth || [0,0], to.craterWidth || [0,0], bucket);
+    level.halfpipeRadius = mixArray(from.halfpipeRadius || to.halfpipeRadius, to.halfpipeRadius || from.halfpipeRadius, bucket);
+    level.halfpipeSpacing = bucket < 0.5 ? from.halfpipeSpacing : to.halfpipeSpacing;
+    level.longSlopeMode = bucket < 0.5 ? from.longSlopeMode : to.longSlopeMode;
+    level.obstacleBias = {
+      boulder: mix(from.obstacleBias?.boulder || 0, to.obstacleBias?.boulder || 0, bucket),
+      cactus: mix(from.obstacleBias?.cactus || 0, to.obstacleBias?.cactus || 0, bucket)
+    };
+    level.name = bucket < 0.5 ? from.name : to.name;
+    level.transitionName = `${from.name} to ${to.name}`;
+    level.transitionProgress = bucket;
+    blendedLevelCache.set(cacheKey, level);
+    return level;
+  }
+
+  function tourRouteInfo(meters){
+    const routeMeters = Math.max(0, meters);
+    const rawStage = Math.floor(routeMeters / TOUR_STAGE_DISTANCE);
+    const stage = Math.min(TOUR_LEVEL_KEYS.length - 1, rawStage);
+    if(stage === 0){
+      return {fromKey:TOUR_LEVEL_KEYS[0], toKey:TOUR_LEVEL_KEYS[0], t:1, stage};
+    }
+    const stageMeters = routeMeters - stage * TOUR_STAGE_DISTANCE;
+    const t = smoothstep(stageMeters / TOUR_TRANSITION_DISTANCE);
+    return {fromKey:TOUR_LEVEL_KEYS[stage - 1], toKey:TOUR_LEVEL_KEYS[stage], t, stage};
+  }
+
+  function worldTourLevelForMeters(meters){
+    const info = tourRouteInfo(meters);
+    return blendedLevel(info.fromKey, info.toKey, info.t);
+  }
+
+  function levelForWorldX(x){
+    if(!isWorldTour()) return currentLevel();
+    return worldTourLevelForMeters(Math.max(0, x / 40));
+  }
+
+  function currentLevelKey(){
+    if(isWorldTour()){
+      return TOUR_LEVEL_KEYS[world.tourStageIndex] || TOUR_LEVEL_KEYS[TOUR_LEVEL_KEYS.length - 1];
+    }
+    return world.activeLevel;
+  }
+
+  function currentLevel(){
+    if(isWorldTour()) return worldTourLevelForMeters(world.distance);
+    return LEVELS[currentLevelKey()] || LEVELS.sahara;
+  }
+
+  function currentRaceName(){
+    if(!isWorldTour()) return currentLevel().name;
+    const level = currentLevel();
+    const name = level.transitionProgress > 0 && level.transitionProgress < 1 ? level.transitionName : level.name;
+    return `World Tour: ${name}`;
+  }
 
   function groundY(x){
-    const level = currentLevel();
+    const level = levelForWorldX(x);
     const base = world.groundBase();
     const k1=0.0015, k2=0.0033, k3=0.0007;
     const duneProgress = Math.min(1.4, x / 12000);
@@ -577,49 +720,50 @@
       lastSpawnX += spacing;
       const gy = groundY(lastSpawnX);
       let w, h, type, hue;
-      const level = currentLevel();
+      const level = levelForWorldX(lastSpawnX);
       const oType = rnd();
       if(oType < 0.22){
         type = 'crate';
-        h = 40 + rnd()*70;
-        w = 50 + rnd()*50;
+        h = 62 + rnd()*62;
+        w = 76 + rnd()*68;
         hue = 10+Math.floor(rnd()*40);
       } else if(oType < 0.42){
         type = 'cone';
-        w = 60;
-        h = 60 + rnd()*30;
+        w = 78;
+        h = 88 + rnd()*42;
       } else if(oType < 0.6){
         type = 'barrel';
-        w = 50;
-        h = 80 + rnd()*40;
+        w = 72;
+        h = 96 + rnd()*34;
       } else if(oType < 0.72){
         type = 'garbage';
-        w = 58;
-        h = 78;
+        w = 82;
+        h = 104;
       } else if(oType < 0.84) {
         type = 'tnt';
-        w = 62;
-        h = 62;
+        w = 88;
+        h = 88;
       } else if(oType < 0.86){
         type = 'car';
-        w = 150;
-        h = 62;
+        w = 202;
+        h = 82;
       } else if(oType < 0.86 + level.obstacleBias.boulder){
         type = 'boulder';
-        w = 110 + rnd()*70;
-        h = w * (0.7 + rnd()*0.2);
+        w = 150 + rnd()*84;
+        h = Math.min(134, w * (0.58 + rnd()*0.14));
       } else if(oType < 0.86 + level.obstacleBias.boulder + level.obstacleBias.cactus){
         type = 'cactus';
-        w = 60 + rnd()*26;
-        h = 110 + rnd()*40;
+        w = 82 + rnd()*28;
+        h = 126 + rnd()*28;
       } else {
         type = 'wall';
-        w = 160 + rnd()*70;
-        h = 180 + rnd()*80;
+        w = 210 + rnd()*100;
+        h = 118 + rnd()*28;
       }
       obstacles.push({x:lastSpawnX, yTop:gy - h, w, h, hue, type});
       if(rnd() < 0.45){
-        const sy = gy - h - (70 + rnd()*55);
+        const starLift = level.name === 'Moon' ? (150 + rnd()*115) : (70 + rnd()*55);
+        const sy = gy - h - starLift;
         stars.push({x:lastSpawnX + w*0.5, y: sy, r: 19, taken:false});
       }
       // Occasionally spawn a health box
@@ -637,11 +781,11 @@
         const ry = gy - h - (75 + rnd()*75);
         flames.push({x:lastSpawnX + w*0.5 + (rnd()*80-40), y: ry, r:42, taken:false});
       }
-      if(rnd() < 0.07){
+      if(rnd() < 0.035){
         const by = gy - h - (85 + rnd()*85);
         lowGravityOrbs.push({x:lastSpawnX + w*0.5 + (rnd()*120-60), y: by, r:44, taken:false});
       }
-      if(rnd() < currentLevel().rainbowChance){
+      if(rnd() < level.rainbowChance){
         const ry = gy - h - (80 + rnd()*70);
         rainbowPowerups.push({x:lastSpawnX + w*0.5 + (rnd()*100-50), y: ry, r:38, taken:false});
       }
@@ -653,8 +797,9 @@
       }
     }
     while(lastRampX < rightEdge){
-      const level = currentLevel();
-      lastRampX += level.rampSpacingMin + rnd()*(level.rampSpacingMax - level.rampSpacingMin);
+      const spacingLevel = levelForWorldX(lastRampX);
+      lastRampX += spacingLevel.rampSpacingMin + rnd()*(spacingLevel.rampSpacingMax - spacingLevel.rampSpacingMin);
+      const level = levelForWorldX(lastRampX);
       const gy = groundY(lastRampX);
       let w = level.rampWidth[0] + rnd()*(level.rampWidth[1]-level.rampWidth[0]);
       let h = level.rampHeight[0] + rnd()*(level.rampHeight[1]-level.rampHeight[0]);
@@ -671,16 +816,18 @@
       const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false, turbo};
       ramps.push(ramp);
       const rampSlope = ramp.h / ramp.w;
-      const launchSpeed = Math.max(640, world.maxSpeed * 0.96);
+      const launchSpeed = Math.max(640, world.maxSpeed * (level.name === 'Moon' ? 1.06 : 0.96));
       const vx = launchSpeed * Math.cos(Math.atan(rampSlope));
       const vy = launchSpeed * Math.sin(Math.atan(rampSlope));
-      const count = 10;
+      const effectiveGravity = world.gravity * (level.gravityScale || 1);
+      const count = level.name === 'Moon' ? 12 : 10;
       for(let i=0;i<count;i++){
-        const flightT = 0.16 + i*0.09;
+        const flightT = level.name === 'Moon' ? (0.38 + i*0.16) : (0.16 + i*0.09);
         const cx = ramp.x + ramp.w + vx * flightT;
-        const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * world.gravity * flightT * flightT;
+        const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * effectiveGravity * flightT * flightT;
         const ground = groundY(cx);
-        const cy = Math.min(jumpY - 72, ground - 170);
+        const airborneLift = level.name === 'Moon' ? 220 : 170;
+        const cy = Math.min(jumpY - 72, ground - airborneLift);
         stars.push({x:cx, y:cy, r:18, taken:false});
       }
       for(let i=obstacles.length-1;i>=0;i--){
@@ -704,8 +851,8 @@
 
     while(scenery.length && scenery[0].x + (scenery[0].w || 120) < minX) scenery.shift();
     while((scenery.length ? scenery[scenery.length-1].x : lastSpawnX) < rightEdge){
-      const level = currentLevel();
       const sx = (scenery.length ? scenery[scenery.length-1].x : world.scrollX - 200) + 280 + rnd()*380;
+      const level = levelForWorldX(sx);
       const kindRoll = rnd();
       let kind = 'plant';
       if(kindRoll < level.waterfallChance) kind = 'waterfall';
@@ -745,6 +892,10 @@
 
   function hasLowGravityBoost(){
     return world.lowGravityTimer > 0 || world.bubbleTimer > 0;
+  }
+
+  function blueJumpScale(){
+    return hasLowGravityBoost() ? 0.56 : 1;
   }
 
   function isInvincible(){
@@ -901,18 +1052,77 @@
   }
 
   // ===== Game Control =====
+  let lastRaceTitle = '';
+  function updateRaceTitle(){
+    const title = `Abe’s Monster Truck – ${currentRaceName()}`;
+    if(title === lastRaceTitle) return;
+    document.getElementById('title').textContent = title;
+    lastRaceTitle = title;
+  }
+
+  function clearSpawnedEntities(){
+    obstacles.length = 0;
+    stars.length = 0;
+    medkits.length = 0;
+    hourglasses.length = 0;
+    flames.length = 0;
+    lowGravityOrbs.length = 0;
+    rainbowPowerups.length = 0;
+    bricks.length = 0;
+    ramps.length = 0;
+    scenery.length = 0;
+  }
+
+  function resetSpawnAnchors(offset=0){
+    const anchorX = world.scrollX + truck.baseX + offset;
+    lastSpawnX = anchorX;
+    lastRampX = anchorX;
+  }
+
+  function finishWorldTour(){
+    world.irishFlagTimer = 1.45;
+    finishGame(true);
+    return true;
+  }
+
+  function advanceWorldTourStage(nextStageIndex){
+    if(!isWorldTour()) return false;
+    if(nextStageIndex >= TOUR_LEVEL_KEYS.length) return finishWorldTour();
+
+    const previousStageIndex = world.tourStageIndex;
+    const fromName = LEVELS[TOUR_LEVEL_KEYS[previousStageIndex]]?.name || currentLevel().name;
+    world.tourStageIndex = Math.min(nextStageIndex, TOUR_LEVEL_KEYS.length - 1);
+    world.timeLeft = TOUR_STAGE_DURATION;
+    world.tourTransitionTimer = world.tourTransitionDuration;
+    world.tourSpeedFloor = Math.max(0, world.speed);
+    const toName = LEVELS[TOUR_LEVEL_KEYS[world.tourStageIndex]]?.name || currentLevel().name;
+    world.tourTransitionLabel = `${fromName} to ${toName}`;
+    updateRaceTitle();
+    playBeep();
+    return true;
+  }
+
+  function syncWorldTourStageByDistance(){
+    if(!isWorldTour()) return false;
+    const nextStageIndex = Math.floor(world.distance / TOUR_STAGE_DISTANCE);
+    if(nextStageIndex >= TOUR_LEVEL_KEYS.length) return finishWorldTour();
+    if(nextStageIndex > world.tourStageIndex) return advanceWorldTourStage(nextStageIndex);
+    return false;
+  }
+
   function resetGame(){
-    document.getElementById('title').textContent = `Abe’s Monster Truck – ${currentLevel().name}`;
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=60; world.timeElapsed=0;
-    obstacles.length = 0; stars.length=0; medkits.length=0; hourglasses.length=0; flames.length=0; lowGravityOrbs.length=0; rainbowPowerups.length=0; bricks.length=0; ramps.length=0; scenery.length=0; puffs.length=0; floatTexts.length=0;
+    world.tourStageIndex=0; world.tourTransitionTimer=0; world.tourTransitionLabel=''; world.tourSpeedFloor=0; world.irishFlagTimer=0;
+    updateRaceTitle();
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=TOUR_STAGE_DURATION; world.timeElapsed=0;
+    clearSpawnedEntities(); puffs.length=0; floatTexts.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
-    lastSpawnX = truck.baseX;
-    lastRampX = truck.baseX;
+    resetSpawnAnchors();
     truck.y = groundY(truck.baseX) - truck.wheelR; truck.vy=0; truck.onGround=true; truck.angle=0; truck.spin=0;
     spawnAhead();
     crashOverlay.style.display='none';
     winOverlay.style.display='none';
+    document.getElementById('winIrishFlag').style.display = 'none';
   }
   resetGame();
 
@@ -936,10 +1146,16 @@
     if(world.playing && !world.crashed){
       world.timeLeft -= dt;
       world.timeElapsed += dt;
-      if(world.timeLeft <= 0){
-        world.timeLeft = 0;
-        finishGame(false);
-        return;
+      if(isWorldTour()){
+        if(world.timeLeft <= 0){
+          world.timeLeft = 0;
+          finishGame(false);
+          return;
+        }
+      }else if(world.timeLeft <= 0){
+          world.timeLeft = 0;
+          finishGame(false);
+          return;
       }
       // Input to speed
       if(input.go){
@@ -953,13 +1169,17 @@
         else if(world.speed < 0) world.speed = Math.min(0, world.speed + world.friction * dt);
       }
       world.speed = Math.max(-world.reverseMaxSpeed, Math.min(world.maxSpeed, world.speed));
+      if(isWorldTour() && world.tourTransitionTimer > 0 && world.tourSpeedFloor > 0 && !input.brake && world.speed > 0){
+        const keep = 0.86 + 0.14 * Math.max(0, world.tourTransitionTimer / world.tourTransitionDuration);
+        world.speed = Math.max(world.speed, Math.min(world.maxSpeed, world.tourSpeedFloor * keep));
+      }
 
-      const gravityScale = (currentLevel().gravityScale || 1) * (hasLowGravityBoost() ? 0.56 : 1);
+      const gravityScale = (currentLevel().gravityScale || 1) * (hasLowGravityBoost() ? 0.72 : 1);
 
       // Jump
       if(input.jump){
         if(truck.onGround){
-          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * (hasLowGravityBoost() ? 1.25 : 1);
+          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * blueJumpScale();
           for(let i=0;i<34;i++){
             const spread = (Math.random()*2-1);
             puffs.push({
@@ -979,7 +1199,12 @@
       }
 
       // Vertical motion
-      truck.vy += world.gravity*gravityScale*dt;
+      const slamDiving = input.slam && !truck.onGround;
+      if(slamDiving){
+        truck.vy = Math.max(truck.vy, 1500);
+        world.cameraZoom += (0.92 - world.cameraZoom) * Math.min(1, dt * 8);
+      }
+      truck.vy += world.gravity*gravityScale*(slamDiving ? 4.3 : 1)*dt;
       truck.y  += truck.vy*dt;
 
       // World scrolls left
@@ -1001,6 +1226,14 @@
         const maxGroundLaunch = isOnRamp ? -Infinity : -70; // clamp upward bounce on flat ground
         truck.vy = Math.max(maxGroundLaunch, Math.min(slopeVy, 400));
         truck.onGround = true;
+        if(input.slam){
+          input.slam = false;
+          world.shake = Math.max(world.shake, 10);
+          for(let i=0;i<28;i++){
+            const spread = Math.random()*2-1;
+            puffs.push({x:truck.baseX + spread*42, y:truck.y + 22, vx:spread*(160+Math.random()*260), vy:80+Math.random()*240, life:0, ttl:0.35+Math.random()*0.3, color:Math.random()<0.5?'#cbd5e1':'#facc15', size:4+Math.random()*5});
+          }
+        }
         if(activeRamp?.turbo && !activeRamp.used){
           activeRamp.used = true;
           world.speed = Math.min(world.maxSpeed + 520, Math.max(world.speed, world.maxSpeed * 0.92) + 420);
@@ -1185,6 +1418,12 @@
         }
       }
 
+      syncWorldTourStageByDistance();
+      if(world.crashed){
+        return;
+      }
+      updateRaceTitle();
+
       // Engine audio
       const speedCap = world.maxSpeed + (hasFlameBoost() ? 300 : 0);
       world.speed = Math.max(-world.reverseMaxSpeed, Math.min(speedCap, world.speed));
@@ -1195,6 +1434,11 @@
     } else {
       // When not playing or crashed, fade engine
       setEngine(0, 0);
+    }
+
+    if(world.tourTransitionTimer > 0){
+      world.tourTransitionTimer = Math.max(0, world.tourTransitionTimer - dt);
+      if(world.tourTransitionTimer === 0) world.tourSpeedFloor = 0;
     }
 
     // Update HUD
@@ -1212,14 +1456,30 @@
   requestAnimationFrame(loop);
 
   // ===== Crash =====
+  function obstacleDamage(type){
+    const damageByType = {
+      cactus: 0.5,
+      cone: 0.5,
+      crate: 1,
+      garbage: 1,
+      barrel: 1.5,
+      car: 2,
+      boulder: 2.5,
+      wall: 3,
+      tnt: 5
+    };
+    return damageByType[type] || 1;
+  }
+
   function hitObstacle(o, cx, cy){
     const idx = obstacles.indexOf(o);
     if(idx >= 0) obstacles.splice(idx,1);
+    const damage = obstacleDamage(o.type);
     const boom = o.type === 'tnt';
     const garbageBurst = o.type === 'garbage';
     const carCrash = o.type === 'car';
     const wallHit = o.type === 'wall';
-    world.shake = boom ? 20 : 10;
+    world.shake = boom ? 24 : Math.max(7, damage * 4);
     if(boom){
       world.tntHit += 1;
       for(let i=0;i<160;i++){
@@ -1228,14 +1488,14 @@
         puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-240, life:0, ttl:0.5+Math.random()*0.7, color:Math.random()<0.55?'#fb923c':'#1f2937', size:5+Math.random()*8});
       }
       world.speed = Math.max(0, world.speed - 180);
-      world.damage += 2;
+      world.damage += damage;
     } else if(garbageBurst){
       for(let i=0;i<90;i++){
         const a = Math.random()*Math.PI*1.5 - Math.PI*1.25;
         const s = 140 + Math.random()*460;
         puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-120, life:0, ttl:0.8+Math.random()*0.8, color:['#84cc16','#6b7280','#f97316','#22c55e'][Math.floor(Math.random()*4)], size:4+Math.random()*6});
       }
-      world.damage += 1;
+      world.damage += damage;
     } else if(carCrash){
       for(let i=0;i<120;i++){
         const a = Math.random()*Math.PI*2;
@@ -1243,7 +1503,7 @@
         puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-130, life:0, ttl:0.55+Math.random()*0.6, color:['#ef4444','#f59e0b','#6b7280','#1f2937'][Math.floor(Math.random()*4)], size:4+Math.random()*7});
       }
       world.speed = Math.max(0, world.speed - 90);
-      world.damage += 1;
+      world.damage += damage;
     } else if(wallHit){
       for(let i=0;i<140;i++){
         const a = Math.random()*Math.PI*2;
@@ -1251,10 +1511,10 @@
         puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-180, life:0, ttl:0.6+Math.random()*0.8, color:['#b45309','#92400e','#78350f','#f59e0b'][Math.floor(Math.random()*4)], size:5+Math.random()*7});
       }
       world.speed = Math.max(0, world.speed - 150);
-      world.damage += 2;
+      world.damage += damage;
     } else {
       spawnConfetti(cx, cy, 80);
-      world.damage += 1;
+      world.damage += damage;
     }
     if(hasFlameBoost()) world.speed = Math.min(world.maxSpeed + 300, world.speed + 35);
     playCrash();
@@ -1293,6 +1553,7 @@
       finalStarsEl.textContent = world.stars;
       finalTimeEl.textContent = Math.floor(world.timeElapsed);
       document.getElementById('finalDistance').textContent = Math.floor(world.distance);
+      document.getElementById('winIrishFlag').style.display = world.irishFlagTimer > 0 ? 'block' : 'none';
       setTimeout(()=>{ winOverlay.style.display='flex'; }, 550);
     }else{
       document.getElementById('gameOverReason').textContent = world.damage >= world.maxDamage ? 'Too much damage!' : "Time's up!";
@@ -1422,6 +1683,86 @@
     updateParticles();
     updateFloatTexts();
 
+    ctx.restore();
+
+    ctx.save();
+    ctx.scale(DPR, DPR);
+    drawWorldTourTransition();
+    drawIrishFlagFinale();
+    ctx.restore();
+  }
+
+  function drawWorldTourTransition(){
+    if(world.tourTransitionTimer <= 0) return;
+    const W = canvas.width / DPR;
+    const H = canvas.height / DPR;
+    const duration = world.tourTransitionDuration || 2.4;
+    const age = duration - world.tourTransitionTimer;
+    const fadeIn = Math.min(1, age / 0.45);
+    const fadeOut = Math.min(1, world.tourTransitionTimer / 0.55);
+    const alpha = Math.min(0.94, fadeIn, fadeOut);
+    const label = world.tourTransitionLabel || currentLevel().transitionName || currentLevel().name;
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#ffffffdd';
+    roundRect(ctx, W * 0.5 - 210, Math.max(64, H * 0.12), 420, 78, 18, true, false);
+    ctx.strokeStyle = '#064e3b88';
+    ctx.lineWidth = 4;
+    roundRect(ctx, W * 0.5 - 210, Math.max(64, H * 0.12), 420, 78, 18, false, true);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 28px "Arial Rounded MT Bold", Arial, sans-serif';
+    ctx.fillStyle = '#064e3b';
+    ctx.fillText(label, W * 0.5, Math.max(64, H * 0.12) + 30);
+    ctx.font = '900 18px "Arial Rounded MT Bold", Arial, sans-serif';
+    ctx.fillStyle = '#047857';
+    ctx.fillText('World Tour', W * 0.5, Math.max(64, H * 0.12) + 56);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawIrishFlagFinale(){
+    if(world.irishFlagTimer <= 0) return;
+    const W = canvas.width / DPR;
+    const H = canvas.height / DPR;
+    const flagW = Math.min(520, W * 0.72);
+    const flagH = flagW * 0.56;
+    const x = (W - flagW) * 0.5;
+    const y = Math.max(84, H * 0.18);
+    const wave = Math.sin(world.t * 5) * 8;
+
+    ctx.save();
+    ctx.shadowColor = '#00000055';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = '#14532d';
+    roundRect(ctx, x - 18, y - 20, 12, flagH + 70, 6, true, false);
+
+    const stripeW = flagW / 3;
+    const stripes = ['#169b62', '#ffffff', '#ff883e'];
+    for(let s=0;s<3;s++){
+      ctx.fillStyle = stripes[s];
+      ctx.beginPath();
+      const sx = x + s * stripeW;
+      ctx.moveTo(sx, y + wave);
+      ctx.bezierCurveTo(sx + stripeW * 0.35, y - wave, sx + stripeW * 0.7, y + wave, sx + stripeW, y - wave * 0.35);
+      ctx.lineTo(sx + stripeW, y + flagH - wave * 0.35);
+      ctx.bezierCurveTo(sx + stripeW * 0.7, y + flagH + wave, sx + stripeW * 0.35, y + flagH - wave, sx, y + flagH + wave);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#14532d';
+    ctx.lineWidth = 5;
+    roundRect(ctx, x, y - 1, flagW, flagH + 2, 8, false, true);
+    ctx.textAlign = 'center';
+    ctx.font = '900 42px "Arial Rounded MT Bold", Arial, sans-serif';
+    ctx.fillStyle = '#14532d';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 7;
+    ctx.strokeText('World Tour Complete!', W * 0.5, y + flagH + 52);
+    ctx.fillText('World Tour Complete!', W * 0.5, y + flagH + 52);
     ctx.restore();
   }
 
@@ -1732,7 +2073,7 @@
     dirt.addColorStop(0.0, level.terrainTop);
     dirt.addColorStop(0.25, level.terrainMid);
     dirt.addColorStop(0.55, level.terrainBottom);
-    dirt.addColorStop(1.0, '#1f2937');
+    dirt.addColorStop(1.0, level.terrainDeep || level.terrainBottom || level.terrainMid);
 
     ctx.beginPath();
     ctx.moveTo(startX,h);
@@ -1869,7 +2210,7 @@
 
   function drawRamp(x, baseY, w, h, landingW, turbo=false){
     const segments = 14;
-    const level = currentLevel();
+    const level = levelForWorldX(x + world.scrollX);
     ctx.save();
 
     // Level-specific ramp colors
@@ -1959,6 +2300,13 @@
     ctx.save();
     ctx.translate(x, yTop);
     const isMoon = currentLevel().name === 'Moon';
+    ctx.fillStyle = '#00000024';
+    ctx.beginPath();
+    ctx.ellipse(w*0.5, h + 8, w*0.55, Math.max(8, h*0.08), 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowColor = '#00000033';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 5;
     switch(type){
       case 'cone':
         if(isMoon){
@@ -1980,6 +2328,10 @@
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(w*0.27, h*0.43, w*0.46, h*0.08);
+        ctx.fillRect(w*0.2, h*0.68, w*0.6, h*0.08);
         break;
       case 'barrel':
         if(isMoon){
@@ -1996,9 +2348,12 @@
         ctx.lineWidth = 3;
         ctx.fillRect(0,0,w,h);
         ctx.strokeRect(0,0,w,h);
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#6b7280';
         ctx.fillRect(0, h*0.33-2, w,4);
         ctx.fillRect(0, h*0.66-2, w,4);
+        ctx.fillStyle = '#e5e7eb66';
+        ctx.fillRect(w*0.12, h*0.08, w*0.18, h*0.78);
         break;
       case 'garbage':
         if(isMoon){
@@ -2011,6 +2366,7 @@
         }
         ctx.fillStyle = '#4b5563';
         roundRect(ctx, 0, 0, w, h, 10, true, false);
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#9ca3af';
         roundRect(ctx, 6, -8, w-12, 12, 4, true, false);
         ctx.fillStyle = '#16a34a';
@@ -2031,8 +2387,12 @@
         ctx.strokeStyle = '#7f1d1d';
         ctx.lineWidth = 3;
         ctx.strokeRect(0,0,w,h);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#991b1b';
+        ctx.fillRect(w*0.18, 0, w*0.1, h);
+        ctx.fillRect(w*0.72, 0, w*0.1, h);
         ctx.fillStyle = '#fee2e2';
-        ctx.font = 'bold 18px Arial';
+        ctx.font = `bold ${Math.max(18, Math.floor(h*0.3))}px Arial`;
         ctx.textAlign='center';
         ctx.fillText('TNT', w/2, h*0.58);
         break;
@@ -2051,6 +2411,7 @@
         roundRect(ctx, 6, h*0.22, w-12, h*0.58, 10, true, false);
         ctx.fillStyle = '#991b1b';
         roundRect(ctx, w*0.24, 0, w*0.52, h*0.38, 10, true, false);
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#93c5fd';
         roundRect(ctx, w*0.3, h*0.06, w*0.16, h*0.19, 4, true, false);
         roundRect(ctx, w*0.55, h*0.06, w*0.16, h*0.19, 4, true, false);
@@ -2069,7 +2430,15 @@
         ctx.lineTo(w*0.72,h);
         ctx.closePath();
         ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = '#334155'; ctx.lineWidth = 4; ctx.stroke();
+        ctx.strokeStyle = '#cbd5e188';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w*0.24, h*0.3);
+        ctx.lineTo(w*0.5, h*0.14);
+        ctx.lineTo(w*0.82, h*0.28);
+        ctx.stroke();
         break;
       case 'cactus':
         if(isMoon){
@@ -2082,6 +2451,15 @@
         roundRect(ctx, w*0.35, h*0.1, w*0.3, h*0.9, 20, true, false);
         roundRect(ctx, w*0.08, h*0.34, w*0.2, h*0.34, 16, true, false);
         roundRect(ctx, w*0.72, h*0.28, w*0.2, h*0.32, 16, true, false);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#86efac88';
+        ctx.lineWidth = 2;
+        for(let sx=w*0.43; sx<=w*0.57; sx+=w*0.07){
+          ctx.beginPath();
+          ctx.moveTo(sx, h*0.16);
+          ctx.lineTo(sx, h*0.92);
+          ctx.stroke();
+        }
         break;
       case 'wall':
         if(isMoon){
@@ -2094,6 +2472,7 @@
         }
         ctx.fillStyle = '#b45309';
         ctx.fillRect(0, 0, w, h);
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = '#78350f';
         ctx.lineWidth = 2;
         const brickH = 22;
@@ -2108,6 +2487,7 @@
       default:
         ctx.fillStyle = `hsl(${hue}, 85%, 55%)`;
         ctx.fillRect(0, 0, w, h);
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = '#00000033'; ctx.lineWidth=4; ctx.strokeRect(0,0,w,h);
         ctx.strokeStyle = '#00000011'; ctx.lineWidth=5;
         ctx.beginPath(); ctx.moveTo(6,6); ctx.lineTo(w-6,h-6); ctx.moveTo(w-6,6); ctx.lineTo(6,h-6); ctx.stroke();
@@ -2253,30 +2633,89 @@
     ctx.save();
     ctx.translate(x, y);
     const large = value >= 10;
-    const pulse = 0.96 + 0.08*Math.sin(world.t * 7 + x * 0.017);
+    const pulse = 0.97 + 0.05*Math.sin(world.t * 7 + x * 0.017);
+    const w = r * 1.28;
+    const h = r * 1.78;
     ctx.scale(pulse, pulse);
-    ctx.strokeStyle = large ? '#f59e0b' : '#fbbf24';
-    ctx.fillStyle = large ? '#fef3c7' : '#fde68a';
-    ctx.lineWidth = large ? 4 : 3;
+
+    const glow = ctx.createRadialGradient(0, 0, r * 0.25, 0, 0, r * 1.65);
+    glow.addColorStop(0, large ? '#fde68aaa' : '#fef3c788');
+    glow.addColorStop(1, '#fbbf2400');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2); ctx.fill();
+
+    const frameGrad = ctx.createLinearGradient(-w*0.55, -h*0.5, w*0.55, h*0.5);
+    frameGrad.addColorStop(0, '#78350f');
+    frameGrad.addColorStop(0.32, '#f59e0b');
+    frameGrad.addColorStop(0.68, '#92400e');
+    frameGrad.addColorStop(1, '#fcd34d');
+    ctx.strokeStyle = frameGrad;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = large ? 7 : 5;
+
     ctx.beginPath();
-    ctx.moveTo(-r, -r);
-    ctx.lineTo(r, -r);
-    ctx.lineTo(0, 0);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
+    ctx.moveTo(-w*0.5, -h*0.5);
+    ctx.bezierCurveTo(-w*0.38, -h*0.22, -w*0.15, -h*0.08, 0, 0);
+    ctx.bezierCurveTo(w*0.15, -h*0.08, w*0.38, -h*0.22, w*0.5, -h*0.5);
+    ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(-r, r);
-    ctx.lineTo(r, r);
-    ctx.lineTo(0, 0);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = large ? '#f59e0b' : '#facc15';
+    ctx.moveTo(-w*0.5, h*0.5);
+    ctx.bezierCurveTo(-w*0.38, h*0.22, -w*0.15, h*0.08, 0, 0);
+    ctx.bezierCurveTo(w*0.15, h*0.08, w*0.38, h*0.22, w*0.5, h*0.5);
+    ctx.stroke();
+
+    ctx.fillStyle = '#7c2d12';
+    roundRect(ctx, -w*0.64, -h*0.61, w*1.28, h*0.14, r*0.12, true, false);
+    roundRect(ctx, -w*0.64, h*0.47, w*1.28, h*0.14, r*0.12, true, false);
+    ctx.fillStyle = '#fbbf24';
+    roundRect(ctx, -w*0.54, -h*0.57, w*1.08, h*0.055, r*0.08, true, false);
+    roundRect(ctx, -w*0.54, h*0.515, w*1.08, h*0.055, r*0.08, true, false);
+
+    ctx.save();
+    ctx.globalAlpha = 0.82;
+    const glassGrad = ctx.createLinearGradient(-w*0.35, -h*0.5, w*0.35, h*0.5);
+    glassGrad.addColorStop(0, '#e0f2feaa');
+    glassGrad.addColorStop(0.5, '#ffffff55');
+    glassGrad.addColorStop(1, '#bfdbfe99');
+    ctx.fillStyle = glassGrad;
     ctx.beginPath();
-    ctx.moveTo(-r*0.52, -r*0.16);
-    ctx.lineTo(r*0.52, -r*0.16);
-    ctx.lineTo(0, r*0.28);
+    ctx.moveTo(-w*0.44, -h*0.45);
+    ctx.bezierCurveTo(-w*0.28, -h*0.18, -w*0.12, -h*0.06, 0, 0);
+    ctx.bezierCurveTo(-w*0.12, h*0.06, -w*0.28, h*0.18, -w*0.44, h*0.45);
+    ctx.lineTo(w*0.44, h*0.45);
+    ctx.bezierCurveTo(w*0.28, h*0.18, w*0.12, h*0.06, 0, 0);
+    ctx.bezierCurveTo(w*0.12, -h*0.06, w*0.28, -h*0.18, w*0.44, -h*0.45);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+
+    const sandGrad = ctx.createLinearGradient(0, -h*0.32, 0, h*0.37);
+    sandGrad.addColorStop(0, '#fef08a');
+    sandGrad.addColorStop(0.5, '#f59e0b');
+    sandGrad.addColorStop(1, '#b45309');
+    ctx.fillStyle = sandGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, -h*0.31, w*0.28, h*0.065, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w*0.28, -h*0.31);
+    ctx.quadraticCurveTo(0, -h*0.05, w*0.28, -h*0.31);
+    ctx.quadraticCurveTo(0, -h*0.22, -w*0.28, -h*0.31);
+    ctx.fill();
+    ctx.fillRect(-Math.max(1.5, r*0.035), -h*0.08, Math.max(3, r*0.07), h*0.25);
+    ctx.beginPath();
+    ctx.moveTo(-w*0.3, h*0.36);
+    ctx.quadraticCurveTo(0, h*0.13, w*0.3, h*0.36);
+    ctx.quadraticCurveTo(0, h*0.43, -w*0.3, h*0.36);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffffcc';
+    ctx.lineWidth = Math.max(2, r*0.055);
+    ctx.beginPath();
+    ctx.moveTo(-w*0.23, -h*0.36);
+    ctx.bezierCurveTo(-w*0.13, -h*0.18, -w*0.08, h*0.02, -w*0.22, h*0.31);
+    ctx.stroke();
+
     ctx.font = `bold ${large ? 22 : 16}px Arial`;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#065f46';
