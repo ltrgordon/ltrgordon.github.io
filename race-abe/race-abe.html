@@ -69,9 +69,7 @@
   }
   .btn:active{ transform: translateY(2px) scale(0.98);}
   .btn, #controls *{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  .go{ background: radial-gradient(circle at 30% 30%, #34d399, #059669); color:#053b2d;}
-  .brake{ background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444); color:#5b0a0a;}
-  .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
+    .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
   .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
   .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
   #startOverlay, #crashOverlay, #winOverlay, #highScoreOverlay{
@@ -157,7 +155,16 @@
     :root{ --btn-size:88px; }
   }
   @media (max-width: 640px){
-    :root{ --btn-size:80px; }
+    :root{ --btn-size:78px; }
+    #game{ height:calc(100vh - 112px); }
+    #controls{
+      left:0; right:0; bottom:0; transform:none;
+      border-radius:16px 16px 0 0;
+      justify-content:space-evenly;
+      padding:10px 12px;
+      z-index:6;
+    }
+    #title{ top:6px; font-size:14px; }
   }
 </style>
 </head>
@@ -176,16 +183,7 @@
 
 <div id="controls" aria-label="On-screen controls">
   <div style="text-align:center">
-    <button class="btn brake" id="btnBrake" aria-label="Brake">⛔</button>
-  </div>
-  <div style="text-align:center">
     <button class="btn jump" id="btnJump" aria-label="Jump">⤴️</button>
-  </div>
-  <div style="text-align:center">
-    <button class="btn go" id="btnGo" aria-label="Accelerate">▶️</button>
-  </div>
-  <div style="text-align:center">
-    <button class="btn horn" id="btnHorn" aria-label="Horn">📢</button>
   </div>
   <div style="text-align:center">
     <button class="btn horn" id="btnSlam" aria-label="Jump cancel">⤵️</button>
@@ -198,8 +196,8 @@
 <div id="startOverlay" role="dialog" aria-modal="true">
   <div class="card">
     <h1>Welcome!</h1>
-    <p>Tap <b>▶️</b> to start the monster truck.</p>
-    <p>Use <b>⛔</b> to brake, <b>⤴️</b> or the <b>space bar</b> for a rocket jump, and <b>📢</b> to honk. Colliding with crates releases confetti.</p>
+    <p>Tap Start Race to launch the monster truck.</p>
+    <p>The truck drives forward automatically. Use <b>⤴️</b> or the <b>space bar</b> for a rocket jump, and <b>⤵️</b> to jump-cancel slam downward.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
     <div class="levelPicker" id="levelPicker">
@@ -382,18 +380,17 @@
 
   // ===== Input =====
   const IS_MOBILE = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
-  const input = { go:false, brake:false, jump:false, slam:false };
+  const input = { jump:false, slam:false };
+  const AUTO_DRIVE_SPEED = 620;
+  let lastLaserShotAt = -999;
   function setHold(btn,holding){
     input[btn]=holding;
-    if(btn==='go' && holding) startGameIfNeeded();
-  }
+      }
   // Keyboard
   if(!IS_MOBILE){
     document.addEventListener('keydown', (e)=>{
       if(e.repeat) return;
       if(e.key===' ' || e.code==='Space') e.preventDefault();
-      if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',true); }
-      if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',true); }
       if(e.key===' ' || e.code==='Space' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
       if(e.key==='ArrowDown' || e.key==='s' || e.key==='S'){ e.preventDefault(); input.slam=true; }
       if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
@@ -401,8 +398,6 @@
     });
     document.addEventListener('keyup', (e)=>{
       if(e.key===' ' || e.code==='Space') e.preventDefault();
-      if(e.key==='ArrowRight' || e.key==='d'){ setHold('go',false); }
-      if(e.key==='ArrowLeft'  || e.key==='a'){ setHold('brake',false); }
       if(e.key==='ArrowDown' || e.key==='s' || e.key==='S'){ input.slam=false; }
     });
   }
@@ -416,10 +411,7 @@
     el.addEventListener('pointerleave', up, {passive:false});
     el.addEventListener('pointercancel', up, {passive:false});
   };
-  bindHold(document.getElementById('btnGo'), 'go');
-  bindHold(document.getElementById('btnBrake'), 'brake');
   document.getElementById('btnJump').addEventListener('pointerdown', (e)=>{ e.preventDefault(); input.jump=true; ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); });
-  document.getElementById('btnHorn').addEventListener('pointerdown', (e)=>{ e.preventDefault(); ensureAudio(); if(navigator.vibrate) navigator.vibrate(10); playHorn(); });
   bindHold(document.getElementById('btnSlam'), 'slam');
   document.getElementById('btnReset').addEventListener('pointerdown', (e)=>{ e.preventDefault(); resetGame(); });
 
@@ -881,15 +873,22 @@
       scenery.push({x:sx, y:groundY(sx), kind, h:90 + rnd()*120, w:90 + rnd()*160, sway:rnd()*Math.PI*2});
     }
     if(IS_MOBILE){
-      if(rnd() < 0.16){
-        const bx = lastSpawnX + 260 + rnd()*520;
-        const by = trackY(bx) - 130;
-        laserBarriers.push({x:bx, y:by, w:40, h:120, hp:1});
+      if(!spawnAhead.lastBarrierX) spawnAhead.lastBarrierX = world.scrollX;
+      if(!spawnAhead.lastCoinX) spawnAhead.lastCoinX = world.scrollX;
+      if(lastSpawnX - spawnAhead.lastBarrierX > (200 + rnd()*200) * 40){
+        const bx = lastSpawnX + 240 + rnd()*220;
+        const by = trackY(bx) - 138;
+        laserBarriers.push({x:bx, y:by, w:52, h:128, hp:1});
+        spawnAhead.lastBarrierX = bx;
       }
-      if(rnd() < 0.24){
-        const cx = lastSpawnX + 180 + rnd()*620;
-        const cy = trackY(cx) - 180 - rnd()*110;
-        goldLaserCoins.push({x:cx, y:cy, r:26, taken:false});
+      if(lastSpawnX - spawnAhead.lastCoinX > (100 + rnd()*100) * 40){
+        const coinCount = rnd() < 0.65 ? 1 : 2;
+        for(let i=0;i<coinCount;i++){
+          const cx = lastSpawnX + 220 + i*90 + rnd()*130;
+          const cy = trackY(cx) - 190 - rnd()*90;
+          goldLaserCoins.push({x:cx, y:cy, r:34, taken:false});
+        }
+        spawnAhead.lastCoinX = lastSpawnX;
       }
     }
   }
@@ -1165,6 +1164,8 @@
 
   function fireLaserAtScreenPoint(px, py){
     if(!IS_MOBILE) return;
+    if(world.t - lastLaserShotAt < 0.5) return;
+    lastLaserShotAt = world.t;
     const originX = truck.baseX + 72;
     const originY = truck.y - truck.bodyH - 22;
     const tx = px, ty = py - world.cameraYOffset;
@@ -1205,19 +1206,11 @@
           finishGame(false);
           return;
       }
-      // Input to speed
-      if(input.go){
-        if(world.speed < 0) world.speed += world.reverseBrake * dt;
-        else world.speed += world.accel * dt;
-      } else if(input.brake){
-        if(world.speed > 0) world.speed -= world.brake * dt;
-        else world.speed -= world.reverseAccel * dt;
-      } else {
-        if(world.speed > 0) world.speed = Math.max(0, world.speed - world.friction * dt);
-        else if(world.speed < 0) world.speed = Math.min(0, world.speed + world.friction * dt);
-      }
-      world.speed = Math.max(-world.reverseMaxSpeed, Math.min(world.maxSpeed, world.speed));
-      if(isWorldTour() && world.tourTransitionTimer > 0 && world.tourSpeedFloor > 0 && !input.brake && world.speed > 0){
+      // Auto-drive forward by default.
+      const autoTarget = Math.min(world.maxSpeed, AUTO_DRIVE_SPEED + (hasFlameBoost() ? 90 : 0));
+      world.speed += (autoTarget - world.speed) * Math.min(1, dt * 2.1);
+      world.speed = Math.max(0, Math.min(world.maxSpeed + 300, world.speed));
+      if(isWorldTour() && world.tourTransitionTimer > 0 && world.tourSpeedFloor > 0 && world.speed > 0){
         const keep = 0.86 + 0.14 * Math.max(0, world.tourTransitionTimer / world.tourTransitionDuration);
         world.speed = Math.max(world.speed, Math.min(world.maxSpeed, world.tourSpeedFloor * keep));
       }
@@ -1452,7 +1445,18 @@
         for(let j=laserBarriers.length-1;j>=0;j--){
           const b = laserBarriers[j];
           if(l.x > b.x && l.x < b.x+b.w && l.y > b.y && l.y < b.y+b.h){
-            laserBarriers.splice(j,1); lasers.splice(i,1); world.stars += 2; break;
+            spawnFieryBlast(b.x + b.w*0.5 - world.scrollX, b.y + b.h*0.5, 95); laserBarriers.splice(j,1); lasers.splice(i,1); world.stars += 8; break;
+          }
+        }
+        if(!lasers[i]) continue;
+        for(let j=obstacles.length-1;j>=0;j--){
+          const o = obstacles[j];
+          if(l.x > o.x && l.x < o.x + o.w && l.y > o.yTop && l.y < o.yTop + o.h){
+            obstacles.splice(j,1);
+            spawnFieryBlast(o.x - world.scrollX + o.w*0.5, o.yTop + o.h*0.5, 72);
+            world.stars += 2;
+            lasers.splice(i,1);
+            break;
           }
         }
         if(!lasers[i]) continue;
@@ -1460,6 +1464,19 @@
           if(c.taken) continue;
           const d = Math.hypot(l.x-c.x, l.y-c.y);
           if(d < c.r + 6){ c.taken = true; world.stars += 10; lasers.splice(i,1); break; }
+        }
+      }
+
+      for(let j=laserBarriers.length-1;j>=0;j--){
+        const b = laserBarriers[j];
+        const bx = b.x - world.scrollX;
+        const hitX = bx < truck.baseX + 84 && bx + b.w > truck.baseX - 90;
+        const hitY = truck.y + truck.wheelR > b.y && truck.y - truck.bodyH < b.y + b.h;
+        if(hitX && hitY){
+          spawnFieryBlast(bx + b.w*0.5, b.y + b.h*0.5, 110);
+          world.damage += 3;
+          world.speed = Math.max(180, world.speed - 180);
+          laserBarriers.splice(j,1);
         }
       }
 
@@ -3258,11 +3275,15 @@
     }
 
         if(IS_MOBILE){
-      ctx.fillStyle = "#334155";
-      roundRect(ctx, bw*0.1, -bh - 26, 42, 10, 4, true, false);
-      ctx.strokeStyle = "#93c5fd"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(bw*0.44, -bh-21); ctx.lineTo(bw*0.58, -bh-34); ctx.stroke();
-      ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(bw*0.58, -bh-34, 4.5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#0f172a";
+      roundRect(ctx, bw*0.02, -bh - 36, 74, 20, 8, true, false);
+      const turretGlow = ctx.createRadialGradient(bw*0.48, -bh-46, 3, bw*0.48, -bh-46, 20);
+      turretGlow.addColorStop(0,'#fef08a'); turretGlow.addColorStop(1,'#f97316');
+      ctx.fillStyle = turretGlow;
+      ctx.beginPath(); ctx.arc(bw*0.48, -bh-46, 18, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(bw*0.42, -bh-27); ctx.lineTo(bw*0.62, -bh-46); ctx.stroke();
+      ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(bw*0.62, -bh-46, 7, 0, Math.PI*2); ctx.fill();
     }
 
     // === Damage overlay ===
@@ -3276,9 +3297,9 @@
     ctx.restore();
   }
 
-  function drawLaserShot(x,y){ ctx.strokeStyle="#f43f5e"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x-12,y); ctx.lineTo(x+12,y); ctx.stroke(); }
-  function drawLaserBarrier(x,y,w,h){ const g=ctx.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,"#f87171"); g.addColorStop(1,"#991b1b"); ctx.fillStyle=g; roundRect(ctx,x,y,w,h,6,true,false); ctx.strokeStyle="#fca5a5"; ctx.lineWidth=2; ctx.strokeRect(x+2,y+2,w-4,h-4); }
-  function drawGoldLaserCoin(x,y,r){ ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#fef08a"; ctx.lineWidth=4; ctx.stroke(); ctx.fillStyle="#92400e"; ctx.font="900 20px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("10",x,y+1);}
+  function drawLaserShot(x,y){ const g=ctx.createLinearGradient(x-26,y,x+26,y); g.addColorStop(0,"#22d3ee"); g.addColorStop(0.5,"#f0abfc"); g.addColorStop(1,"#f59e0b"); ctx.strokeStyle=g; ctx.lineWidth=10; ctx.shadowColor="#f0abfc"; ctx.shadowBlur=22; ctx.beginPath(); ctx.moveTo(x-30,y); ctx.lineTo(x+30,y); ctx.stroke(); ctx.shadowBlur=0; }
+  function drawLaserBarrier(x,y,w,h){ const g=ctx.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,"#fca5a5"); g.addColorStop(1,"#7f1d1d"); ctx.fillStyle=g; roundRect(ctx,x,y,w,h,9,true,false); ctx.strokeStyle="#ef4444"; ctx.lineWidth=4; ctx.strokeRect(x+2,y+2,w-4,h-4); }
+  function drawGoldLaserCoin(x,y,r){ ctx.fillStyle="#eab308"; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#fde68a"; ctx.lineWidth=6; ctx.stroke(); ctx.fillStyle="#78350f"; ctx.font="900 26px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("50",x,y+1);}
 
   function roundRect(ctx, x, y, w, h, r, fill, stroke){
     const rr = Math.min(r, w/2, h/2);
@@ -3334,6 +3355,16 @@
       ctx.fillStyle = item.color;
       ctx.fillText(item.text, item.x, item.y);
       ctx.restore();
+    }
+  }
+
+  
+  function spawnFieryBlast(x, y, power=80){
+    const n = Math.floor(power * 0.9);
+    for(let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2;
+      const s = 120 + Math.random()*power*6;
+      puffs.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-160,life:0,ttl:0.45+Math.random()*0.55,color:Math.random()<0.6?'#fb923c':'#ef4444',size:4+Math.random()*7});
     }
   }
 
