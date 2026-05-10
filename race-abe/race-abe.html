@@ -72,11 +72,12 @@
     .jump{ background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b); color:#5a3a00;}
   .horn{ background: radial-gradient(circle at 30% 30%, #c4b5fd, #7c3aed); color:#2e1065;}
   .reset{ background: radial-gradient(circle at 30% 30%, #bfdbfe, #3b82f6); color:#062a61; width:72px; height:72px; border-radius:50%;}
-  #startOverlay, #crashOverlay, #winOverlay, #highScoreOverlay{
+  #startOverlay, #crashOverlay, #winOverlay, #highScoreOverlay, #settingsOverlay{
     position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     background: linear-gradient(180deg,#00000022,#00000055);
     z-index:10; color:white; text-align:center; padding:20px;
   }
+  #settingsOverlay{ z-index:14; }
   .card{
     background:#ffffffee; color:#062a61;
     padding:18px 22px; border-radius:16px;
@@ -107,6 +108,10 @@
   .big{
     font-size:22px; font-weight:900; margin-top:10px; padding:14px 18px; border-radius:12px; border:none; cursor:pointer;
     background:linear-gradient(135deg, #34d399, #3b82f6); color:white; box-shadow:0 6px 0 #0003;
+  }
+  .secondary{
+    font-size:18px; font-weight:900; margin-top:12px; padding:11px 14px; border-radius:12px; border:2px solid #93c5fd; cursor:pointer;
+    background:#eff6ff; color:#1d4ed8; box-shadow:0 4px 0 #0002;
   }
   .levelPicker{
     display:grid;
@@ -139,6 +144,39 @@
     grid-column:1 / -1;
     color:#047857;
   }
+  .settingsPanel{
+    margin-top:12px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:#f8fafc;
+    border:2px solid #bfdbfe;
+    text-align:left;
+  }
+  .settingsPanel h3{
+    margin:0 0 8px;
+    color:#1d4ed8;
+    font-size:16px;
+    text-align:center;
+  }
+  .settingRow{
+    display:grid;
+    grid-template-columns:132px 1fr 62px;
+    gap:8px;
+    align-items:center;
+    margin:7px 0;
+    color:#1e3a8a;
+    font-weight:800;
+    font-size:14px;
+  }
+  .settingRow input[type="range"]{
+    width:100%;
+    accent-color:#2563eb;
+  }
+  .settingValue{
+    text-align:right;
+    color:#065f46;
+    white-space:nowrap;
+  }
   .irishFlagOverlay{
     width:min(320px, 72vw);
     height:min(180px, 40vw);
@@ -165,6 +203,10 @@
       z-index:6;
     }
     #title{ top:6px; font-size:14px; }
+    .settingRow{
+      grid-template-columns:104px 1fr 54px;
+      font-size:12px;
+    }
   }
 </style>
 </head>
@@ -200,6 +242,7 @@
     <p>The truck drives forward automatically. Use <b>⤴️</b> or the <b>space bar</b> for a rocket jump, and <b>⤵️</b> to jump-cancel slam downward.</p>
     <p>Grab health boxes to repair the truck after crashes.</p>
     <label><input type="checkbox" id="zoomToggle" /> Dynamic zoom (zoom in/out while jumping)</label>
+    <button id="btnGameSettings" class="secondary">Game Settings</button>
     <div class="levelPicker" id="levelPicker">
       <button class="levelOption active" data-level="sahara">🏜️ Sahara</button>
       <button class="levelOption" data-level="rockies">⛰️ Rockies</button>
@@ -212,6 +255,35 @@
       <ol id="leaderboardStart"></ol>
     </div>
     <button id="btnStart" class="big">Start Race</button>
+  </div>
+</div>
+
+<div id="settingsOverlay" style="display:none" role="dialog" aria-modal="true" aria-label="Game Settings">
+  <div class="card">
+    <h1>Game Settings</h1>
+    <div class="settingsPanel" aria-label="Game settings">
+      <label class="settingRow">
+        <span>Speed</span>
+        <input type="range" id="speedSetting" min="50" max="200" step="5" value="100" />
+        <span class="settingValue" id="speedSettingValue">100%</span>
+      </label>
+      <label class="settingRow">
+        <span>Jump Height</span>
+        <input type="range" id="jumpSetting" min="75" max="175" step="5" value="100" />
+        <span class="settingValue" id="jumpSettingValue">100%</span>
+      </label>
+      <label class="settingRow">
+        <span>Max Damage</span>
+        <input type="range" id="damageSetting" min="8" max="60" step="1" value="36" />
+        <span class="settingValue" id="damageSettingValue">36</span>
+      </label>
+      <label class="settingRow">
+        <span>Perfect Ramp</span>
+        <input type="range" id="perfectRampSetting" min="0.2" max="2" step="0.1" value="1" />
+        <span class="settingValue" id="perfectRampSettingValue">1.0s</span>
+      </label>
+    </div>
+    <button id="btnCloseSettings" class="big">Done</button>
   </div>
 </div>
 
@@ -276,6 +348,12 @@
   let seed = 1337;
   const rnd = ()=> (seed = (seed*16807)%2147483647) / 2147483647;
 
+  const BASE_MAX_SPEED = 1260;
+  const BASE_AUTO_DRIVE_SPEED = 868;
+  const BASE_JUMP_VEL = 1027;
+  const DEFAULT_MAX_DAMAGE = 36;
+  const DEFAULT_PERFECT_RAMP_TIME = 1.0;
+
   // ===== World State =====
   const world = {
     t:0,
@@ -284,21 +362,21 @@
     // above and the truck has extra headroom while jumping.
     groundBase: () => canvas.height / DPR * 0.78,
     gravity: 2300,        // px/s^2
-    maxSpeed: 900,        // px/s
-    accel: 1020,          // px/s^2
+    maxSpeed: BASE_MAX_SPEED, // px/s
+    accel: 2040,          // px/s^2
     brake: 2000,          // px/s^2
-    friction: 750,        // px/s^2
+    friction: 1500,       // px/s^2
     reverseAccel: 900,    // px/s^2
     reverseBrake: 1600,   // px/s^2
-    reverseMaxSpeed: 360, // px/s
-    jumpVel: 790,         // px/s (~35% higher default jump)
+    reverseMaxSpeed: 720, // px/s
+    jumpVel: BASE_JUMP_VEL,   // px/s
     distance: 0,
     stars: 0,
     tntHit: 0,
     bricksCollected: 0,
     speed: 0,
     damage: 0,
-    maxDamage: 24,
+    maxDamage: DEFAULT_MAX_DAMAGE,
     timeLeft: 60,
     timeElapsed: 0,
     playing: false,
@@ -311,10 +389,11 @@
     cameraZoom: 1,
     zoomEnabled: false,
     cameraYOffset: 0,
+    groundedDriveTimer: 0,
     greenBricks: 0,
     redBricks: 0,
     blueBricks: 0,
-    baseMaxSpeed: 900,
+    baseMaxSpeed: BASE_MAX_SPEED,
     activeLevel: 'sahara',
     tourStageIndex: 0,
     tourTransitionTimer: 0,
@@ -338,7 +417,7 @@
       bumpA: 60, bumpB: 25, bumpC: 35, bumpD: 25, rockySharpness: 0, jaggedAmp: 0, streamChance: 0.08, greenery: 0.16, waterfallChance: 0.02,
       longSlopeMeters: 700, longSlopeHeight: 180,
       obstacleBias: { boulder: 0.02, cactus: 0.18 },
-      rampSpacingMin: 2800, rampSpacingMax: 4800, rampWidth: [160, 240], rampHeight: [32, 53], turboChance: 0.20,
+      rampSpacingMin: 1300, rampSpacingMax: 2400, rampWidth: [190, 280], rampHeight: [36, 62], turboChance: 0.20,
       rainbowChance: 0.035, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
     },
     rockies: {
@@ -349,7 +428,7 @@
       bumpA: 30, bumpB: 18, bumpC: 22, bumpD: 65, rockySharpness: 42, jaggedAmp: 24, streamChance: 0.24, greenery: 0.44, waterfallChance: 0.18,
       longSlopeMeters: 620, longSlopeHeight: 220,
       obstacleBias: { boulder: 0.26, cactus: 0.02 },
-      rampSpacingMin: 1800, rampSpacingMax: 3000, rampWidth: [180, 320], rampHeight: [51, 97], turboChance: 0.34,
+      rampSpacingMin: 900, rampSpacingMax: 1650, rampWidth: [210, 360], rampHeight: [56, 108], turboChance: 0.34,
       rainbowChance: 0.018, lowGravityDuration: 15, bubbleDuration: 8, flameDuration: 4, invincibleDuration: 5
     },
     himalayas: {
@@ -360,7 +439,7 @@
       bumpA: 74, bumpB: 44, bumpC: 26, bumpD: 110, rockySharpness: 78, jaggedAmp: 42, streamChance: 0.14, greenery: 0.12, waterfallChance: 0.08,
       longSlopeMeters: 500, longSlopeHeight: 340, longSlopeMode: 'himalayaSteep',
       obstacleBias: { boulder: 0.34, cactus: 0 },
-      rampSpacingMin: 1400, rampSpacingMax: 2450, rampWidth: [170, 300], rampHeight: [72, 132], turboChance: 0.4,
+      rampSpacingMin: 760, rampSpacingMax: 1350, rampWidth: [210, 350], rampHeight: [76, 138], turboChance: 0.4,
       rainbowChance: 0.022, lowGravityDuration: 16, bubbleDuration: 9, flameDuration: 4, invincibleDuration: 5
     },
     moon: {
@@ -371,7 +450,7 @@
       bumpA: 42, bumpB: 24, bumpC: 16, bumpD: 58, rockySharpness: 24, jaggedAmp: 14, streamChance: 0, greenery: 0, waterfallChance: 0,
       longSlopeMeters: 680, longSlopeHeight: 170,
       obstacleBias: { boulder: 0.18, cactus: 0 },
-      rampSpacingMin: 1650, rampSpacingMax: 2500, rampWidth: [180, 320], rampHeight: [77, 140], turboChance: 0.44,
+      rampSpacingMin: 820, rampSpacingMax: 1450, rampWidth: [220, 370], rampHeight: [82, 148], turboChance: 0.44,
       rainbowChance: 0.028, lowGravityDuration: 20, bubbleDuration: 12, flameDuration: 5, invincibleDuration: 6,
       gravityScale: 0.38, jumpBoost: 1.22, craterChance: 0.17, craterDepth: [120, 220], craterWidth: [220, 460],
       halfpipeChance: 0.045, halfpipeRadius: [320, 520], halfpipeSpacing: 5500
@@ -381,7 +460,12 @@
   // ===== Input =====
   const IS_MOBILE = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   const input = { jump:false, slam:false };
-  const AUTO_DRIVE_SPEED = 620;
+  const gameSettings = {
+    speedScale: 1,
+    jumpScale: 1,
+    maxDamage: DEFAULT_MAX_DAMAGE,
+    perfectRampTime: DEFAULT_PERFECT_RAMP_TIME
+  };
   let lastLaserShotAt = -999;
   function setHold(btn,holding){
     input[btn]=holding;
@@ -419,11 +503,47 @@
   const crashOverlay = document.getElementById('crashOverlay');
   const winOverlay = document.getElementById('winOverlay');
   const highScoreOverlay = document.getElementById('highScoreOverlay');
+  const settingsOverlay = document.getElementById('settingsOverlay');
   const zoomToggle = document.getElementById('zoomToggle');
   const timerEl = document.getElementById('time');
   const levelPicker = document.getElementById('levelPicker');
   const finalStarsEl = document.getElementById('finalStars');
   const finalTimeEl = document.getElementById('finalTime');
+  const settingsControls = {
+    speed: document.getElementById('speedSetting'),
+    jump: document.getElementById('jumpSetting'),
+    damage: document.getElementById('damageSetting'),
+    perfectRamp: document.getElementById('perfectRampSetting'),
+    speedValue: document.getElementById('speedSettingValue'),
+    jumpValue: document.getElementById('jumpSettingValue'),
+    damageValue: document.getElementById('damageSettingValue'),
+    perfectRampValue: document.getElementById('perfectRampSettingValue')
+  };
+
+  function applySettingsFromControls(){
+    gameSettings.speedScale = (Number(settingsControls.speed?.value) || 100) / 100;
+    gameSettings.jumpScale = (Number(settingsControls.jump?.value) || 100) / 100;
+    gameSettings.maxDamage = Number(settingsControls.damage?.value) || DEFAULT_MAX_DAMAGE;
+    gameSettings.perfectRampTime = Number(settingsControls.perfectRamp?.value) || DEFAULT_PERFECT_RAMP_TIME;
+
+    const previousBaseMaxSpeed = world.baseMaxSpeed || BASE_MAX_SPEED;
+    const earnedSpeedBonus = world.playing && !world.crashed ? Math.max(0, (world.maxSpeed || previousBaseMaxSpeed) - previousBaseMaxSpeed) : 0;
+    world.baseMaxSpeed = BASE_MAX_SPEED * gameSettings.speedScale;
+    world.maxSpeed = world.baseMaxSpeed + earnedSpeedBonus;
+    world.jumpVel = BASE_JUMP_VEL * gameSettings.jumpScale;
+    world.maxDamage = gameSettings.maxDamage;
+
+    if(settingsControls.speedValue) settingsControls.speedValue.textContent = `${Math.round(gameSettings.speedScale * 100)}%`;
+    if(settingsControls.jumpValue) settingsControls.jumpValue.textContent = `${Math.round(gameSettings.jumpScale * 100)}%`;
+    if(settingsControls.damageValue) settingsControls.damageValue.textContent = `${gameSettings.maxDamage}`;
+    if(settingsControls.perfectRampValue) settingsControls.perfectRampValue.textContent = `${gameSettings.perfectRampTime.toFixed(1)}s`;
+  }
+
+  [settingsControls.speed, settingsControls.jump, settingsControls.damage, settingsControls.perfectRamp].forEach((control)=>{
+    control?.addEventListener('input', applySettingsFromControls);
+  });
+  applySettingsFromControls();
+
   levelPicker?.addEventListener('click', (e)=>{
     const btn = e.target.closest('.levelOption');
     if(!btn) return;
@@ -433,8 +553,15 @@
   });
 
   document.getElementById('btnStart').addEventListener('click', ()=>{ ensureAudio(); startGameIfNeeded(); });
-  document.getElementById('btnPlayAgain').addEventListener('click', ()=>{ crashOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
+  document.getElementById('btnPlayAgain').addEventListener('click', ()=>{
+    crashOverlay.style.display='none';
+    resetGame();
+    world.playing = false;
+    startOverlay.style.display='flex';
+  });
   document.getElementById('btnWinAgain').addEventListener('click', ()=>{ winOverlay.style.display='none'; resetGame(); startGameIfNeeded(); });
+  document.getElementById('btnGameSettings').addEventListener('click', ()=>{ applySettingsFromControls(); settingsOverlay.style.display='flex'; });
+  document.getElementById('btnCloseSettings').addEventListener('click', ()=>{ applySettingsFromControls(); settingsOverlay.style.display='none'; });
 
   const LEADERBOARD_KEY = 'jumpAbeLeaderboardV1';
   let pendingOutcome = null;
@@ -714,6 +841,46 @@
   const goldLaserCoins = [];   // world scenery per level
   let lastSpawnX = 0;
   let lastRampX = 0;
+
+  function addRampAt(x, level, options={}){
+    const gy = groundY(x);
+    let w = options.w ?? (level.rampWidth[0] + rnd()*(level.rampWidth[1]-level.rampWidth[0]));
+    let h = options.h ?? (level.rampHeight[0] + rnd()*(level.rampHeight[1]-level.rampHeight[0]));
+    if(!options.approach && rnd() < (level.name === 'Rockies' ? 0.58 : 0.35)){
+      w += 60 + rnd()*90;
+      h += 18 + rnd()*30;
+    }
+    const landingW = options.landingW ?? (130 + rnd()*90);
+    const turbo = options.turbo ?? (rnd() < level.turboChance);
+    if(turbo){
+      w += 90 + rnd()*100;
+      h += 20 + rnd()*35;
+    }
+    const ramp = {x, baseY:gy, w, h, landingW, used:false, turbo, perfectUsed:false};
+    ramps.push(ramp);
+
+    const rampSlope = ramp.h / ramp.w;
+    const launchSpeed = Math.max(1100, world.maxSpeed * (level.name === 'Moon' ? 1.06 : 0.96));
+    const vx = launchSpeed * Math.cos(Math.atan(rampSlope));
+    const vy = launchSpeed * Math.sin(Math.atan(rampSlope));
+    const effectiveGravity = world.gravity * (level.gravityScale || 1);
+    const count = level.name === 'Moon' ? 12 : 10;
+    for(let i=0;i<count;i++){
+      const flightT = level.name === 'Moon' ? (0.38 + i*0.16) : (0.16 + i*0.09);
+      const cx = ramp.x + ramp.w + vx * flightT;
+      const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * effectiveGravity * flightT * flightT;
+      const ground = groundY(cx);
+      const airborneLift = level.name === 'Moon' ? 220 : 170;
+      const cy = Math.min(jumpY - 72, ground - airborneLift);
+      stars.push({x:cx, y:cy, r:18, taken:false});
+    }
+    return ramp;
+  }
+
+  function rampNear(x, radius){
+    return ramps.some((r)=> Math.abs((r.x + r.w*0.5) - x) < radius);
+  }
+
   function spawnAhead(){
     const rightEdge = world.scrollX + canvas.width/DPR + 1200;
     while(lastSpawnX < rightEdge){
@@ -763,6 +930,19 @@
         h = 118 + rnd()*28;
       }
       obstacles.push({x:lastSpawnX, yTop:gy - h, w, h, hue, type});
+      if(rnd() < 0.7){
+        const approachX = lastSpawnX - (520 + rnd()*260);
+        const approachLevel = levelForWorldX(approachX);
+        if(approachX > world.scrollX + truck.baseX + 320 && !rampNear(approachX, 460)){
+          addRampAt(approachX, approachLevel, {
+            approach:true,
+            w:approachLevel.rampWidth[0] + rnd()*80,
+            h:approachLevel.rampHeight[0] + rnd()*34,
+            landingW:90 + rnd()*70,
+            turbo:rnd() < Math.min(0.55, approachLevel.turboChance + 0.18)
+          });
+        }
+      }
       if(rnd() < 0.45){
         const starLift = level.name === 'Moon' ? (150 + rnd()*115) : (70 + rnd()*55);
         const sy = gy - h - starLift;
@@ -802,36 +982,7 @@
       const spacingLevel = levelForWorldX(lastRampX);
       lastRampX += spacingLevel.rampSpacingMin + rnd()*(spacingLevel.rampSpacingMax - spacingLevel.rampSpacingMin);
       const level = levelForWorldX(lastRampX);
-      const gy = groundY(lastRampX);
-      let w = level.rampWidth[0] + rnd()*(level.rampWidth[1]-level.rampWidth[0]);
-      let h = level.rampHeight[0] + rnd()*(level.rampHeight[1]-level.rampHeight[0]);
-      if(rnd() < (level.name === 'Rockies' ? 0.58 : 0.35)){
-        w += 60 + rnd()*90;
-        h += 18 + rnd()*30;
-      }
-      const landingW = 130 + rnd()*90;
-      const turbo = rnd() < level.turboChance;
-      if(turbo){
-        w += 90 + rnd()*100;
-        h += 20 + rnd()*35;
-      }
-      const ramp = {x:lastRampX, baseY:gy, w, h, landingW, used:false, turbo};
-      ramps.push(ramp);
-      const rampSlope = ramp.h / ramp.w;
-      const launchSpeed = Math.max(640, world.maxSpeed * (level.name === 'Moon' ? 1.06 : 0.96));
-      const vx = launchSpeed * Math.cos(Math.atan(rampSlope));
-      const vy = launchSpeed * Math.sin(Math.atan(rampSlope));
-      const effectiveGravity = world.gravity * (level.gravityScale || 1);
-      const count = level.name === 'Moon' ? 12 : 10;
-      for(let i=0;i<count;i++){
-        const flightT = level.name === 'Moon' ? (0.38 + i*0.16) : (0.16 + i*0.09);
-        const cx = ramp.x + ramp.w + vx * flightT;
-        const jumpY = (ramp.baseY - ramp.h) - vy * flightT + 0.5 * effectiveGravity * flightT * flightT;
-        const ground = groundY(cx);
-        const airborneLift = level.name === 'Moon' ? 220 : 170;
-        const cy = Math.min(jumpY - 72, ground - airborneLift);
-        stars.push({x:cx, y:cy, r:18, taken:false});
-      }
+      const ramp = addRampAt(lastRampX, level);
       for(let i=obstacles.length-1;i>=0;i--){
         const o = obstacles[i];
         if(o.x < ramp.x + ramp.w + ramp.landingW && o.x + o.w > ramp.x - 140){
@@ -849,7 +1000,9 @@
     while(lowGravityOrbs.length && lowGravityOrbs[0].x + 40 < minX) lowGravityOrbs.shift();
     while(rainbowPowerups.length && rainbowPowerups[0].x + 40 < minX) rainbowPowerups.shift();
     while(bricks.length && bricks[0].x + 40 < minX) bricks.shift();
-    while(ramps.length && ramps[0].x + ramps[0].w < minX) ramps.shift();
+    for(let i=ramps.length-1;i>=0;i--){
+      if(ramps[i].x + ramps[i].w < minX) ramps.splice(i,1);
+    }
     while(lasers.length && lasers[0].x < minX - 200) lasers.shift();
     while(laserBarriers.length && laserBarriers[0].x + laserBarriers[0].w < minX) laserBarriers.shift();
     while(goldLaserCoins.length && goldLaserCoins[0].x + goldLaserCoins[0].r < minX) goldLaserCoins.shift();
@@ -1031,6 +1184,52 @@
     o.start();
     o.stop(audioCtx.currentTime+0.15);
   }
+
+  function playRampChime(){
+    if(!audioCtx) return;
+    const now = audioCtx.currentTime;
+    [660, 880, 1320].forEach((freq, i)=>{
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0, now + i*0.055);
+      g.gain.linearRampToValueAtTime(0.085, now + i*0.055 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i*0.055 + 0.34);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(now + i*0.055);
+      o.stop(now + i*0.055 + 0.36);
+    });
+  }
+
+  function spawnPerfectRampBurst(x, y){
+    const colors = ['#fef08a','#fde047','#ffffff','#facc15','#f97316'];
+    for(let i=0;i<42;i++){
+      const a = Math.random()*Math.PI*2;
+      const s = 180 + Math.random()*520;
+      puffs.push({
+        x, y,
+        vx:Math.cos(a)*s + 160,
+        vy:Math.sin(a)*s - 160,
+        life:0,
+        ttl:0.45 + Math.random()*0.55,
+        color:colors[Math.floor(Math.random()*colors.length)],
+        size:4 + Math.random()*6
+      });
+    }
+    for(let i=0;i<8;i++){
+      floatTexts.push({
+        x:x + (Math.random()*80-40),
+        y:y + (Math.random()*24-12),
+        vy:-70 - Math.random()*40,
+        life:0,
+        ttl:0.6 + Math.random()*0.25,
+        text:'★',
+        color:colors[i % colors.length],
+        size:22 + Math.random()*10
+      });
+    }
+  }
   function playCrash(){
     if(!audioCtx) return;
     const dur=0.35;
@@ -1041,6 +1240,52 @@
     const g = audioCtx.createGain(); g.gain.value=0.25;
     src.connect(g).connect(audioCtx.destination);
     src.start();
+  }
+
+  function playExplosion(){
+    if(!audioCtx) return;
+    playCrash();
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(90, now);
+    o.frequency.exponentialRampToValueAtTime(34, now + 0.45);
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(now);
+    o.stop(now + 0.52);
+  }
+
+  function spawnTntExplosion(x, y){
+    spawnFieryBlast(x, y, 150);
+    const colors = ['#f97316','#fb923c','#facc15','#fee2e2','#1f2937','#7f1d1d'];
+    for(let i=0;i<230;i++){
+      const a = Math.random()*Math.PI*2;
+      const s = 260 + Math.random()*1100;
+      puffs.push({
+        x, y,
+        vx:Math.cos(a)*s,
+        vy:Math.sin(a)*s - 260,
+        life:0,
+        ttl:0.65 + Math.random()*0.85,
+        color:colors[Math.floor(Math.random()*colors.length)],
+        size:6 + Math.random()*13
+      });
+    }
+    for(let i=0;i<5;i++){
+      floatTexts.push({
+        x:x + (Math.random()*90-45),
+        y:y + (Math.random()*60-30),
+        vy:-70 - Math.random()*55,
+        life:0,
+        ttl:0.75 + Math.random()*0.35,
+        text:i % 2 ? 'BOOM' : '★',
+        color:i % 2 ? '#f97316' : '#fef08a',
+        size:i % 2 ? 30 : 36
+      });
+    }
   }
 
   function spawnHourglassPickupEffect(x, y, value, radius){
@@ -1138,9 +1383,10 @@
   }
 
   function resetGame(){
+    applySettingsFromControls();
     world.tourStageIndex=0; world.tourTransitionTimer=0; world.tourTransitionLabel=''; world.tourSpeedFloor=0; world.irishFlagTimer=0;
     updateRaceTitle();
-    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=TOUR_STAGE_DURATION; world.timeElapsed=0;
+    world.t = 0; world.scrollX=0; world.distance=0; world.speed=0; world.stars=0; world.tntHit=0; world.bricksCollected=0; world.crashed=false; world.shake=0; world.damage=0; world.flameBoostTimer=0; world.lowGravityTimer=0; world.invincibleTimer=0; world.bubbleTimer=0; world.cameraZoom=1; world.cameraYOffset=0; world.groundedDriveTimer=0; world.greenBricks=0; world.redBricks=0; world.blueBricks=0; world.maxSpeed=world.baseMaxSpeed; world.timeLeft=TOUR_STAGE_DURATION; world.timeElapsed=0;
     clearSpawnedEntities(); puffs.length=0; floatTexts.length=0;
     // Start spawning obstacles ahead of the truck's world position so the
     // player has time to react to upcoming jumps.
@@ -1199,15 +1445,17 @@
         if(world.timeLeft <= 0){
           world.timeLeft = 0;
           finishGame(false);
+          requestAnimationFrame(loop);
           return;
         }
       }else if(world.timeLeft <= 0){
           world.timeLeft = 0;
           finishGame(false);
+          requestAnimationFrame(loop);
           return;
       }
       // Auto-drive forward by default.
-      const autoTarget = Math.min(world.maxSpeed, AUTO_DRIVE_SPEED + (hasFlameBoost() ? 90 : 0));
+      const autoTarget = Math.min(world.maxSpeed, BASE_AUTO_DRIVE_SPEED * gameSettings.speedScale + (hasFlameBoost() ? 126 * gameSettings.speedScale : 0));
       world.speed += (autoTarget - world.speed) * Math.min(1, dt * 2.1);
       world.speed = Math.max(0, Math.min(world.maxSpeed + 300, world.speed));
       if(isWorldTour() && world.tourTransitionTimer > 0 && world.tourSpeedFloor > 0 && world.speed > 0){
@@ -1220,21 +1468,33 @@
       // Jump
       if(input.jump){
         if(truck.onGround){
-          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * blueJumpScale();
+          const jumpWorldX = world.scrollX + truck.baseX;
+          const jumpRamp = findRampAtX(jumpWorldX);
+          const nearRampLip = jumpRamp && jumpWorldX >= jumpRamp.x + jumpRamp.w - 78 && jumpWorldX <= jumpRamp.x + jumpRamp.w + 12;
+          const perfectRampJump = nearRampLip && !jumpRamp.perfectUsed && world.groundedDriveTimer >= gameSettings.perfectRampTime;
+          if(perfectRampJump){
+            jumpRamp.perfectUsed = true;
+            world.speed = Math.min(world.maxSpeed + 900, Math.max(world.speed, world.maxSpeed * 0.86) + 700);
+            world.shake = Math.max(world.shake, 7);
+            playRampChime();
+            spawnPerfectRampBurst(truck.baseX + 74, truck.y - truck.bodyH - 8);
+          }
+          const perfectJumpBoost = perfectRampJump ? 1.42 : 1;
+          truck.vy = -world.jumpVel * (0.95 + 0.1*Math.min(1, world.speed/world.maxSpeed)) * (currentLevel().jumpBoost || 1) * blueJumpScale() * perfectJumpBoost;
           for(let i=0;i<34;i++){
             const spread = (Math.random()*2-1);
             puffs.push({
               x:truck.baseX + spread * 22,
               y:truck.y + 6 + Math.random()*22,
-              vx:spread * (120 + Math.random()*220),
-              vy:120 + Math.random()*260,
+              vx:spread * (120 + Math.random()*220) + (perfectRampJump ? 180 : 0),
+              vy:120 + Math.random()*260 - (perfectRampJump ? 180 : 0),
               life:0,
               ttl:0.35 + Math.random()*0.25,
-              color:Math.random() < 0.5 ? '#fb923c' : '#facc15',
-              size:4 + Math.random()*5
+              color:perfectRampJump ? (Math.random() < 0.55 ? '#fde047' : '#ffffff') : (Math.random() < 0.5 ? '#fb923c' : '#facc15'),
+              size:perfectRampJump ? 5 + Math.random()*7 : 4 + Math.random()*5
             });
           }
-          playBeep();
+          if(!perfectRampJump) playBeep();
         }
         input.jump=false;
       }
@@ -1258,6 +1518,7 @@
       const surfaceDY = trackDY(worldX);
       const activeRamp = findRampAtX(worldX);
       if(truck.y >= gy - truck.wheelR){
+        const impactVy = truck.vy;
         truck.y = gy - truck.wheelR;
         // Follow the slope tangent, but clamp so normal terrain undulation
         // doesn't bounce the truck into the air. Only ramps & turbo should
@@ -1267,23 +1528,23 @@
         const maxGroundLaunch = isOnRamp ? -Infinity : -70; // clamp upward bounce on flat ground
         truck.vy = Math.max(maxGroundLaunch, Math.min(slopeVy, 400));
         truck.onGround = true;
+        world.groundedDriveTimer = world.speed > 120 ? world.groundedDriveTimer + dt : 0;
         if(input.slam){
           input.slam = false;
+          const slamBounce = impactVy > 1200;
           world.shake = Math.max(world.shake, 10);
+          if(slamBounce){
+            truck.vy = -Math.min(760, 360 + (impactVy - 1200) * 0.22);
+            truck.onGround = false;
+            world.groundedDriveTimer = 0;
+          }
           for(let i=0;i<28;i++){
             const spread = Math.random()*2-1;
-            puffs.push({x:truck.baseX + spread*42, y:truck.y + 22, vx:spread*(160+Math.random()*260), vy:80+Math.random()*240, life:0, ttl:0.35+Math.random()*0.3, color:Math.random()<0.5?'#cbd5e1':'#facc15', size:4+Math.random()*5});
+            puffs.push({x:truck.baseX + spread*42, y:truck.y + 22, vx:spread*(160+Math.random()*260), vy:80+Math.random()*240 - (slamBounce ? 170 : 0), life:0, ttl:0.35+Math.random()*0.3, color:Math.random()<0.5?'#cbd5e1':'#facc15', size:4+Math.random()*5});
           }
         }
         if(activeRamp?.turbo && !activeRamp.used){
           activeRamp.used = true;
-          world.speed = Math.min(world.maxSpeed + 520, Math.max(world.speed, world.maxSpeed * 0.92) + 420);
-          truck.vy = Math.min(truck.vy, -620);
-          world.shake = Math.max(world.shake, 8);
-          playBeep();
-          for(let i=0;i<36;i++){
-            puffs.push({x:truck.baseX + (Math.random()*50-25), y:truck.y - 20, vx:(Math.random()*2-1)*280 + 180, vy:(Math.random()*-1-0.1)*260, life:0, ttl:0.4+Math.random()*0.4, color:Math.random()<0.5?'#f97316':'#facc15', size:4+Math.random()*6});
-          }
         }
       }else{
         // If the truck is only fractionally above ground and moving slowly
@@ -1294,6 +1555,7 @@
           truck.vy += Math.min(airGap * 18, 300) * dt;
         }
         truck.onGround = false;
+        world.groundedDriveTimer = 0;
       }
 
       // Angle follows slope a bit
@@ -1309,10 +1571,6 @@
         const sx = s.x - world.scrollX;
         if(Math.abs(sx - truck.baseX) < 52 && Math.abs(s.y - (truck.y - truck.bodyH)) < 64){
           s.taken = true; world.stars++; playBeep();
-          if(world.stars % 10 === 0){
-            world.maxSpeed = Math.min(world.maxSpeed + 90, 1600);
-            world.speed = Math.min(world.speed + 120, world.maxSpeed);
-          }
           for(let i=0;i<12;i++){
             puffs.push({x:sx, y:s.y, vx:(Math.random()*2-1)*120, vy:(Math.random()*-1-0.2)*200, life:0, ttl:0.5+Math.random()*0.4, color:'#ffd54a', size:3+Math.random()*3});
           }
@@ -1350,7 +1608,7 @@
         if(Math.abs(fx - truck.baseX) < 96 && Math.abs(f.y - (truck.y - truck.bodyH*0.6)) < 98){
           f.taken = true;
           world.flameBoostTimer = currentLevel().flameDuration;
-          world.speed = Math.min(world.speed + 260, world.maxSpeed + 300);
+          world.speed = Math.min(world.speed + 520, world.maxSpeed + 600);
           playBeep();
           for(let i=0;i<28;i++){
             puffs.push({x:fx, y:f.y, vx:(Math.random()*2-1)*220, vy:(Math.random()*-1-0.1)*220, life:0, ttl:0.5+Math.random()*0.4, color:Math.random()<0.5?'#fb923c':'#facc15', size:5+Math.random()*6});
@@ -1401,7 +1659,7 @@
             world.redBricks += 1;
             if(world.redBricks % 3 === 0){
               world.flameBoostTimer = Math.max(world.flameBoostTimer, currentLevel().flameDuration);
-              world.speed = Math.min(world.speed + 180, world.maxSpeed + 300);
+              world.speed = Math.min(world.speed + 360, world.maxSpeed + 600);
             }
           } else if(b.color === 'blue'){
             world.blueBricks += 1;
@@ -1505,12 +1763,13 @@
 
       syncWorldTourStageByDistance();
       if(world.crashed){
+        requestAnimationFrame(loop);
         return;
       }
       updateRaceTitle();
 
       // Engine audio
-      const speedCap = world.maxSpeed + (hasFlameBoost() ? 300 : 0);
+      const speedCap = world.maxSpeed + (hasFlameBoost() ? 600 : 0);
       world.speed = Math.max(-world.reverseMaxSpeed, Math.min(speedCap, world.speed));
       const speedMag = Math.abs(world.speed);
       const engineVol = speedMag>5 ? (0.022 + speedMag/speedCap*0.055) : 0;
@@ -1567,11 +1826,8 @@
     world.shake = boom ? 24 : Math.max(7, damage * 4);
     if(boom){
       world.tntHit += 1;
-      for(let i=0;i<160;i++){
-        const a = Math.random()*Math.PI*2;
-        const s = 220 + Math.random()*900;
-        puffs.push({x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-240, life:0, ttl:0.5+Math.random()*0.7, color:Math.random()<0.55?'#fb923c':'#1f2937', size:5+Math.random()*8});
-      }
+      world.shake = 32;
+      spawnTntExplosion(cx, cy);
       world.speed = Math.max(0, world.speed - 180);
       world.damage += damage;
     } else if(garbageBurst){
@@ -1601,8 +1857,9 @@
       spawnConfetti(cx, cy, 80);
       world.damage += damage;
     }
-    if(hasFlameBoost()) world.speed = Math.min(world.maxSpeed + 300, world.speed + 35);
-    playCrash();
+    if(hasFlameBoost()) world.speed = Math.min(world.maxSpeed + 600, world.speed + 70);
+    if(boom) playExplosion();
+    else playCrash();
     if(world.damage >= world.maxDamage){
       finishGame(false, cx, cy);
     }
