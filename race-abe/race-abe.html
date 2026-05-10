@@ -467,6 +467,7 @@
     perfectRampTime: DEFAULT_PERFECT_RAMP_TIME
   };
   let lastLaserShotAt = -999;
+  let lastRocketShotAt = -999;
   function setHold(btn,holding){
     input[btn]=holding;
       }
@@ -477,6 +478,7 @@
       if(e.key===' ' || e.code==='Space') e.preventDefault();
       if(e.key===' ' || e.code==='Space' || e.key==='ArrowUp' || e.key==='w'){ input.jump=true; }
       if(e.key==='ArrowDown' || e.key==='s' || e.key==='S'){ e.preventDefault(); input.slam=true; }
+      if(e.key==='x' || e.key==='X'){ e.preventDefault(); ensureAudio(); fireRocket(); }
       if(e.key==='h' || e.key==='H'){ ensureAudio(); playHorn(); }
       if(e.key==='r'){ resetGame(); }
     });
@@ -837,6 +839,7 @@
   const ramps = [];     // dirt ramps {x, baseY, w, h, landingW, used}
   const scenery = [];
   const lasers = [];
+  const rockets = [];
   const laserBarriers = [];
   const goldLaserCoins = [];   // world scenery per level
   let lastSpawnX = 0;
@@ -929,6 +932,10 @@
         w = 210 + rnd()*100;
         h = 118 + rnd()*28;
       }
+      if(level.name === 'Moon'){
+        w *= 1.45;
+        h *= 1.55;
+      }
       obstacles.push({x:lastSpawnX, yTop:gy - h, w, h, hue, type});
       if(rnd() < 0.7){
         const approachX = lastSpawnX - (520 + rnd()*260);
@@ -1004,6 +1011,7 @@
       if(ramps[i].x + ramps[i].w < minX) ramps.splice(i,1);
     }
     while(lasers.length && lasers[0].x < minX - 200) lasers.shift();
+    while(rockets.length && rockets[0].x < minX - 200) rockets.shift();
     while(laserBarriers.length && laserBarriers[0].x + laserBarriers[0].w < minX) laserBarriers.shift();
     while(goldLaserCoins.length && goldLaserCoins[0].x + goldLaserCoins[0].r < minX) goldLaserCoins.shift();
 
@@ -1258,6 +1266,22 @@
     o.stop(now + 0.52);
   }
 
+  function playRocketWhoosh(){
+    if(!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(180, now);
+    o.frequency.exponentialRampToValueAtTime(520, now + 0.16);
+    g.gain.setValueAtTime(0.001, now);
+    g.gain.linearRampToValueAtTime(0.075, now + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(now);
+    o.stop(now + 0.34);
+  }
+
   function spawnTntExplosion(x, y){
     spawnFieryBlast(x, y, 150);
     const colors = ['#f97316','#fb923c','#facc15','#fee2e2','#1f2937','#7f1d1d'];
@@ -1341,6 +1365,7 @@
     ramps.length = 0;
     scenery.length = 0;
     lasers.length = 0;
+    rockets.length = 0;
     laserBarriers.length = 0;
     goldLaserCoins.length = 0;
   }
@@ -1419,6 +1444,20 @@
     const mag = Math.hypot(dx, dy) || 1;
     const speed = 1850;
     lasers.push({x:originX + world.scrollX, y:originY, vx:dx/mag*speed, vy:dy/mag*speed, life:0, ttl:0.65});
+  }
+
+  function fireRocket(){
+    if(!world.playing || world.crashed) return;
+    if(world.t - lastRocketShotAt < 5) return;
+    lastRocketShotAt = world.t;
+    const x = world.scrollX + truck.baseX + 118;
+    const y = truck.y - truck.bodyH * 0.62;
+    rockets.push({x, y, vx:2450, life:0, ttl:2.2, w:150, h:58});
+    world.shake = Math.max(world.shake, 4);
+    playRocketWhoosh();
+    for(let i=0;i<18;i++){
+      puffs.push({x:truck.baseX + 92, y, vx:-260-Math.random()*360, vy:(Math.random()*2-1)*90, life:0, ttl:0.28+Math.random()*0.25, color:Math.random()<0.55?'#fb923c':'#facc15', size:5+Math.random()*6});
+    }
   }
 
   const controlsEl = document.getElementById("controls");
@@ -1693,6 +1732,50 @@
       world.cameraYOffset += (camTarget - world.cameraYOffset) * Math.min(1, dt * camRate);
       const zoomTarget = world.zoomEnabled && truckTopVisual < 70 ? 0.78 : 1;
       world.cameraZoom += (zoomTarget - world.cameraZoom) * Math.min(1, dt * 6);
+
+      for(let i=rockets.length-1;i>=0;i--){
+        const rocket = rockets[i];
+        rocket.life += dt;
+        rocket.x += rocket.vx * dt;
+        rocket.y += Math.sin((world.t + rocket.life) * 12) * 8 * dt;
+        const rx = rocket.x - world.scrollX;
+        for(let p=0;p<5;p++){
+          puffs.push({x:rx - rocket.w*0.42 - Math.random()*38, y:rocket.y + (Math.random()*2-1)*rocket.h*0.28, vx:-260-Math.random()*380, vy:(Math.random()*2-1)*140, life:0, ttl:0.22+Math.random()*0.22, color:Math.random()<0.55?'#fb923c':'#facc15', size:5+Math.random()*8});
+        }
+        if(rocket.life > rocket.ttl || rx > canvas.width/DPR + 260){
+          rockets.splice(i,1);
+          continue;
+        }
+
+        let exploded = false;
+        for(let j=obstacles.length-1;j>=0;j--){
+          const o = obstacles[j];
+          const hitX = rocket.x + rocket.w*0.5 > o.x && rocket.x - rocket.w*0.5 < o.x + o.w;
+          const hitY = rocket.y + rocket.h*0.5 > o.yTop && rocket.y - rocket.h*0.5 < o.yTop + o.h;
+          if(hitX && hitY){
+            obstacles.splice(j,1);
+            spawnTntExplosion(o.x - world.scrollX + o.w*0.5, o.yTop + o.h*0.5);
+            world.stars += 3;
+            rockets.splice(i,1);
+            exploded = true;
+            break;
+          }
+        }
+        if(exploded) continue;
+
+        for(let j=laserBarriers.length-1;j>=0;j--){
+          const b = laserBarriers[j];
+          const hitX = rocket.x + rocket.w*0.5 > b.x && rocket.x - rocket.w*0.5 < b.x + b.w;
+          const hitY = rocket.y + rocket.h*0.5 > b.y && rocket.y - rocket.h*0.5 < b.y + b.h;
+          if(hitX && hitY){
+            laserBarriers.splice(j,1);
+            spawnTntExplosion(b.x + b.w*0.5 - world.scrollX, b.y + b.h*0.5);
+            world.stars += 5;
+            rockets.splice(i,1);
+            break;
+          }
+        }
+      }
 
       for(let i=lasers.length-1;i>=0;i--){
         const l = lasers[i];
@@ -2021,6 +2104,9 @@
     }
     for(const l of lasers){
       drawLaserShot(l.x - world.scrollX, l.y);
+    }
+    for(const rocket of rockets){
+      drawRocket(rocket.x - world.scrollX, rocket.y, rocket.w, rocket.h);
     }
 
     // Obstacles (colorful boxes / cones)
@@ -3555,6 +3641,58 @@
   }
 
   function drawLaserShot(x,y){ const g=ctx.createLinearGradient(x-26,y,x+26,y); g.addColorStop(0,"#22d3ee"); g.addColorStop(0.5,"#f0abfc"); g.addColorStop(1,"#f59e0b"); ctx.strokeStyle=g; ctx.lineWidth=10; ctx.shadowColor="#f0abfc"; ctx.shadowBlur=22; ctx.beginPath(); ctx.moveTo(x-30,y); ctx.lineTo(x+30,y); ctx.stroke(); ctx.shadowBlur=0; }
+  function drawRocket(x,y,w,h){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.shadowColor = "#00000055";
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    const body = ctx.createLinearGradient(-w*0.45,-h*0.35,w*0.42,h*0.35);
+    body.addColorStop(0,"#ffffff");
+    body.addColorStop(0.4,"#fef2f2");
+    body.addColorStop(1,"#dc2626");
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(-w*0.44,-h*0.34);
+    ctx.lineTo(w*0.2,-h*0.34);
+    ctx.quadraticCurveTo(w*0.52,0,w*0.2,h*0.34);
+    ctx.lineTo(-w*0.44,h*0.34);
+    ctx.quadraticCurveTo(-w*0.55,0,-w*0.44,-h*0.34);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#7f1d1d";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.arc(w*0.04,0,h*0.18,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = "#0369a1";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.moveTo(-w*0.36,-h*0.34);
+    ctx.lineTo(-w*0.58,-h*0.62);
+    ctx.lineTo(-w*0.5,-h*0.18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w*0.36,h*0.34);
+    ctx.lineTo(-w*0.58,h*0.62);
+    ctx.lineTo(-w*0.5,h*0.18);
+    ctx.closePath();
+    ctx.fill();
+    const flame = ctx.createRadialGradient(-w*0.56,0,4,-w*0.88,0,w*0.34);
+    flame.addColorStop(0,"#fef08a");
+    flame.addColorStop(0.45,"#fb923c");
+    flame.addColorStop(1,"#ef444400");
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.ellipse(-w*0.74,0,w*0.34,h*0.34,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
   function drawLaserBarrier(x,y,w,h){ const g=ctx.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,"#fca5a5"); g.addColorStop(1,"#7f1d1d"); ctx.fillStyle=g; roundRect(ctx,x,y,w,h,9,true,false); ctx.strokeStyle="#ef4444"; ctx.lineWidth=4; ctx.strokeRect(x+2,y+2,w-4,h-4); }
   function drawGoldLaserCoin(x,y,r){ ctx.fillStyle="#eab308"; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#fde68a"; ctx.lineWidth=6; ctx.stroke(); ctx.fillStyle="#78350f"; ctx.font="900 26px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("50",x,y+1);}
 
