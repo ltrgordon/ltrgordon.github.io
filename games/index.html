@@ -144,6 +144,16 @@
           <span class="cta" style="background:linear-gradient(90deg,#6366f1,#4f46e5)">Play <span class="arr">→</span></span>
         </div>
       </a>
+      <a class="card" href="../3d-snake/index.html" aria-label="Play 3D-Snake">
+        <div class="art">
+          <canvas id="art-3dsn" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">3D-Snake</div>
+          <div class="desc">Swim the cube, wrap walls, and avoid yourself.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#06b6d4,#0ea5e9)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
     </main>
     <footer>Use keyboard or touch — have fun!</footer>
   </div>
@@ -240,7 +250,18 @@
       x.strokeStyle='#f43f5e'; x.lineWidth=6;
       x.beginPath(); x.moveTo(W/2+35,H-200); x.lineTo(W/2+102,H-190); x.stroke();
     }
-    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF();
+    function draw3DSN(){
+      const c=document.getElementById('art-3dsn'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#e0f2fe'); g.addColorStop(1,'#0ea5e9'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      const cx=W/2, cy=H/2, s=95;
+      const pts=[[-1,-1,-1],[1,-1,-1],[-1,1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,1],[1,1,1]].map(([a,b,c3])=>({x:cx+(a-b)*s*0.75,y:cy+(a+b)*s*0.4-c3*s*0.55}));
+      x.strokeStyle='#bae6fd'; x.lineWidth=2;
+      [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]].forEach(([a,b])=>{x.beginPath();x.moveTo(pts[a].x,pts[a].y);x.lineTo(pts[b].x,pts[b].y);x.stroke();});
+      x.fillStyle='#22c55e'; [[-25,5],[-4,-6],[15,-17]].forEach(([dx,dy],i)=>{x.beginPath();x.arc(cx+dx,cy+dy,16-i*2,0,Math.PI*2);x.fill();});
+      x.fillStyle='#ef4444'; x.beginPath(); x.arc(cx+55,cy+8,12,0,Math.PI*2); x.fill();
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF(); draw3DSN();
   </script>
 </body>
 </html>
