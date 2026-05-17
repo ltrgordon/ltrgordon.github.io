@@ -18,6 +18,11 @@
     .overlay h2{font-size:48px;margin:0 0 8px;color:#f43f5e}
     .overlay button{border:none;background:linear-gradient(90deg,#22d3ee,#0ea5e9);color:#001;padding:12px 18px;border-radius:999px;font-weight:800;cursor:pointer}
     .stage{position:relative}
+    .settings{margin-top:18px;padding-top:16px;border-top:1px solid #33415588}
+    .settings label{display:block;font-size:14px;margin-bottom:6px}
+    .settings input{width:100%}
+    .settings .value{color:#67e8f9;font-weight:700}
+    .settings button{margin-top:10px;width:100%;border:none;background:linear-gradient(90deg,#22d3ee,#0ea5e9);color:#001;padding:10px 14px;border-radius:999px;font-weight:800;cursor:pointer}
     @media(max-width:900px){.game-shell{grid-template-columns:1fr}}
   </style>
 </head>
@@ -43,6 +48,12 @@
         ↑ : Into screen (deeper)<br>
         ↓ : Out of screen (closer)
       </div>
+      <div class="settings">
+        <strong>Game Settings</strong>
+        <label for="speedRange">Snake speed: <span id="speedLabel" class="value">Slow</span></label>
+        <input id="speedRange" type="range" min="120" max="420" step="20" value="280" />
+        <button id="startBtn">Start Game</button>
+      </div>
     </aside>
   </div>
 <script>
@@ -54,9 +65,12 @@ const scoreEl = document.getElementById('score');
 const overlay = document.getElementById('overlay');
 const finalScoreEl = document.getElementById('finalScore');
 const restartBtn = document.getElementById('restartBtn');
+const speedRange = document.getElementById('speedRange');
+const speedLabel = document.getElementById('speedLabel');
+const startBtn = document.getElementById('startBtn');
 
-let snake, dir, nextDir, apple, score, over, acc=0;
-const speedMs = 160;
+let snake, dir, nextDir, apple, score, over, running=false, acc=0;
+let speedMs = Number(speedRange.value);
 
 const dirs = {
   left:{x:-1,y:0,z:0}, right:{x:1,y:0,z:0}, up:{x:0,y:-1,z:0}, down:{x:0,y:1,z:0},
@@ -64,6 +78,11 @@ const dirs = {
 };
 function eq(a,b){return a.x===b.x&&a.y===b.y&&a.z===b.z;}
 function wrap(v){return (v+SIZE)%SIZE;}
+
+function updateSpeedLabel(){
+  const v = Number(speedRange.value);
+  speedLabel.textContent = v >= 320 ? 'Very Slow' : v >= 260 ? 'Slow' : v >= 200 ? 'Medium' : 'Fast';
+}
 
 function reset(){
   snake=[{x:3,y:4,z:4},{x:2,y:4,z:4},{x:1,y:4,z:4}];
@@ -76,16 +95,21 @@ function placeApple(){
 }
 
 window.addEventListener('keydown', e=>{
+  if(!running || over) return;
   const m={a:dirs.left,d:dirs.right,w:dirs.up,s:dirs.down,ArrowUp:dirs.in,ArrowDown:dirs.out}[e.key];
   if(!m) return;
   if(m.x===-dir.x&&m.y===-dir.y&&m.z===-dir.z) return;
   nextDir=m; e.preventDefault();
 });
-restartBtn.onclick=reset;
+
+restartBtn.onclick=()=>{ reset(); running=true; };
+startBtn.onclick=()=>{ speedMs = Number(speedRange.value); reset(); running=true; };
+speedRange.addEventListener('input', ()=>{ speedMs = Number(speedRange.value); updateSpeedLabel(); });
 
 function project(p){
-  const cx=canvas.width*0.52, cy=canvas.height*0.52;
-  const sx=56, sy=30, sz=22;
+  const cx=canvas.width*0.52, cy=canvas.height*0.64;
+  const u=48;
+  const sx=u, sy=u*0.5, sz=u;
   return {x:cx+(p.x-p.y)*sx,y:cy+(p.x+p.y)*sy - p.z*sz, zOrder:p.x+p.y+p.z};
 }
 
@@ -93,45 +117,68 @@ function drawCube(){
   const corners=[];
   for(const z of [0,SIZE]) for(const y of [0,SIZE]) for(const x of [0,SIZE]) corners.push(project({x,y,z}));
   const edge = [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+
+  ctx.strokeStyle='rgba(125,211,252,.12)'; ctx.lineWidth=1;
+  for(let i=1;i<SIZE;i++){
+    for(let j=0;j<=SIZE;j+=SIZE){
+      let a=project({x:i,y:0,z:j}), b=project({x:i,y:SIZE,z:j});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=project({x:0,y:i,z:j}); b=project({x:SIZE,y:i,z:j});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=project({x:j,y:0,z:i}); b=project({x:j,y:SIZE,z:i});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=project({x:0,y:j,z:i}); b=project({x:SIZE,y:j,z:i});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=project({x:0,y:i,z:0}); b=project({x:0,y:i,z:SIZE});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=project({x:i,y:0,z:0}); b=project({x:i,y:0,z:SIZE});
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+  }
+
   ctx.strokeStyle='rgba(125,211,252,.35)'; ctx.lineWidth=2;
   edge.forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(corners[a].x,corners[a].y);ctx.lineTo(corners[b].x,corners[b].y);ctx.stroke();});
 }
 
-function drawCell(cell, type, i=0){
+function drawApple(cell){
   const p=project({x:cell.x+0.5,y:cell.y+0.5,z:cell.z+0.5});
   const s=24;
-  if(type==='apple'){
-    ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(p.x,p.y,s*0.55,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='#166534'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(p.x+2,p.y-s*0.5); ctx.lineTo(p.x+8,p.y-s*0.85); ctx.stroke();
-    return;
-  }
-  ctx.fillStyle = i%2===0 ? '#22c55e' : '#facc15';
-  ctx.strokeStyle='#111827'; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(p.x, p.y-s);
-  ctx.lineTo(p.x+s, p.y);
-  ctx.lineTo(p.x, p.y+s);
-  ctx.lineTo(p.x-s, p.y);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#000';
-  ctx.beginPath(); ctx.moveTo(p.x,p.y-s*0.45); ctx.lineTo(p.x+s*0.25,p.y); ctx.lineTo(p.x,p.y+s*0.45); ctx.lineTo(p.x-s*0.25,p.y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(p.x,p.y,s*0.55,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#166534'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(p.x+2,p.y-s*0.5); ctx.lineTo(p.x+8,p.y-s*0.85); ctx.stroke();
 }
 
-function drawHead(){
-  const h=snake[0]; const p=project({x:h.x+0.5,y:h.y+0.5,z:h.z+0.5});
+function drawSnake(){
+  const points = snake.map(s => project({x:s.x+0.5,y:s.y+0.5,z:s.z+0.5}));
+  if(points.length > 1){
+    ctx.strokeStyle='rgba(6,78,59,0.95)';
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=24;
+    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.stroke();
+
+    ctx.strokeStyle='rgba(34,197,94,0.95)'; ctx.lineWidth=17;
+    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.stroke();
+  }
+
+  points.slice().reverse().forEach((p, idx)=>{
+    const t = idx/(points.length-1 || 1);
+    const r = 7 + (1-t)*6;
+    ctx.fillStyle = idx === points.length-1 ? '#a3e635' : '#4ade80';
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
+  });
+
+  const head = points[0];
   ctx.fillStyle='#f8fafc';
-  ctx.beginPath(); ctx.arc(p.x-6,p.y-8,2.3,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(p.x+6,p.y-8,2.3,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#b91c1c';
-  ctx.beginPath(); ctx.moveTo(p.x,p.y+4); ctx.lineTo(p.x-4,p.y+13); ctx.lineTo(p.x-1,p.y+10); ctx.moveTo(p.x,p.y+4); ctx.lineTo(p.x+4,p.y+13); ctx.lineTo(p.x+1,p.y+10); ctx.strokeStyle='#dc2626'; ctx.lineWidth=2; ctx.stroke();
-  ctx.fillStyle='#fff';
-  ctx.fillRect(p.x-10,p.y-1,2,4); ctx.fillRect(p.x+8,p.y-1,2,4);
+  ctx.beginPath(); ctx.arc(head.x-6,head.y-6,2.3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head.x+6,head.y-6,2.3,0,Math.PI*2); ctx.fill();
 }
 
 function tick(){
   dir=nextDir;
   const n={x:wrap(snake[0].x+dir.x),y:wrap(snake[0].y+dir.y),z:wrap(snake[0].z+dir.z)};
-  if(snake.some(s=>eq(s,n))){over=true; overlay.classList.add('show'); finalScoreEl.textContent=`Score: ${score}`; return;}
+  if(snake.some(s=>eq(s,n))){over=true; running=false; overlay.classList.add('show'); finalScoreEl.textContent=`Score: ${score}`; return;}
   snake.unshift(n);
   if(eq(n,apple)){score++; scoreEl.textContent=score; placeApple();}
   else snake.pop();
@@ -140,19 +187,19 @@ function tick(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawCube();
-  const render=[];
-  snake.forEach((s,i)=>render.push({...s,kind:'snake',idx:i,depth:s.x+s.y+s.z}));
-  render.push({...apple,kind:'apple',depth:apple.x+apple.y+apple.z});
-  render.sort((a,b)=>a.depth-b.depth).forEach(o=>o.kind==='apple'?drawCell(o,'apple'):drawCell(o,'snake',o.idx));
-  drawHead();
+  drawApple(apple);
+  drawSnake();
 }
 
 let last=performance.now();
 function frame(t){
-  const dt=t-last; last=t; if(!over){acc+=dt; while(acc>=speedMs){tick(); acc-=speedMs;}}
+  const dt=t-last; last=t;
+  if(running && !over){acc+=dt; while(acc>=speedMs){tick(); acc-=speedMs;}}
   draw(); requestAnimationFrame(frame);
 }
-reset(); requestAnimationFrame(frame);
+updateSpeedLabel();
+reset();
+requestAnimationFrame(frame);
 })();
 </script>
 </body>
