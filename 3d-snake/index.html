@@ -129,17 +129,19 @@ startBtn.onclick=()=>{ speedMs = Number(speedRange.value); mode = modeSelect.val
 speedRange.addEventListener('input', ()=>{ speedMs = Number(speedRange.value); updateSpeedLabel(); });
 
 function project(p){
-  const cx=canvas.width*0.52, cy=canvas.height*0.72;
-  const u=62;
+  const cx=canvas.width*0.52, cy=canvas.height*0.62;
+  const u=Math.min(canvas.width, canvas.height)*0.073;
   const sx=u, sy=u*0.5, sz=u;
   return {x:cx+(p.x-p.y)*sx,y:cy+(p.x+p.y)*sy - p.z*sz, zOrder:p.x+p.y+p.z};
 }
 
 function drawCube(){
   const face = (points, fill) => { ctx.fillStyle=fill; ctx.beginPath(); ctx.moveTo(points[0].x,points[0].y); for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x,points[i].y); ctx.closePath(); ctx.fill(); };
-  face([project({x:0,y:0,z:0}),project({x:SIZE,y:0,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:0,y:SIZE,z:0})],'rgba(12,38,68,0.16)');
-  face([project({x:0,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:SIZE}),project({x:0,y:SIZE,z:SIZE})],'rgba(7,26,47,0.24)');
-  face([project({x:SIZE,y:0,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:SIZE}),project({x:SIZE,y:0,z:SIZE})],'rgba(8,30,56,0.21)');
+  face([project({x:0,y:0,z:0}),project({x:SIZE,y:0,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:0,y:SIZE,z:0})],'rgba(30,64,95,0.22)');
+  face([project({x:0,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:SIZE}),project({x:0,y:SIZE,z:SIZE})],'rgba(15,23,42,0.27)');
+  face([project({x:SIZE,y:0,z:0}),project({x:SIZE,y:SIZE,z:0}),project({x:SIZE,y:SIZE,z:SIZE}),project({x:SIZE,y:0,z:SIZE})],'rgba(3,105,161,0.2)');
+  face([project({x:0,y:0,z:0}),project({x:0,y:SIZE,z:0}),project({x:0,y:SIZE,z:SIZE}),project({x:0,y:0,z:SIZE})],'rgba(51,65,85,0.17)');
+  face([project({x:0,y:0,z:SIZE}),project({x:SIZE,y:0,z:SIZE}),project({x:SIZE,y:SIZE,z:SIZE}),project({x:0,y:SIZE,z:SIZE})],'rgba(14,116,144,0.12)');
 
   const corners=[];
   for(const z of [0,SIZE]) for(const y of [0,SIZE]) for(const x of [0,SIZE]) corners.push(project({x,y,z}));
@@ -178,14 +180,15 @@ function drawMouse(cell){
 }
 function drawPortals(){
   for(const portal of portals){
-    const alpha = Math.max(0, 1 - portal.life / 850); if(alpha<=0) continue;
-    [portal.from, portal.to].forEach((cell,idx)=>{
-      const p = project({x:cell.x+0.5,y:cell.y+0.5,z:cell.z+0.5});
-      const base = 16 + portal.life * 0.018 + idx * 2;
-      for(let i=0;i<3;i++){
-        ctx.strokeStyle = `rgba(${i===1?34:56},${i===1?211:189},255,${alpha*(0.75-i*0.2)})`;
-        ctx.lineWidth = 2.5 - i*0.5;
-        ctx.beginPath(); ctx.ellipse(p.x,p.y,base+i*6,base*0.55+i*4,0.3,0,Math.PI*2); ctx.stroke();
+    const alpha = Math.max(0, 1 - portal.life / 1000); if(alpha<=0) continue;
+    [portal.from, portal.to].forEach((point,idx)=>{
+      const p = project(point);
+      const pulse = Math.sin(portal.life * 0.015 + idx) * 5;
+      const base = 28 + portal.life * 0.03 + pulse;
+      for(let i=0;i<4;i++){
+        ctx.strokeStyle = `rgba(${i===1?34:56},${i===1?211:189},255,${alpha*(0.8-i*0.16)})`;
+        ctx.lineWidth = 3.4 - i*0.55;
+        ctx.beginPath(); ctx.ellipse(p.x,p.y,base+i*8,base*0.6+i*4.8,0.3,0,Math.PI*2); ctx.stroke();
       }
     });
   }
@@ -235,7 +238,15 @@ function tick(){
   const head = snake[0];
   const raw={x:head.x+dir.x,y:head.y+dir.y,z:head.z+dir.z};
   const n={x:wrap(raw.x),y:wrap(raw.y),z:wrap(raw.z)};
-  if(raw.x!==n.x || raw.y!==n.y || raw.z!==n.z) portals.push({from:{...head},to:{...n},life:0});
+  if(raw.x!==n.x || raw.y!==n.y || raw.z!==n.z){
+    const portalCenter = (value, wrappedValue) => wrappedValue === 0 ? 0 : SIZE;
+    const from = {x:head.x+0.5,y:head.y+0.5,z:head.z+0.5};
+    const to = {x:n.x+0.5,y:n.y+0.5,z:n.z+0.5};
+    if(raw.x!==n.x){ from.x = raw.x < 0 ? 0 : SIZE; to.x = portalCenter(raw.x, n.x); }
+    if(raw.y!==n.y){ from.y = raw.y < 0 ? 0 : SIZE; to.y = portalCenter(raw.y, n.y); }
+    if(raw.z!==n.z){ from.z = raw.z < 0 ? 0 : SIZE; to.z = portalCenter(raw.z, n.z); }
+    portals.push({from,to,life:0});
+  }
   if(snake.some(s=>eq(s,n))){over=true; running=false; overlay.classList.add('show'); finalScoreEl.textContent=`Score: ${score}`; return;}
   snake.unshift(n);
   const hit = targets.findIndex(t=>eq(t.pos,n));
@@ -254,7 +265,7 @@ function draw(){
 let last=performance.now();
 function frame(t){
   const dt=t-last; last=t;
-  portals.forEach(p=>{p.life += dt;}); portals = portals.filter(p=>p.life < 850);
+  portals.forEach(p=>{p.life += dt;}); portals = portals.filter(p=>p.life < 1000);
   if(running && !over){acc+=dt; moveMice(dt); while(acc>=speedMs){tick(); acc-=speedMs;}}
   draw(); requestAnimationFrame(frame);
 }
