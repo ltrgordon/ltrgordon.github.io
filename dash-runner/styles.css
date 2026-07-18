@@ -1,0 +1,193 @@
+:root {
+  --ink: #0b1020;
+  --muted: #74809a;
+  --panel: rgba(255, 255, 255, 0.82);
+  --cyan: #21d4fd;
+  --pink: #ff4ecd;
+  --lime: #b8ff4d;
+  --orange: #ffad32;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.92), transparent 28%),
+    radial-gradient(circle at 86% 24%, rgba(255, 78, 205, 0.42), transparent 30%),
+    linear-gradient(135deg, #9bf8f4 0%, #f6d365 45%, #fda085 100%);
+}
+
+.app {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px;
+  min-height: 100%;
+  padding: clamp(10px, 2.5vw, 22px);
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 24px 60px rgba(11, 16, 32, 0.24);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.hud {
+  position: absolute;
+  inset: 16px 16px auto 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.hud > div {
+  min-width: 88px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 24px rgba(11, 16, 32, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  display: grid;
+  gap: 4px;
+  width: min(420px, calc(100% - 28px));
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
+  color: #111827;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 18px 40px rgba(11, 16, 32, 0.18);
+  transform: translateX(-50%);
+  transition: opacity 180ms ease, transform 180ms ease;
+  backdrop-filter: blur(14px);
+}
+
+.toast strong {
+  font-size: 20px;
+}
+
+.toast span {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.toast.is-hidden {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+}
+
+.jump-button {
+  display: grid;
+  place-items: center;
+  width: min(520px, 100%);
+  min-height: 62px;
+  justify-self: center;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #18181b, #24243a 36%, #ff4ecd 68%, #21d4fd);
+  box-shadow: 0 10px 0 rgba(11, 16, 32, 0.32), 0 18px 42px rgba(11, 16, 32, 0.22);
+  cursor: pointer;
+  touch-action: manipulation;
+  transform: translateY(0);
+}
+
+.jump-button:active,
+.jump-button.is-pressed {
+  box-shadow: 0 4px 0 rgba(11, 16, 32, 0.38), 0 12px 32px rgba(11, 16, 32, 0.18);
+  transform: translateY(6px);
+}
+
+.jump-button:focus-visible {
+  outline: 4px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 4px;
+}
+
+@media (max-width: 720px) {
+  .app {
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .hud {
+    inset: 10px 10px auto 10px;
+  }
+
+  .hud > div {
+    min-width: 70px;
+    padding: 8px 9px;
+  }
+
+  .hud strong {
+    font-size: 17px;
+  }
+
+  .toast {
+    bottom: 14px;
+    padding: 11px 12px;
+  }
+
+  .toast strong {
+    font-size: 17px;
+  }
+
+  .toast span {
+    font-size: 13px;
+  }
+
+  .jump-button {
+    min-height: 58px;
+    font-size: 19px;
+  }
+}

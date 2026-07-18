@@ -164,6 +164,26 @@
           <span class="cta" style="background:linear-gradient(90deg,#0891b2,#0e7490)">Open <span class="arr">→</span></span>
         </div>
       </a>
+      <a class="card" href="../dash-runner/index.html" aria-label="Play Prism Dash">
+        <div class="art">
+          <canvas id="art-pd" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Prism Dash</div>
+          <div class="desc">One-button neon runner with instant restarts.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#ff4ecd,#21d4fd)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
+      <a class="card" href="../robot-invaders/index.html" aria-label="Play Mirrorbot Defense">
+        <div class="art">
+          <canvas id="art-mi" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">Mirrorbot Defense</div>
+          <div class="desc">Bank green lasers off mirrors to stop marching robots.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#22c55e,#06b6d4)">Play <span class="arr">→</span></span>
+        </div>
+      </a>
     </main>
     <footer>Use keyboard or touch — have fun!</footer>
   </div>
@@ -287,7 +307,45 @@
       x.beginPath(); x.moveTo(250,70); x.quadraticCurveTo(220,H/2,250,290); x.lineTo(272,290); x.quadraticCurveTo(302,H/2,272,70); x.closePath(); x.fill(); x.stroke();
       x.fillStyle='#f97316'; x.beginPath(); x.arc(338,H/2,9,0,Math.PI*2); x.fill();
     }
-    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF(); draw3DSN(); drawRL();
+    function drawPD(){
+      const c=document.getElementById('art-pd'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#15133c'); g.addColorStop(.52,'#38236d'); g.addColorStop(1,'#ffd166'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='rgba(255,255,255,.75)';
+      for(let i=0;i<26;i++){ x.beginPath(); x.arc((i*61)%W,(i*43)%H,1+(i%4),0,Math.PI*2); x.fill(); }
+      x.fillStyle='#161528'; x.fillRect(0,H-88,W,88);
+      x.fillStyle='#21d4fd'; x.fillRect(92,H-148,54,54);
+      x.fillStyle='#fff'; x.fillRect(105,H-132,7,7); x.fillRect(126,H-132,7,7);
+      x.fillStyle='#ff4ecd'; x.beginPath(); x.moveTo(248,H-88); x.lineTo(276,H-152); x.lineTo(304,H-88); x.closePath(); x.fill();
+      x.fillStyle='#ffad32'; x.fillRect(360,H-154,54,66);
+      x.strokeStyle='#b8ff4d'; x.lineWidth=8; x.beginPath(); x.arc(210,H-185,26,0,Math.PI*2); x.stroke();
+      x.strokeStyle='#21d4fd'; x.lineWidth=4; x.beginPath(); x.moveTo(0,H-88); x.lineTo(W,H-88); x.stroke();
+    }
+    function drawMI(){
+      const c=document.getElementById('art-mi'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#07111e'); g.addColorStop(1,'#10162d'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.fillStyle='rgba(220,247,255,.8)';
+      for(let i=0;i<34;i++){ x.beginPath(); x.arc((i*67)%W,(i*41)%H,1+(i%3),0,Math.PI*2); x.fill(); }
+      const mg=x.createLinearGradient(10,0,22,0); mg.addColorStop(0,'#38bdf822'); mg.addColorStop(.5,'#f0fdffdd'); mg.addColorStop(1,'#38bdf822');
+      x.fillStyle=mg; x.fillRect(16,35,9,H-70); x.fillRect(W-25,35,9,H-70);
+      for(let r=0;r<4;r++){
+        for(let col=0;col<6;col++){
+          const s=26-r*3, px=92+col*54, py=62+r*42;
+          x.fillStyle=r<2?'#80b6cf':'#6b8aa3'; x.fillRect(px-s/2,py-s/3,s,s*.72);
+          x.fillStyle='#b7eaff'; x.fillRect(px-s*.32,py-s*.78,s*.64,s*.34);
+          x.fillStyle=r<2?'#4dff8a':'#ffd166'; x.fillRect(px-s*.2,py-s*.66,s*.4,s*.07);
+        }
+      }
+      x.strokeStyle='#4dff8a'; x.lineWidth=5; x.beginPath(); x.moveTo(W/2,H-72); x.lineTo(W-24,130); x.lineTo(270,68); x.stroke();
+      x.strokeStyle='#ff4f68'; x.lineWidth=4; x.beginPath(); x.moveTo(300,146); x.lineTo(245,H-96); x.stroke();
+      x.fillStyle='#173047'; x.fillRect(W/2-38,H-52,76,24);
+      x.fillStyle='#58e6ff'; x.fillRect(W/2-17,H-72,34,20);
+      x.fillStyle='#4dff8a'; x.beginPath(); x.arc(W/2,H-82,8,0,Math.PI*2); x.fill();
+      const lg=x.createLinearGradient(W/2-20,0,W/2+20,0); lg.addColorStop(0,'#46d9ff33'); lg.addColorStop(.5,'#ffffffcc'); lg.addColorStop(1,'#46d9ff33');
+      x.fillStyle=lg; x.beginPath(); x.ellipse(W/2+55,H/2,15,42,0,0,Math.PI*2); x.fill();
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF(); draw3DSN(); drawRL(); drawPD(); drawMI();
   </script>
 </body>
 </html>

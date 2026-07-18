@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Prism Dash</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app" aria-label="Prism Dash game">
+    <section class="stage" aria-label="Game area">
+      <canvas id="game" width="1280" height="720"></canvas>
+
+      <div class="hud" aria-hidden="true">
+        <div>
+          <span class="label">Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div>
+          <span class="label">Best</span>
+          <strong id="best">0</strong>
+        </div>
+        <div>
+          <span class="label">Speed</span>
+          <strong id="speed">1.0x</strong>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" aria-live="polite">
+        <strong>Tap to jump</strong>
+        <span>Space, click, touch, or button A</span>
+      </div>
+    </section>
+
+    <button id="jumpButton" class="jump-button" type="button" aria-label="Jump">
+      <span>Jump</span>
+    </button>
+  </main>
+
+  <script src="./game.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Mirrorbot Defense</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="game-card" aria-label="Mirrorbot Defense game">
+      <div class="topbar">
+        <div>
+          <h1>Mirrorbot Defense</h1>
+          <p>Angle the ray gun, bank lasers off the mirrors, and stop the robot march.</p>
+        </div>
+        <div class="stats" aria-live="polite">
+          <span><b id="score">0</b> score</span>
+          <span><b id="wave">1</b> wave</span>
+          <span><b id="robots">0</b> bots</span>
+        </div>
+      </div>
+
+      <div class="arena-wrap">
+        <canvas id="game" width="960" height="640"></canvas>
+        <div id="overlay" class="overlay">
+          <div class="panel">
+            <h2 id="overlay-title">Mirrorbot Defense</h2>
+            <p id="overlay-copy">Robots advance from deep space. Aim with up/down, move with left/right, shoot with space.</p>
+            <button id="start">Start Game</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="keys">
+          <span>Move <b>←</b> <b>→</b></span>
+          <span>Aim <b>↑</b> <b>↓</b></span>
+          <span>Fire <b>Space</b></span>
+          <span>Pause <b>P</b></span>
+        </div>
+        <div class="touch" aria-label="Touch controls">
+          <button data-hold="left" aria-label="Move left">←</button>
+          <button data-hold="right" aria-label="Move right">→</button>
+          <button data-tap="aimUp" aria-label="Aim up">↑</button>
+          <button data-tap="aimDown" aria-label="Aim down">↓</button>
+          <button data-tap="shoot" class="fire" aria-label="Fire">Fire</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
