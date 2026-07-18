@@ -154,6 +154,16 @@
           <span class="cta" style="background:linear-gradient(90deg,#06b6d4,#0ea5e9)">Play <span class="arr">→</span></span>
         </div>
       </a>
+      <a class="card" href="../ray-tracer/index.html" aria-label="Open RayLab">
+        <div class="art">
+          <canvas id="art-rl" width="480" height="360" aria-hidden="true"></canvas>
+        </div>
+        <div class="details">
+          <div class="name">RayLab</div>
+          <div class="desc">Trace laser beams through lenses, mirrors, and prisms.</div>
+          <span class="cta" style="background:linear-gradient(90deg,#0891b2,#0e7490)">Open <span class="arr">→</span></span>
+        </div>
+      </a>
     </main>
     <footer>Use keyboard or touch — have fun!</footer>
   </div>
@@ -261,7 +271,23 @@
       x.fillStyle='#22c55e'; [[-25,5],[-4,-6],[15,-17]].forEach(([dx,dy],i)=>{x.beginPath();x.arc(cx+dx,cy+dy,16-i*2,0,Math.PI*2);x.fill();});
       x.fillStyle='#ef4444'; x.beginPath(); x.arc(cx+55,cy+8,12,0,Math.PI*2); x.fill();
     }
-    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF(); draw3DSN();
+    function drawRL(){
+      const c=document.getElementById('art-rl'); if(!c) return; const x=c.getContext('2d'); const W=c.width,H=c.height;
+      x.clearRect(0,0,W,H);
+      const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#f8fafc'); g.addColorStop(1,'#dff6fb'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      x.strokeStyle='#0f172a10';
+      for(let gx=0; gx<W; gx+=32){ x.beginPath(); x.moveTo(gx,0); x.lineTo(gx,H); x.stroke(); }
+      for(let gy=0; gy<H; gy+=32){ x.beginPath(); x.moveTo(0,gy); x.lineTo(W,gy); x.stroke(); }
+      x.fillStyle='#0f172a'; x.fillRect(42,H/2-20,34,40); x.fillStyle='#e2e8f0'; x.fillRect(52,H/2-8,14,16);
+      x.strokeStyle='#22c55e'; x.lineWidth=2; x.globalAlpha=.65;
+      for(let i=-4;i<=4;i++){ x.beginPath(); x.moveTo(76,H/2+i*14); x.lineTo(255,H/2+i*14); x.lineTo(410,H/2+i*32); x.stroke(); }
+      x.globalAlpha=1;
+      const lg=x.createLinearGradient(236,0,286,0); lg.addColorStop(0,'#67e8f944'); lg.addColorStop(.5,'#ffffffcc'); lg.addColorStop(1,'#0891b244');
+      x.fillStyle=lg; x.strokeStyle='#0e7490'; x.lineWidth=3;
+      x.beginPath(); x.moveTo(250,70); x.quadraticCurveTo(220,H/2,250,290); x.lineTo(272,290); x.quadraticCurveTo(302,H/2,272,70); x.closePath(); x.fill(); x.stroke();
+      x.fillStyle='#f97316'; x.beginPath(); x.arc(338,H/2,9,0,Math.PI*2); x.fill();
+    }
+    drawJK(); drawBM(); drawJA(); drawPG(); drawPS(); drawSN(); drawRF(); draw3DSN(); drawRL();
   </script>
 </body>
 </html>

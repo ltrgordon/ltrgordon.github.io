@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RayLab 2D Ray Tracer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="workspace" aria-label="Ray tracing workspace">
+      <header class="topbar">
+        <div>
+          <h1>RayLab</h1>
+          <p>2D optical bench for collimated laser beams</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="startBtn" class="primary">Start</button>
+          <button id="clearBtn" class="ghost">Clear</button>
+        </div>
+      </header>
+
+      <div class="bench-wrap">
+        <canvas id="bench" width="1280" height="760" aria-label="Interactive optical bench"></canvas>
+        <div class="bench-hint">
+          <span>Drag elements to place them</span>
+          <span>Drag handles to resize</span>
+          <span>Click to edit settings</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar" aria-label="Ray tracing controls">
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Examples</h2>
+        </div>
+        <div class="button-grid">
+          <button class="preset" data-example="converging">Converging lens</button>
+          <button class="preset" data-example="diverging">Diverging lens</button>
+          <button class="preset" data-example="expander">Beam expander</button>
+          <button class="preset" data-example="mirror">Curved mirror</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Laser Source</h2>
+        </div>
+        <label>X position <input id="sourceX" type="range" min="40" max="900" step="1"></label>
+        <label>Y position <input id="sourceY" type="range" min="80" max="680" step="1"></label>
+        <label>Direction <input id="sourceAngle" type="range" min="-60" max="60" step="0.5"></label>
+        <label>Wavelength <input id="wavelength" type="range" min="380" max="700" step="1"></label>
+        <label>Beam diameter <input id="beamDiameter" type="range" min="6" max="240" step="1"></label>
+        <label>Divergence <input id="divergence" type="range" min="0" max="8" step="0.05"></label>
+        <label>Rays shown <input id="rayCount" type="range" min="3" max="151" step="2"></label>
+        <div id="sourceReadout" class="readout"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Elements</h2>
+          <button id="deleteBtn" class="icon-btn" title="Delete selected element" aria-label="Delete selected element">x</button>
+        </div>
+        <div class="tool-grid">
+          <button data-add="lens-convex">Convex lens</button>
+          <button data-add="lens-concave">Concave lens</button>
+          <button data-add="mirror">Mirror</button>
+          <button data-add="beamsplitter">Beam splitter</button>
+          <button data-add="aperture">Aperture</button>
+          <button data-add="slab">Glass slab</button>
+          <button data-add="prism">Prism</button>
+        </div>
+      </section>
+
+      <section class="panel inspector">
+        <div class="panel-title">
+          <h2>Inspector</h2>
+        </div>
+        <div id="emptyInspector" class="empty-state">Select an optical element on the bench.</div>
+        <div id="inspectorControls" class="hidden">
+          <label>Name <input id="elName" type="text"></label>
+          <label>Type <select id="elType"></select></label>
+          <label>X <input id="elX" type="range" min="40" max="1210" step="1"></label>
+          <label>Y <input id="elY" type="range" min="60" max="700" step="1"></label>
+          <label>Angle <input id="elAngle" type="range" min="-80" max="80" step="0.5"></label>
+          <label>Aperture <input id="elHeight" type="range" min="50" max="560" step="1"></label>
+          <label>Width <input id="elWidth" type="range" min="8" max="180" step="1"></label>
+          <label>Curvature 1 <input id="elCurv1" type="range" min="-0.035" max="0.035" step="0.001"></label>
+          <label>Curvature 2 <input id="elCurv2" type="range" min="-0.035" max="0.035" step="0.001"></label>
+          <label>Refractive index <input id="elIndex" type="range" min="1" max="2.2" step="0.01"></label>
+          <label>Reflectivity <input id="elReflect" type="range" min="0" max="1" step="0.01"></label>
+          <label>Opening <input id="elOpening" type="range" min="8" max="220" step="1"></label>
+          <div id="elementReadout" class="readout"></div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
